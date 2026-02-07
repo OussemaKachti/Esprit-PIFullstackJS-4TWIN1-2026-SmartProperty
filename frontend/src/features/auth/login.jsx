@@ -47,9 +47,7 @@ export default function Login() {
       
        <div className="image-container">
         <img src="https://images.pexels.com/photos/7614534/pexels-photo-7614534.jpeg" alt="bg-login" />
-        <div className="hero-text">
-          Welcome to<br /> SmartProperty  </div>
-        <div className="sub-hero-text">Login to manage your properties, tenants and operations__all in one place.</div>
+        
       </div>
 
       <div className="form-container">
@@ -69,6 +67,7 @@ export default function Login() {
             <input
               type="email"
               value={email}
+              placeholder="Enter your email"
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (emailError) setEmailError("");
@@ -85,6 +84,7 @@ export default function Login() {
             <input
               type="password"
               value={password}
+              placeholder="Enter your password"
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (passwordError) setPasswordError("");
@@ -100,6 +100,19 @@ export default function Login() {
             {loginError}
           </span>
         )}
+
+       <div className="reset-password-container">
+
+          <div className="remember-me-container">
+            <input type="checkbox" id="rememberMe" disabled={isLoading} />
+            <label htmlFor="rememberMe" className="remember-me">Remember me</label>
+          </div>
+
+          <span className="forgot-password">Forgot password?</span>                
+
+       </div>
+
+
 
        <button
   type="button"
@@ -123,6 +136,8 @@ export default function Login() {
             Sign up
           </span>
         </span>
+
+       
 
         <span className="terms-of-services">
           By signing in you agree to our{" "}
