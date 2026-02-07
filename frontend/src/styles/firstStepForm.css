@@ -1,0 +1,239 @@
+:root {
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-gray-100: #f9f9f9;
+  --color-gray-200: #e1e1e1;
+  --color-gray-400: #d1d1d1;
+  --color-gray-600: #999999;
+  --color-gray-700: #878787;
+  --color-error: #ef4444;
+  --title-xl: clamp(24px, 4vw, 34px);
+  --title-md: clamp(16px, 2.5vw, 20px);
+  --text-sm: 12px;
+  --container-width: 800px;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--font-main);
+}
+
+.property-main-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  box-sizing: border-box;
+}
+
+.image-container {
+  width: 40%;
+  height: 100%;
+  position: relative;
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.property-form-container {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: clamp(24px, 6vw, 50px) clamp(24px, 12vw, 240px) 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.texts-container,
+.multisteps,
+.form-title {
+  width: 100%;
+  max-width: var(--container-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.texts-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 100px;
+  margin-bottom: 20px;
+}
+
+.step-indicator {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-gray-200);
+  letter-spacing: 0.08em;
+}
+
+.basic-info {
+  font-size: var(--title-md);
+  font-weight: 400;
+  color: var(--color-black);
+}
+
+.multisteps {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.step-one,
+.step-two,
+.step-three,
+.step-four {
+  flex: 1;
+  height: 6px;
+  border-radius: 20px;
+  background-color: var(--color-gray-200);
+}
+
+.step-one {
+  background-color: var(--color-black);
+}
+
+.form-title {
+  font-size: var(--title-xl);
+  font-weight: 500;
+  color: var(--color-black);
+  margin-bottom: 10px;
+}
+
+.property-form-container form {
+  width: 100%;
+  max-width: var(--container-width);
+  margin: 0 auto;
+}
+
+.property-form-container input,
+.property-form-container select,
+.property-form-container textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.property-type-container {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.1;
+  color: var(--color-gray-700);
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+.property-type-input {
+  margin-top: 8px;
+  width: 100%;
+  height: var(--input-height);
+  border: 1px solid var(--color-gray-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--padding-horizontal);
+  box-sizing: border-box;
+  transition: border 0.3s ease;
+}
+
+.property-type-input input {
+  font-size: var(--font-input);
+  border: none;
+  outline: none;
+  width: 100%;
+  font-family: var(--font-mono);
+}
+
+.property-type-input select {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-mono);
+  border: none;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+}
+
+.property-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.property-type-container.half {
+  width: 50%;
+}
+
+.map-container {
+  width: 100%;
+  max-width: var(--container-width);
+  height: 200px;
+  margin: 30px auto 0 auto;
+  border: 1px solid var(--color-gray-400);
+  background-color: var(--color-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-600);
+  font-style: italic;
+  font-size: 14px;
+  user-select: none;
+}
+
+.form-continue-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  margin-top: 20px;
+  max-width: var(--container-width);
+  padding: 16px 0;
+  font-size: 14px;
+  background-color: var(--color-black);
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+}
+
+.property-type-container.error .property-type-input {
+  border-color: var(--color-error);
+}
+
+.form-input-error-text {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--color-error);
+  font-family: var(--font-mono);
+}
+
+.property-type-container.error select,
+.property-type-container.error input {
+  border-color: var(--color-error);
+  outline-color: var(--color-error);
+}
+
+
+@media (max-width: 700px) {
+
+    .texts-container{
+        margin-top: 0;
+    }
+}
