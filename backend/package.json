@@ -1,15 +1,45 @@
 {
   "name": "smartproperty-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "SmartProperty - AI-Powered Property Management Platform Backend",
+  "main": "src/server.js",
   "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "init-user": "node init-static-user.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "real-estate",
+    "property-management",
+    "ai",
+    "saas"
+  ],
+  "author": "SmartProperty Team",
   "license": "ISC",
+  "dependencies": {
+    "cloudinary": "^1.41.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "groq-sdk": "^0.37.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "mongodb": "^7.1.0",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "openai": "^4.20.1",
+    "winston": "^3.11.0"
+  },
   "devDependencies": {
     "nodemon": "^3.1.11"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
