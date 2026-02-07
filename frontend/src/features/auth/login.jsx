@@ -102,14 +102,12 @@ export default function Login() {
         )}
 
        <div className="reset-password-container">
-
+        
           <div className="remember-me-container">
             <input type="checkbox" id="rememberMe" disabled={isLoading} />
             <label htmlFor="rememberMe" className="remember-me">Remember me</label>
           </div>
-
           <span className="forgot-password">Forgot password?</span>                
-
        </div>
 
 
