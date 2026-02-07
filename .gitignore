@@ -1,6 +1,5 @@
 # Node
 node_modules/
-.env
 
 # Builds
 dist/
