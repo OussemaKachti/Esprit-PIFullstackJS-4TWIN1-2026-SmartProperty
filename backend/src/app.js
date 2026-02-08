@@ -9,8 +9,17 @@ const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
-// Create Express app
+const dotenv = require('dotenv');
+const toneChangerApi = require('./api/toneChanger');
+
+dotenv.config();
+
 const app = express();
+
+app.use(express.json());
+app.use('/api/tone-changer', toneChangerApi);
+
+
 
 // Security middleware
 app.use(helmet());
