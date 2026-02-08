@@ -47,7 +47,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: clamp(24px, 6vw, 50px) clamp(24px, 12vw, 240px) 0;
+  padding: 50px 250px 0 250px;
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -77,7 +77,7 @@ body {
 }
 
 .basic-info {
-  font-size: var(--title-md);
+  font-size: 17px;
   font-weight: 400;
   color: var(--color-black);
 }
@@ -121,6 +121,8 @@ body {
 .property-form-container textarea {
   width: 100%;
   box-sizing: border-box;
+  padding: 0 10px;
+  height: 20px;
 }
 
 .property-type-container {
@@ -143,6 +145,7 @@ body {
   padding: 0 var(--padding-horizontal);
   box-sizing: border-box;
   transition: border 0.3s ease;
+  border-radius: 20px;
 }
 
 .property-type-input input {
@@ -190,6 +193,7 @@ body {
   font-style: italic;
   font-size: 14px;
   user-select: none;
+  border-radius: 10px;
 }
 
 .form-continue-button {
@@ -206,6 +210,7 @@ body {
   color: var(--color-white);
   border: none;
   cursor: pointer;
+  border-radius: 20px;
 }
 
 .property-type-container.error .property-type-input {

@@ -99,13 +99,15 @@ const CreateProperty = () => {
           <div className={`property-type-container half ${errors.rooms ? "error" : ""}`}>
             <label className="property-label">ROOMS</label>
             <div className="property-type-input">
-              <input
-                type="number"
-                placeholder="e.g. 3"
-                value={rooms}
-                onChange={(e) => setRooms(e.target.value)}
-                min="0"
-              />
+<input
+  type="number"
+  placeholder="e.g. 3"
+  value={rooms}
+  onChange={(e) => setRooms(e.target.value)}
+  min="0"
+/>
+
+
             </div>
             {errors.rooms && <div className="form-input-error-text">{errors.rooms}</div>}
           </div>

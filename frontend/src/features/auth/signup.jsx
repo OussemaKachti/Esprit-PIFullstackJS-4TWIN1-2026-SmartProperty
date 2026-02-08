@@ -73,9 +73,7 @@ export default function Signup() {
     <div className="main-container">
       <div className="image-container">
         <img src="https://images.pexels.com/photos/7614534/pexels-photo-7614534.jpeg" alt="bg-login" />
-        <div className="hero-text">
-          Welcome to<br /> SmartProperty  </div>
-        <div className="sub-hero-text">Signup to manage your properties, tenants and operations__all in one place.</div>
+        
       </div>
 
       <div className="form-container">
