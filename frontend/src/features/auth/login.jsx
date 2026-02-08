@@ -37,8 +37,30 @@ export default function Login() {
     setIsLoading(true);
     setLoginError("");
 
-    navigate("/form");
+    try {
+      const response = await fetch("http://localhost:5000/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoginError(data.message || "Login failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Store JWT token
+      localStorage.setItem("token", data.token);
+
+      // Redirect or update UI as needed
+      navigate("/form");
+    } catch (error) {
+      setLoginError("An error occurred. Please try again.");
+      setIsLoading(false);
+    }
   };
 
 
