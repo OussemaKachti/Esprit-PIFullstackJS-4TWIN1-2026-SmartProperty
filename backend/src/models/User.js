@@ -41,12 +41,33 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(UserRole),
       default: UserRole.BUYER,
     },
-    // Champs pour l'authentification (Phase 2)
     password: {
       type: String,
-      // required: true, // Sera requis en Phase 2
-      select: false, // Ne pas retourner le password dans les queries
+      select: false,
     },
+    resetPasswordToken: {
+      type: String,
+      default: null
+    },
+    resetPasswordExpire: {
+      type: Date,
+      default: null
+    },
+    // Champs pour le 2FA
+    twoFactorSecret: {
+      type: String,
+      select: false,
+      default: null
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    twoFactorBackupCodes: {
+      type: [String],
+      select: false,
+      default: []
+    }
   },
   {
     timestamps: true,
@@ -56,6 +77,22 @@ const userSchema = new mongoose.Schema(
 // Index pour recherche
 userSchema.index({ email: 1 });
 userSchema.index({ login: 1 });
+
+// Méthode pour générer le reset token
+userSchema.methods.getResetPasswordToken = function() {
+  const crypto = require('crypto');
+  
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+  
+  return resetToken;
+};
 
 const User = mongoose.model('User', userSchema);
 
