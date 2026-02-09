@@ -1,9 +1,6 @@
 const multer = require('multer');
-// const { CloudinaryStorage } = require('multer-storage-cloudinary');
-// const cloudinary = require('../config/cloudinary');
 const path = require('path');
 
-// Temporairement désactivé : utilisation de stockage local au lieu de Cloudinary
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/'); // Crée un dossier uploads/ à la racine du backend
@@ -12,19 +9,6 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
   }
 });
-
-// Configure Cloudinary storage (temporairement désactivé)
-// const storage = new CloudinaryStorage({
-//   cloudinary: cloudinary,
-//   params: {
-//     folder: 'smartproperty/properties',
-//     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
-//     transformation: [
-//       { width: 1920, height: 1080, crop: 'limit' },
-//       { quality: 'auto:good' },
-//     ],
-//   },
-// });
 
 // File filter
 const fileFilter = (req, file, cb) => {

@@ -1,6 +1,5 @@
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
-// const cloudinary = require('../config/cloudinary'); // Temporairement désactivé
 
 // @desc    Get all properties
 // @route   GET /api/properties
@@ -100,13 +99,15 @@ exports.createProperty = async (req, res, next) => {
 
     const property = await Property.create(propertyData);
 
-    // Ajouter manuellement les infos du user (car populate ne marche pas avec staticUser)
+    // Enrichir la réponse avec les infos utilisateur
+    // Note: populate() ne fonctionne pas avec staticUser, donc on ajoute manuellement
+    // TODO: Utiliser populate('createdBy') une fois l'auth JWT implémentée
     const propertyWithUser = property.toObject();
     propertyWithUser.createdBy = {
       _id: req.user._id,
       login: req.user.login,
       email: req.user.email,
-      role: req.user.role
+      role: req.user.role,
     };
 
     res.status(201).json(
@@ -166,15 +167,6 @@ exports.deleteProperty = async (req, res, next) => {
       );
     }
 
-    // Delete images from Cloudinary (temporairement désactivé)
-    // if (property.images && property.images.length > 0) {
-    //   for (const image of property.images) {
-    //     if (image.publicId) {
-    //       await cloudinary.uploader.destroy(image.publicId);
-    //     }
-    //   }
-    // }
-
     await Property.findByIdAndDelete(req.params.id);
 
     res.status(200).json(
@@ -209,12 +201,6 @@ exports.deletePropertyImage = async (req, res, next) => {
         apiResponse(false, 'Image not found')
       );
     }
-
-    // Delete from Cloudinary (temporairement désactivé)
-    // const publicId = property.images[imageIndex].publicId;
-    // if (publicId) {
-    //   await cloudinary.uploader.destroy(publicId);
-    // }
 
     // Remove from array
     property.images.splice(imageIndex, 1);
