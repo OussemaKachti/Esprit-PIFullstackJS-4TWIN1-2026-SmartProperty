@@ -1,12 +1,9 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/login.css";
-import { GoogleOAuthProvider } from "@react-oauth/google";
-import GmailButton from "./GmailButton";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
   const [login, setLogin] = useState("");
   const [firstname, setFirstName] = useState("");
@@ -16,34 +13,42 @@ export default function Signup() {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("");
 
-
+  const [fieldErrors, setFieldErrors] = useState({ login: "", email: "", password: "" });
   const [codeError, setCodeError] = useState("");
-  const [error, setError] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const inputsRef = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
 
+  const validateRequired = () => {
+    const errors = { login: "", email: "", password: "" };
+    if (!login.trim()) errors.login = "Username is required";
+    if (!email.trim()) errors.email = "Email is required";
+    if (!password.trim()) errors.password = "Password is required";
+    setFieldErrors(errors);
+    return !errors.login && !errors.email && !errors.password;
+  };
+
   const handleContinue = async () => {
+    if (!validateRequired()) return;
+
     setIsLoading(true);
-    setError("");
+    setFieldErrors({ login: "", email: "", password: "" });
 
     try {
       const payload = {
-        login: login,
-        email: email,
+        login: login.trim(),
+        email: email.trim(),
         password: password,
         firstName: firstname,
         lastName: lastName,
         phone: phone,
-        role: role
+        role: role,
       };
 
-      const response = await fetch('http://localhost:5000/api/users/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("http://localhost:5000/api/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -54,11 +59,20 @@ export default function Signup() {
         setShowVerification(true);
       } else {
         setIsLoading(false);
-        setError(data.message || 'Registration failed. Please try again.');
+        const msg = data.message || "Registration failed.";
+        if (msg.toLowerCase().includes("login") && msg.toLowerCase().includes("email") && msg.toLowerCase().includes("password")) {
+          setFieldErrors({
+            login: "Username is required",
+            email: "Email is required",
+            password: "Password is required",
+          });
+        } else {
+          setFieldErrors({ login: msg, email: "", password: "" });
+        }
       }
     } catch (err) {
       setIsLoading(false);
-      setError('Network error. Please check your connection.');
+      setFieldErrors({ login: "", email: "Network error. Please try again.", password: "" });
     }
   };
 
@@ -109,51 +123,47 @@ export default function Signup() {
         
       </div>
 
-      <div className="form-container">
-
+      <div className="form-container signup-form">
 
         <h1 className="heading-title">Join SmartProperty</h1>
-
-        <p className="text">Create your account to get started</p>
-
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          <GmailButton />
-        </GoogleOAuthProvider>
-
-        <span className="or-text">Or</span>
+        <p className="text signup-subtitle">Create your account to get started</p>
 
         {!showVerification && (
           <>
-            <div className="email-container">
+            <div className="email-container signup-field">
               Username
-              <div className="email-input">
+              <div className={`email-input ${fieldErrors.login ? "error" : ""}`}>
                 <input
                   type="text"
                   value={login}
-                  onChange={(e) => setLogin(e.target.value)}
+                  onChange={(e) => { setLogin(e.target.value); if (fieldErrors.login) setFieldErrors((prev) => ({ ...prev, login: "" })); }}
+                  placeholder="Enter your username"
                 />
               </div>
+              {fieldErrors.login && <span className="field-error">{fieldErrors.login}</span>}
             </div>
 
             <div className="firsname-lastname">
               <div className="firstname-container">
-                FirstName
+                First name
                 <div className="firstname-input">
                   <input
                     type="text"
                     value={firstname}
                     onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
                   />
                 </div>
               </div>
 
               <div className="lastname-container">
-                LastName
+                Last name
                 <div className="lastname-input">
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
                   />
                 </div>
               </div>
@@ -180,31 +190,33 @@ export default function Signup() {
             </div>
 
 
-            <div className="email-container">
+            <div className="email-container signup-field">
               Email
-              <div className="email-input">
+              <div className={`email-input ${fieldErrors.email ? "error" : ""}`}>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-
+                  onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" })); }}
+                  placeholder="Enter your email"
                 />
               </div>
+              {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
             </div>
 
-            <div className="password-container">
+            <div className="password-container signup-field">
               Password
-              <div className="password-input">
+              <div className={`password-input ${fieldErrors.password ? "error" : ""}`}>
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-
+                  onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" })); }}
+                  placeholder="Create a password"
                 />
               </div>
+              {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
             </div>
 
-            <div className="email-container">
+            <div className="email-container signup-field">
               Phone
               <div className="email-input">
                 <input
@@ -216,20 +228,14 @@ export default function Signup() {
               </div>
             </div>
 
-            {error && (
-              <span className="input-error-text" style={{ color: 'red', marginTop: '10px' }}>
-                {error}
-              </span>
-            )}
-
-            <div
-              className="continue-button"
+            <button
+              type="button"
+              className="continue-button signup-continue-button"
               onClick={!isLoading ? handleContinue : undefined}
+              disabled={isLoading}
             >
-
-
               {isLoading ? <div className="loader"></div> : <span className="continue-text">Continue</span>}
-            </div>
+            </button>
 
             <span className="signin-redirect">
               Already have an account?{" "}

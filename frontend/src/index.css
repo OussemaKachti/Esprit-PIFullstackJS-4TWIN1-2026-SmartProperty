@@ -7,6 +7,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Toast notifications - polish */
+[data-rht-toaster] {
+  gap: 10px;
+  padding: 16px;
+}
+[data-rht-toaster] > div {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

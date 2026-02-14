@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../../styles/login.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import GmailButton from "./GmailButton";
+import toast from "../../utils/toast";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,7 +13,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -35,7 +35,6 @@ export default function Login() {
     if (hasError) return;
 
     setIsLoading(true);
-    setLoginError("");
 
     try {
       const response = await fetch("http://localhost:5000/api/users/login", {
@@ -47,18 +46,16 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        setLoginError(data.message || "Login failed");
+        toast.error(data.message || "Login failed");
         setIsLoading(false);
         return;
       }
 
-      // Store JWT token
       localStorage.setItem("token", data.token);
-
-      // Redirect or update UI as needed
+      toast.success("Login successful");
       navigate("/form");
     } catch (error) {
-      setLoginError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -116,12 +113,6 @@ export default function Login() {
           </div>
           {passwordError && <span className="input-error-text">{passwordError}</span>}
         </div>
-
-        {loginError && (
-          <span className="input-error-text" style={{ marginTop: "10px", width: "100%", maxWidth: "536px" }}>
-            {loginError}
-          </span>
-        )}
 
        <div className="reset-password-container">
         
