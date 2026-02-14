@@ -39,9 +39,11 @@ const SecondStepForm = () => {
   const handleGenerate = async () => {
     setLoading(true);
     // TODO: call your AI API here
-    // e.g. const result = await generateDescription({ tone: selectedTone });
-    // setDescription(result);
     setLoading(false);
+  };
+
+  const handleReset = () => {
+    setDescription("");
   };
 
   const smallCubeClass =
@@ -51,7 +53,7 @@ const SecondStepForm = () => {
     <div className="ss-container">
       <div className="ss-image">
         <img
-          src="https://images.pexels.com/photos/2119714/pexels-photo-2119714.jpeg"
+          src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
           alt="property"
         />
       </div>
@@ -72,7 +74,19 @@ const SecondStepForm = () => {
 
         <DescriptionInput value={description} onChange={setDescription} />
 
-        <GenerateWithAI onClick={handleGenerate} loading={loading} />
+        <div className="ss-generate-row">
+          <GenerateWithAI onClick={handleGenerate} loading={loading} />
+          <button
+            className="ss-reset-btn"
+            onClick={handleReset}
+            title="Reset description"
+            type="button"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 50 50">
+              <path d="M 20 4 C 15.054688 4 11 8.054688 11 13 L 11 35.5625 L 5.71875 30.28125 L 4.28125 31.71875 L 11.28125 38.71875 L 12 39.40625 L 12.71875 38.71875 L 19.71875 31.71875 L 18.28125 30.28125 L 13 35.5625 L 13 13 C 13 9.144531 16.144531 6 20 6 L 31 6 L 31 4 Z M 38 10.59375 L 37.28125 11.28125 L 30.28125 18.28125 L 31.71875 19.71875 L 37 14.4375 L 37 37 C 37 40.855469 33.855469 44 30 44 L 19 44 L 19 46 L 30 46 C 34.945313 46 39 41.945313 39 37 L 39 14.4375 L 44.28125 19.71875 L 45.71875 18.28125 L 38.71875 11.28125 Z"></path>
+            </svg>
+          </button>
+        </div>
 
         <div className="ss-media-header">
           <div className="ss-media-title">Property Media</div>

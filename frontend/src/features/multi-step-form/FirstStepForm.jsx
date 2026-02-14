@@ -35,7 +35,7 @@ const CreateProperty = () => {
     <div className="create-property-container">
       <div className="create-property-image">
         <img
-          src="https://images.pexels.com/photos/2119714/pexels-photo-2119714.jpeg"
+          src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
           alt="bg-login"
         />
       </div>

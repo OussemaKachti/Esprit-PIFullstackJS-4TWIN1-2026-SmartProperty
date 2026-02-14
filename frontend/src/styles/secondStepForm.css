@@ -76,7 +76,6 @@
   background-color: var(--color-black);
 }
 
-/* ─── Heading row ─── */
 .ss-heading {
   display: flex;
   align-items: center;
@@ -146,7 +145,40 @@
   color: var(--color-gray-400);
 }
 
-/* ─── Media section label ─── */
+.ss-generate-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  height: 50px;
+  margin-bottom: 15px;
+}
+
+.ss-generate-row .generate-ai-button {
+  flex: 9;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.ss-reset-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-gray-400);
+  cursor: pointer;
+  color: var(--color-gray-700);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ss-reset-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 .ss-media-header {
   display: flex;
   align-items: center;
@@ -216,7 +248,7 @@
 
 .ss-grid-main {
   grid-column: 1;
-  grid-row: 1 / 3;      
+  grid-row: 1 / 3;
   position: relative;
   border-radius: 6px;
   overflow: hidden;
@@ -224,7 +256,7 @@
 
 .ss-grid-secondary {
   grid-column: 2;
-  position: relative;    
+  position: relative;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -238,7 +270,7 @@
 }
 
 .ss-small-cubes {
-  grid-column: 1 / -1;   
+  grid-column: 1 / -1;
   grid-row: 3;
   display: grid;
   gap: 8px;
@@ -264,37 +296,31 @@
   display: block;
 }
 
-.ss-ai-btn {
-  margin-top: 15px;
-  width: 100%;
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-white);
-  background-color: var(--color-black);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
+/* ─── Generate AI button (standalone styles) ─── */
 .generate-ai-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 90%;
   height: 50px;
-  background-color: #000000;
-  color: #ffffff;
+  background-color: var(--color-black);
+  color: var(--color-white);
   border: none;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   gap: 10px;
-  margin-bottom: 15px;
   transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
+.generate-ai-button:hover {
+  background-color: #222222;
+}
+
+.generate-ai-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 @keyframes spin {
   from { transform: rotate(0deg); }
@@ -304,12 +330,6 @@
 .generate-ai-button .spin {
   animation: spin 1s linear infinite;
 }
-
-.ss-ai-btn:disabled {
-  background-color: var(--color-gray-400);
-  cursor: not-allowed;
-}
-
 
 .ss-add-more {
   display: flex;
