@@ -71,8 +71,7 @@ import RentalOrderConfirmation from "./pages/RentalOrderConfirmation";
 import RentalOrderDetails from "./pages/RentalOrderDetails";
 import RentalPayment from "./pages/RentalPayment";
 import Signin from "./pages/Signin";
-import FirstStepForm from "./features/multi-step-form/FirstStepForm"
-import SecondStepForm from "./features/multi-step-form/SecondStepForm";
+import FormContainer from "./features/multi-step-form/FormContainer";
 
 const LanguageDetector = () => {
   const { i18n } = useTranslation();
@@ -223,8 +222,7 @@ function App() {
 
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/form" element={<FirstStepForm />} />
-        <Route path="/form2" element={<SecondStepForm />} />
+        <Route path="/form" element={<FormContainer />} />
 
         <Route path="/fr/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

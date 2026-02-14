@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import '../../styles/firstStepForm.css';
 
 const CreateProperty = () => {
+  const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [totalArea, setTotalArea] = useState("");
@@ -20,10 +23,13 @@ const CreateProperty = () => {
   };
 
   const handleContinue = () => {
-    if (validate()) {
-      alert("Form valid! Continue to next step.");
-    }
+  if (validate()) {
+    navigate("/form?step=2");
+  }
   };
+
+
+  
 
   return (
     <div className="create-property-container">

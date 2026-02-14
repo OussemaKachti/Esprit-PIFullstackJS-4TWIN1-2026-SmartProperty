@@ -53,7 +53,7 @@ export default function Login() {
 
       localStorage.setItem("token", data.token);
       toast.success("Login successful");
-      navigate("/form");
+      navigate("/form?step=1");
     } catch (error) {
       toast.error("An error occurred. Please try again.");
       setIsLoading(false);
