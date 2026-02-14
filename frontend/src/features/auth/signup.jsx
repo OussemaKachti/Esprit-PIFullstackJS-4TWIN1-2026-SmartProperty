@@ -8,14 +8,17 @@ export default function Signup() {
   const navigate = useNavigate();
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
+  const [login, setLogin] = useState("");
   const [firstname, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [role, setRole] = useState("");
 
 
   const [codeError, setCodeError] = useState("");
+  const [error, setError] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const inputsRef = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +26,40 @@ export default function Signup() {
 
   const handleContinue = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setError("");
+
+    try {
+      const payload = {
+        login: login,
+        email: email,
+        password: password,
+        firstName: firstname,
+        lastName: lastName,
+        phone: phone,
+        role: role
+      };
+
+      const response = await fetch('http://localhost:5000/api/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsLoading(false);
+        setShowVerification(true);
+      } else {
+        setIsLoading(false);
+        setError(data.message || 'Registration failed. Please try again.');
+      }
+    } catch (err) {
       setIsLoading(false);
-      setShowVerification(true);
-    }, 2000);
+      setError('Network error. Please check your connection.');
+    }
   };
 
 
@@ -91,6 +124,17 @@ export default function Signup() {
 
         {!showVerification && (
           <>
+            <div className="email-container">
+              Username
+              <div className="email-input">
+                <input
+                  type="text"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="firsname-lastname">
               <div className="firstname-container">
                 FirstName
@@ -127,10 +171,10 @@ export default function Signup() {
                   <option value="" disabled>
                     Select role
                   </option>
-                  <option value="tenant">Tenant</option>
-                  <option value="agency">Agency</option>
-                  <option value="owner">Owner</option>
-                  <option value="buyer">Buyer</option>
+                  <option value="TENANT">Tenant</option>
+                  <option value="AGENCY">Agency</option>
+                  <option value="OWNER">Owner</option>
+                  <option value="BUYER">Buyer</option>
                 </select>
               </div>
             </div>
@@ -160,6 +204,23 @@ export default function Signup() {
               </div>
             </div>
 
+            <div className="email-container">
+              Phone
+              <div className="email-input">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1234567890"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <span className="input-error-text" style={{ color: 'red', marginTop: '10px' }}>
+                {error}
+              </span>
+            )}
 
             <div
               className="continue-button"
