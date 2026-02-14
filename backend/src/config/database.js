@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Utilise MongoDB local pour les tests si MongoDB Atlas n'est pas configuré
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/smartproperty';
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/smartproperty';
     
     const conn = await mongoose.connect(mongoUri);
 
