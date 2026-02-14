@@ -1,31 +1,24 @@
 /**
- * Authentication Middleware
- * 
- * Middleware pour l'authentification JWT et l'autorisation basée sur les rôles.
- * 
- * Phase 1: Utilise staticUser middleware pour les tests
- * Phase 2: À implémenter avec JWT tokens
- * 
- * @example
- * // Protection de route
- * router.get('/properties', auth.protect, propertyController.getAllProperties);
- * 
- * // Autorisation par rôle
- * router.delete('/properties/:id', auth.protect, auth.authorize('ADMIN'), propertyController.deleteProperty);
+ * Auth middleware (Phase 2 - JWT authentication)
+ * Placeholder for future implementation
  */
 
-/**
- * Protect route - Verify JWT token and attach user to request
- * TODO: Implement JWT token verification from Authorization header
- */
+
+const jwt = require('jsonwebtoken');
+
 exports.protect = (req, res, next) => {
-  // TODO: Phase 2 - Implement JWT token verification
-  // 1. Extract token from Authorization header
-  // 2. Verify token signature
-  // 3. Find user in database
-  // 4. Attach user to req.user
-  // 5. Call next() or return 401 if invalid
-  next();
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
 };
 
 /**
@@ -35,10 +28,9 @@ exports.protect = (req, res, next) => {
  */
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    // TODO: Phase 2 - Implement role-based authorization
-    // 1. Check if req.user exists (from protect middleware)
-    // 2. Check if req.user.role is in allowed roles array
-    // 3. Call next() or return 403 if unauthorized
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
+    }
     next();
   };
 };
