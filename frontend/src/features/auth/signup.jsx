@@ -13,27 +13,52 @@ export default function Signup() {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("");
 
-  const [fieldErrors, setFieldErrors] = useState({ login: "", email: "", password: "" });
+  const [fieldErrors, setFieldErrors] = useState({ login: "", email: "", password: "", phone: "" });
+  const [showPasswordRules, setShowPasswordRules] = useState(false);
   const [codeError, setCodeError] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const inputsRef = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
 
+  const PASSWORD_RULES = [
+    { id: "length", label: "At least 8 characters", test: (p) => p.length >= 8 },
+    { id: "upper", label: "One uppercase letter", test: (p) => /[A-Z]/.test(p) },
+    { id: "lower", label: "One lowercase letter", test: (p) => /[a-z]/.test(p) },
+    { id: "digit", label: "One number", test: (p) => /\d/.test(p) },
+    { id: "special", label: "One special character (!@#$%^&*...)", test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
+
+  const passwordRuleStatus = PASSWORD_RULES.map((r) => ({ ...r, met: r.test(password) }));
+  const passwordValid = passwordRuleStatus.every((r) => r.met);
+
+  const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value?.trim() || "");
+  const validatePhone = (value) => {
+    const v = (value || "").trim().replace(/\s/g, "");
+    return v === "" || /^\d{8}$/.test(v);
+  };
+
   const validateRequired = () => {
-    const errors = { login: "", email: "", password: "" };
+    const errors = { login: "", email: "", password: "", phone: "" };
     if (!login.trim()) errors.login = "Username is required";
     if (!email.trim()) errors.email = "Email is required";
+    else if (!validateEmail(email)) errors.email = "Invalid email address (e.g. name@domain.com)";
     if (!password.trim()) errors.password = "Password is required";
+    else if (!passwordValid) {
+      errors.password = "Password does not meet all requirements";
+      setShowPasswordRules(true);
+    }
+    const phoneVal = phone.trim().replace(/\s/g, "");
+    if (phoneVal && !/^\d{8}$/.test(phoneVal)) errors.phone = "Tunisian number: 8 digits (e.g. 12345678)";
     setFieldErrors(errors);
-    return !errors.login && !errors.email && !errors.password;
+    return !errors.login && !errors.email && !errors.password && !errors.phone;
   };
 
   const handleContinue = async () => {
     if (!validateRequired()) return;
 
     setIsLoading(true);
-    setFieldErrors({ login: "", email: "", password: "" });
+    setFieldErrors({ login: "", email: "", password: "", phone: "" });
 
     try {
       const payload = {
@@ -42,7 +67,7 @@ export default function Signup() {
         password: password,
         firstName: firstname,
         lastName: lastName,
-        phone: phone,
+        phone: phone.trim() || undefined,
         role: role,
       };
 
@@ -65,14 +90,15 @@ export default function Signup() {
             login: "Username is required",
             email: "Email is required",
             password: "Password is required",
+            phone: "",
           });
         } else {
-          setFieldErrors({ login: msg, email: "", password: "" });
+          setFieldErrors((prev) => ({ ...prev, login: msg, email: "", password: "", phone: "" }));
         }
       }
     } catch (err) {
       setIsLoading(false);
-      setFieldErrors({ login: "", email: "Network error. Please try again.", password: "" });
+      setFieldErrors({ login: "", email: "Network error. Please try again.", password: "", phone: "" });
     }
   };
 
@@ -209,23 +235,47 @@ export default function Signup() {
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" })); }}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+                  }}
                   placeholder="Create a password"
+                  onFocus={() => setShowPasswordRules(true)}
                 />
               </div>
               {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+              {showPasswordRules && (
+                <div className="password-rules-card">
+                  <p className="password-rules-title">Your password must contain:</p>
+                  <ul className="password-rules-list">
+                    {passwordRuleStatus.map((rule) => (
+                      <li key={rule.id} className={rule.met ? "password-rule-met" : "password-rule-unmet"}>
+                        <span className="password-rule-icon">{rule.met ? "✓" : "○"}</span>
+                        <span>{rule.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="email-container signup-field">
-              Phone
-              <div className="email-input">
+              Phone <span className="field-optional">(optional)</span>
+              <div className={`email-input ${fieldErrors.phone ? "error" : ""}`}>
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1234567890"
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    setPhone(v);
+                    if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                  }}
+                  placeholder="8 digits (e.g. 12345678)"
+                  inputMode="numeric"
+                  maxLength={8}
                 />
               </div>
+              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
             </div>
 
             <button

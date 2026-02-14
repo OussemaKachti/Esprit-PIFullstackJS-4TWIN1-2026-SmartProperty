@@ -447,6 +447,70 @@ input{
   border-color: #dc2626;
   box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
 }
+.signup-form .field-optional {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+/* Password rules card */
+.password-rules-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: 100%;
+  max-width: var(--button-width-long);
+  box-sizing: border-box;
+}
+.password-rules-title {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-family: var(--font-form);
+  font-weight: 600;
+  color: #334155;
+}
+.password-rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.password-rules-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-family: var(--font-form);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.password-rule-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+.password-rule-met {
+  color: #059669;
+}
+.password-rule-met .password-rule-icon {
+  background: #d1fae5;
+  color: #059669;
+}
+.password-rule-unmet {
+  color: #dc2626;
+}
+.password-rule-unmet .password-rule-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .signup-form .firsname-lastname {
   margin-top: 14px;
   gap: 16px;
