@@ -390,9 +390,7 @@ input{
   border-radius: 20px;
 }
 
-/* Signup Continue button - larger, more visible */
 .signup-continue-button {
-  height: 52px;
   max-width: var(--button-width-long);
   margin-top: 24px;
   margin-bottom: 24px;
@@ -401,20 +399,15 @@ input{
   font-size: 16px;
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
+
 .signup-continue-button .continue-text {
   font-size: 16px;
 }
-.signup-continue-button:hover:not(:disabled) {
-  opacity: 0.92;
-}
-.signup-continue-button:active:not(:disabled) {
-  transform: scale(0.99);
-}
 
-/* Signup form - compact spacing & professional layout */
+
 .signup-form {
   justify-content: flex-start;
-  padding-top: 32px;
+  padding-top: 100px;
   padding-bottom: 32px;
 }
 .signup-form .heading-title {

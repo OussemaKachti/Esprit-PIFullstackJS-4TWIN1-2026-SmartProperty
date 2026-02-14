@@ -72,6 +72,7 @@ import RentalOrderDetails from "./pages/RentalOrderDetails";
 import RentalPayment from "./pages/RentalPayment";
 import Signin from "./pages/Signin";
 import FirstStepForm from "./features/multi-step-form/FirstStepForm"
+import SecondStepForm from "./features/multi-step-form/SecondStepForm";
 
 const LanguageDetector = () => {
   const { i18n } = useTranslation();
@@ -108,8 +109,19 @@ const AUTH_ROUTES = [
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const isAuthRoute = AUTH_ROUTES.includes(location.pathname);
 
+  const authRoutes = [
+    '/login', '/fr/login',
+    '/signup', '/fr/signup', 
+    '/signin', '/fr/signin',
+    '/forgot-password', '/fr/forgot-password',
+    '/reset-password', '/fr/reset-password',
+    '/form',
+    '/form2'
+  ];
+  
+  const isAuthRoute = authRoutes.includes(location.pathname);
+  
   if (isAuthRoute) {
     return (
       <div className="auth-wrapper">
@@ -212,6 +224,8 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/form" element={<FirstStepForm />} />
+        <Route path="/form2" element={<SecondStepForm />} />
+
         <Route path="/fr/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/fr/signup" element={<Signup />} />

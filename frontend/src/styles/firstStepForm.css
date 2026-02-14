@@ -13,35 +13,27 @@
   --container-width: 800px;
 }
 
-html,
-body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  font-family: var(--font-main);
-}
-
-.property-main-container {
+/* Scoped styles for CreateProperty component */
+.create-property-container {
   height: 100vh;
   width: 100%;
   display: flex;
   box-sizing: border-box;
 }
 
-.image-container {
+.create-property-image {
   width: 40%;
   height: 100%;
   position: relative;
 }
 
-.image-container img {
+.create-property-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.property-form-container {
+.create-property-form {
   flex: 1;
   height: 100%;
   display: flex;
@@ -52,16 +44,11 @@ body {
   overflow-y: auto;
 }
 
-.texts-container,
-.multisteps,
-.form-title {
+.create-property-header {
   width: 100%;
   max-width: var(--container-width);
   margin-left: auto;
   margin-right: auto;
-}
-
-.texts-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -69,63 +56,49 @@ body {
   margin-bottom: 20px;
 }
 
-.step-indicator {
+.create-property-step-indicator {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-gray-200);
   letter-spacing: 0.08em;
 }
 
-.basic-info {
+.create-property-step-title {
   font-size: 17px;
   font-weight: 400;
   color: var(--color-black);
 }
 
-.multisteps {
+.create-property-progress {
+  width: 100%;
+  max-width: var(--container-width);
+  margin-left: auto;
+  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 15px;
   margin-bottom: 20px;
 }
 
-.step-one,
-.step-two,
-.step-three,
-.step-four {
+.create-property-progress-bar {
   flex: 1;
   height: 6px;
   border-radius: 20px;
   background-color: var(--color-gray-200);
 }
 
-.step-one {
+.create-property-progress-bar.active {
   background-color: var(--color-black);
 }
 
-.form-title {
+.create-property-title {
   font-size: var(--title-xl);
   font-weight: 500;
   color: var(--color-black);
   margin-bottom: 10px;
 }
 
-.property-form-container form {
-  width: 100%;
-  max-width: var(--container-width);
-  margin: 0 auto;
-}
-
-.property-form-container input,
-.property-form-container select,
-.property-form-container textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 10px;
-  height: 20px;
-}
-
-.property-type-container {
+.create-property-field {
   font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.1;
@@ -134,52 +107,56 @@ body {
   font-weight: 500;
 }
 
-.property-type-input {
+.create-property-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-gray-700);
+  letter-spacing: 0.05em;
+}
+
+.create-property-input-wrapper {
   margin-top: 8px;
   width: 100%;
-  height: var(--input-height);
+  height: 50px;
   border: 1px solid var(--color-gray-400);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--padding-horizontal);
+  padding: 0 15px;
   box-sizing: border-box;
   transition: border 0.3s ease;
   border-radius: 20px;
 }
 
-.property-type-input input {
-  font-size: var(--font-input);
+.create-property-input-wrapper input,
+.create-property-input-wrapper select {
+  font-size: 15px;
   border: none;
   outline: none;
-  width: 100%;
-  font-family: var(--font-mono);
-}
-
-.property-type-input select {
   width: 100%;
   height: 100%;
   font-family: var(--font-mono);
-  border: none;
-  outline: none;
   background: transparent;
+}
+
+.create-property-input-wrapper select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
   cursor: pointer;
 }
 
-.property-row {
+.create-property-row {
   display: flex;
   gap: 20px;
   width: 100%;
 }
 
-.property-type-container.half {
+.create-property-field.half {
   width: 50%;
 }
 
-.map-container {
+.create-property-map {
   width: 100%;
   max-width: var(--container-width);
   height: 200px;
@@ -196,7 +173,7 @@ body {
   border-radius: 10px;
 }
 
-.form-continue-button {
+.create-property-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -213,11 +190,11 @@ body {
   border-radius: 20px;
 }
 
-.property-type-container.error .property-type-input {
+.create-property-field.error .create-property-input-wrapper {
   border-color: var(--color-error);
 }
 
-.form-input-error-text {
+.create-property-error {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -229,16 +206,12 @@ body {
   font-family: var(--font-mono);
 }
 
-.property-type-container.error select,
-.property-type-container.error input {
-  border-color: var(--color-error);
-  outline-color: var(--color-error);
-}
-
-
 @media (max-width: 700px) {
-
-    .texts-container{
-        margin-top: 0;
-    }
+  .create-property-header {
+    margin-top: 0;
+  }
+  
+  .create-property-form {
+    padding: 20px 30px;
+  }
 }
