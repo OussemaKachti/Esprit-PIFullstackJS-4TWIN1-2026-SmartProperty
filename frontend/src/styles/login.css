@@ -1,18 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --font-ui: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Noto Sans", Ubuntu, Cantarell,
-    "Helvetica Neue", sans-serif;
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
 
   --color-primary: #000;
-  --color-text: #878787;
+  --color-text: #6b7280;
   --color-text-light: #fff;
   --font-title: 18px;
-  --font-text: 12px;
-  --font-input: 14px;
-  --font-terms: 12px;
+  --font-text: 15px;
+  --font-input: 15px;
+  --font-terms: 13px;
   --button-width: 220px;
   --button-width-long: 440px;
   --button-height: 40px;
@@ -22,8 +20,8 @@
   --margin-bottom: 30px;
   --padding-horizontal: 8px;
 
-  --font-main: "Roboto", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  --font-main: "DM Sans", "Inter", sans-serif;
+  --font-form: "Inter", sans-serif;
 }
 
 html,
@@ -102,21 +100,26 @@ body {
 }
 
 .heading-title {
-  font-size: 38px;
-  font-family: var(--font-ui);
+  font-size: 32px;
+  font-family: var(--font-main);
   font-weight: 700;
-  margin: 0 0 20px 0;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
 }
 
 .title {
   font-size: var(--font-title);
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 500;
 }
 
 .text {
   font-size: var(--font-text);
   margin-bottom: var(--margin-bottom);
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 400;
+  color: var(--color-text);
+  letter-spacing: 0.01em;
 }
 
 .gmail-button {
@@ -131,6 +134,9 @@ body {
   gap: 10px;
   max-width: 100%;
   border-radius: 20px;
+  font-family: var(--font-form);
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .google-icon {
@@ -139,14 +145,20 @@ body {
 }
 
 .continue-text {
-  font-size: var(--font-input);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-form);
   color: var(--color-text-light);
   margin-left: 8px;
 }
 
 .or-text {
-  font-size: var(--font-text);
-  font-family: var(--font-mono);
+  font-size: 13px;
+  font-family: var(--font-form);
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+  margin: 4px 0;
 }
 
 .firsname-lastname {
@@ -161,10 +173,11 @@ body {
 .lastname-container,
 .email-container,
 .password-container {
-  font-family: var(--font-ui);
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 1.1;
+  font-family: var(--font-form);
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.4;
 }
 
 .email-container,
@@ -197,7 +210,8 @@ input{
   border: none;
   outline: none;
   width: 100%;
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 400;
   height: 20px;
   padding: 0 10px;
 }
@@ -221,7 +235,8 @@ input{
   border: none;
   outline: none;
   width: 100%;
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 400;
   height: 20px;
   padding: 0 10px;
 }
@@ -249,8 +264,9 @@ input{
   border: none;
   outline: none;
   width: 100%;
-  font-family: var(--font-mono);
-    height: 20px;
+  font-family: var(--font-form);
+  font-weight: 400;
+  height: 20px;
 }
 
 
@@ -263,9 +279,9 @@ input{
 }
 
 .role-container {
-  font-family: var(--font-ui);
-  font-size: 15px;
-  font-weight: 400;
+  font-family: var(--font-form);
+  font-size: 14px;
+  font-weight: 500;
   margin-top: 10px;
   width: 100%;
   max-width: var(--button-width-long);
@@ -289,7 +305,7 @@ input{
   border: none;
   outline: none;
   width: 100%;
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
   font-size: var(--font-input);
   background: transparent;
   cursor: pointer;
@@ -322,8 +338,8 @@ input{
 }
 
 .email-issue-text {
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-family: var(--font-form);
+  font-size: 13px;
   color: var(--color-text);
   margin-top: 14px;
 }
@@ -339,9 +355,9 @@ input{
   justify-content: flex-start; 
   margin-left: 10px;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: #ef4444;
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
 }
 
 
@@ -374,6 +390,150 @@ input{
   border-radius: 20px;
 }
 
+.signup-continue-button {
+  max-width: var(--button-width-long);
+  margin-top: 24px;
+  margin-bottom: 24px;
+  font-family: var(--font-form);
+  font-weight: 600;
+  font-size: 16px;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.signup-continue-button .continue-text {
+  font-size: 16px;
+}
+
+
+.signup-form {
+  justify-content: flex-start;
+  padding-top: 100px;
+  padding-bottom: 32px;
+}
+.signup-form .heading-title {
+  margin-bottom: 4px;
+}
+.signup-form .text.signup-subtitle {
+  margin-bottom: 20px;
+}
+.signup-form .email-container,
+.signup-form .password-container {
+  margin-top: 14px;
+}
+.signup-form .email-container:first-of-type,
+.signup-form .signup-field:first-of-type {
+  margin-top: 0;
+}
+.signup-form .field-error {
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 0;
+  margin-left: 2px;
+  font-size: 12px;
+  font-family: var(--font-form);
+  font-weight: 500;
+  color: #dc2626;
+  line-height: 1.3;
+}
+.signup-form .email-input.error,
+.signup-form .password-input.error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
+}
+.signup-form .field-optional {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+/* Password rules card */
+.password-rules-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: 100%;
+  max-width: var(--button-width-long);
+  box-sizing: border-box;
+}
+.password-rules-title {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-family: var(--font-form);
+  font-weight: 600;
+  color: #334155;
+}
+.password-rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.password-rules-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-family: var(--font-form);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.password-rule-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+.password-rule-met {
+  color: #059669;
+}
+.password-rule-met .password-rule-icon {
+  background: #d1fae5;
+  color: #059669;
+}
+.password-rule-unmet {
+  color: #dc2626;
+}
+.password-rule-unmet .password-rule-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.signup-form .firsname-lastname {
+  margin-top: 14px;
+  gap: 16px;
+}
+.signup-form .firstname-container .firstname-input,
+.signup-form .lastname-container .lastname-input {
+  margin-top: 6px;
+}
+.signup-form .role-container {
+  margin-top: 14px;
+}
+.signup-form .role-select {
+  margin-top: 6px;
+}
+.signup-form .email-input,
+.signup-form .password-input {
+  margin-top: 6px;
+}
+.signup-form .input-error-text {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+.signup-form .signin-redirect {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+.signup-form .terms-of-services {
+  margin-top: 0;
+  padding-top: 0;
+}
 
 .reset-password-container{
   padding: 0 15px;
@@ -386,27 +546,35 @@ input{
 }
 
 .remember-me {
-font-size: var(--font-terms);
-margin-left: 5px;}
+  font-size: var(--font-terms);
+  font-family: var(--font-form);
+  font-weight: 400;
+  color: #374151;
+  margin-left: 6px;
+}
 
 .signin-redirect {
   margin-top: 14px;
   font-size: var(--font-terms);
   color: var(--color-text);
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 400;
   text-align: center;
   margin-bottom: 25px;
 }
 
 .forgot-password {
   font-size: var(--font-terms);
-  color: var(--color-text);
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 500;
+  color: var(--color-primary);
   text-align: center;
+  cursor: pointer;
 }
 
 
 .signin-link {
+  font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
   color: var(--color-primary);
@@ -415,7 +583,9 @@ margin-left: 5px;}
 .terms-of-services {
   font-size: var(--font-terms);
   color: var(--color-text);
-  font-family: var(--font-mono);
+  font-family: var(--font-form);
+  font-weight: 400;
+  line-height: 1.5;
   padding: 0 15px;
   text-align: center;
   max-width: var(--button-width-long);
@@ -425,6 +595,7 @@ margin-left: 5px;}
   text-decoration: underline;
   cursor: pointer;
   color: var(--color-text);
+  font-weight: 500;
 }
 
 .loader {

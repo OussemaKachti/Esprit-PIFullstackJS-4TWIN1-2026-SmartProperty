@@ -98,20 +98,10 @@ exports.createProperty = async (req, res, next) => {
     }
 
     const property = await Property.create(propertyData);
-
-    // Enrichir la réponse avec les infos utilisateur
-    // Note: populate() ne fonctionne pas avec staticUser, donc on ajoute manuellement
-    // TODO: Utiliser populate('createdBy') une fois l'auth JWT implémentée
-    const propertyWithUser = property.toObject();
-    propertyWithUser.createdBy = {
-      _id: req.user._id,
-      login: req.user.login,
-      email: req.user.email,
-      role: req.user.role,
-    };
+    await property.populate('createdBy', 'login email role firstName lastName');
 
     res.status(201).json(
-      apiResponse(true, 'Property created successfully', propertyWithUser)
+      apiResponse(true, 'Property created successfully', property)
     );
   } catch (error) {
     next(error);

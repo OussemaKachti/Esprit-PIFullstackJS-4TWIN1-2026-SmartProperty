@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { Toaster } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { useEffect } from 'react';
 import './i18n';
@@ -115,6 +116,15 @@ const LanguageDetector = () => {
   return null;
 };
 
+const AUTH_ROUTES = [
+  '/login', '/fr/login',
+  '/signup', '/fr/signup',
+  '/signin', '/fr/signin',
+  '/forgot-password', '/fr/forgot-password',
+  '/reset-password', '/fr/reset-password',
+  '/form',
+];
+
 const AppLayout = ({ children }) => {
   const location = useLocation();
   
@@ -125,7 +135,7 @@ const AppLayout = ({ children }) => {
       </div>
     );
   }
-  
+
   return (
     <div className="main-wrapper">
       <Header />
@@ -137,11 +147,75 @@ const AppLayout = ({ children }) => {
   );
 };
 
+const toastOptions = {
+  duration: 4000,
+  style: {
+    fontFamily: '"Inter", sans-serif',
+    fontSize: '14px',
+    fontWeight: 500,
+    borderRadius: '12px',
+    padding: '14px 18px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
+    border: '1px solid rgba(0,0,0,0.06)',
+    background: '#fff',
+  },
+  success: {
+    duration: 4000,
+    iconTheme: { primary: '#059669', secondary: '#fff' },
+    style: {
+      background: '#f0fdf4',
+      border: '1px solid #a7f3d0',
+      color: '#065f46',
+      boxShadow: '0 10px 40px rgba(5,150,105,0.15)',
+    },
+  },
+  error: {
+    duration: 5000,
+    iconTheme: { primary: '#dc2626', secondary: '#fff' },
+    style: {
+      background: '#fef2f2',
+      border: '1px solid #fecaca',
+      color: '#991b1b',
+      boxShadow: '0 10px 40px rgba(220,38,38,0.12)',
+    },
+  },
+};
+
+function ToastContainer() {
+  const location = useLocation();
+  const isAuthRoute = AUTH_ROUTES.includes(location.pathname);
+  return (
+    <div
+      className="toast-wrapper"
+      style={
+        isAuthRoute
+          ? {
+              position: 'fixed',
+              left: '70%',
+              top: '24px',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              width: '100%',
+              maxWidth: 'min(90vw, 400px)',
+              pointerEvents: 'none',
+            }
+          : { position: 'fixed', top: 0, right: 0, zIndex: 9999, pointerEvents: 'none' }
+      }
+    >
+      <Toaster
+        position={isAuthRoute ? 'top-center' : 'top-right'}
+        toastOptions={toastOptions}
+      />
+    </div>
+  );
+}
+
 function App() {
   const localizedRoutes = generateLocalizedRoutes();
 
   return (
     <Router>
+      <ToastContainer />
       <LanguageDetector />
       <AppLayout>
         <Routes>

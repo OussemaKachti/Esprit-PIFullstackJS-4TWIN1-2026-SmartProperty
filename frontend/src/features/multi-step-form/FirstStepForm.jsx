@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import '../../styles/firstStepForm.css';
 
 const CreateProperty = () => {
+  const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [totalArea, setTotalArea] = useState("");
@@ -20,39 +23,41 @@ const CreateProperty = () => {
   };
 
   const handleContinue = () => {
-    if (validate()) {
-      alert("Form valid! Continue to next step.");
-    }
+  if (validate()) {
+    navigate("/form?step=2");
+  }
   };
 
+
+  
+
   return (
-    <div className="property-main-container">
-      <div className="image-container">
+    <div className="create-property-container">
+      <div className="create-property-image">
         <img
-          src="https://images.pexels.com/photos/2119714/pexels-photo-2119714.jpeg"
+          src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
           alt="bg-login"
         />
       </div>
 
-      <div className="property-form-container">
-
-        <div className="texts-container">
-          <div className="step-indicator">STEP 1 OF 4</div>
-          <div className="basic-info">Basic information</div>
+      <div className="create-property-form">
+        <div className="create-property-header">
+          <div className="create-property-step-indicator">STEP 1 OF 4</div>
+          <div className="create-property-step-title">Basic information</div>
         </div>
 
-        <div className="multisteps">
-          <div className="step-one"></div>
-          <div className="step-two"></div>
-          <div className="step-three"></div>
-          <div className="step-four"></div>
+        <div className="create-property-progress">
+          <div className="create-property-progress-bar active"></div>
+          <div className="create-property-progress-bar"></div>
+          <div className="create-property-progress-bar"></div>
+          <div className="create-property-progress-bar"></div>
         </div>
 
-        <div className="form-title">Property details</div>
+        <div className="create-property-title">Property details</div>
 
-        <div className={`property-type-container ${errors.propertyType ? "error" : ""}`}>
-          <label className="property-label">PROPERTY TYPE</label>
-          <div className="property-type-input">
+        <div className={`create-property-field ${errors.propertyType ? "error" : ""}`}>
+          <label className="create-property-label">PROPERTY TYPE</label>
+          <div className="create-property-input-wrapper">
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
@@ -65,12 +70,12 @@ const CreateProperty = () => {
               <option value="land">Land</option>
             </select>
           </div>
-          {errors.propertyType && <div className="form-input-error-text">{errors.propertyType}</div>}
+          {errors.propertyType && <div className="create-property-error">{errors.propertyType}</div>}
         </div>
 
-        <div className={`property-type-container ${errors.propertyAddress ? "error" : ""}`}>
-          <label className="property-label">PROPERTY ADDRESS</label>
-          <div className="property-type-input">
+        <div className={`create-property-field ${errors.propertyAddress ? "error" : ""}`}>
+          <label className="create-property-label">PROPERTY ADDRESS</label>
+          <div className="create-property-input-wrapper">
             <input
               type="text"
               placeholder="Street, City, Country"
@@ -78,13 +83,13 @@ const CreateProperty = () => {
               onChange={(e) => setPropertyAddress(e.target.value)}
             />
           </div>
-          {errors.propertyAddress && <div className="form-input-error-text">{errors.propertyAddress}</div>}
+          {errors.propertyAddress && <div className="create-property-error">{errors.propertyAddress}</div>}
         </div>
 
-        <div className="property-row">
-          <div className={`property-type-container half ${errors.totalArea ? "error" : ""}`}>
-            <label className="property-label">TOTAL AREA (m²)</label>
-            <div className="property-type-input">
+        <div className="create-property-row">
+          <div className={`create-property-field half ${errors.totalArea ? "error" : ""}`}>
+            <label className="create-property-label">TOTAL AREA (m²)</label>
+            <div className="create-property-input-wrapper">
               <input
                 type="number"
                 placeholder="e.g. 120"
@@ -93,33 +98,30 @@ const CreateProperty = () => {
                 min="0"
               />
             </div>
-            {errors.totalArea && <div className="form-input-error-text">{errors.totalArea}</div>}
+            {errors.totalArea && <div className="create-property-error">{errors.totalArea}</div>}
           </div>
 
-          <div className={`property-type-container half ${errors.rooms ? "error" : ""}`}>
-            <label className="property-label">ROOMS</label>
-            <div className="property-type-input">
-<input
-  type="number"
-  placeholder="e.g. 3"
-  value={rooms}
-  onChange={(e) => setRooms(e.target.value)}
-  min="0"
-/>
-
-
+          <div className={`create-property-field half ${errors.rooms ? "error" : ""}`}>
+            <label className="create-property-label">ROOMS</label>
+            <div className="create-property-input-wrapper">
+              <input
+                type="number"
+                placeholder="e.g. 3"
+                value={rooms}
+                onChange={(e) => setRooms(e.target.value)}
+                min="0"
+              />
             </div>
-            {errors.rooms && <div className="form-input-error-text">{errors.rooms}</div>}
+            {errors.rooms && <div className="create-property-error">{errors.rooms}</div>}
           </div>
         </div>
 
-        <div className="map-container">
-          {/* Google Map will be embedded here later */}
-          <p className="map-placeholder-text">Google Map preview will appear here</p>
+        <div className="create-property-map">
+          <p>Google Map preview will appear here</p>
         </div>
 
         <button
-          className="form-continue-button"
+          className="create-property-button"
           onClick={handleContinue}
         >
           Continue
