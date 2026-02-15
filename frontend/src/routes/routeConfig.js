@@ -34,7 +34,7 @@ export const ROUTES = [
   { path: '/signin', component: 'Signin' },
   { path: '/forgot-password', component: 'ForgotPassword' },
   { path: '/reset-password', component: 'ResetPassword' },
-  { path: '/form', component: 'FirstStepForm' },
+  { path: '/form', component: 'FormContainer' },
 
   // Protected Routes
   { path: '/dashboard', component: 'Dashboard', protected: true },

@@ -12,9 +12,7 @@ import Footer from './components/Footer';
 import { 
   generateLocalizedRoutes, 
   getLanguageFromPath, 
-  isAuthRoute,
-  SUPPORTED_LANGUAGES,
-  DEFAULT_LANGUAGE
+  isAuthRoute
 } from './routes/routeConfig';
 
 // Import components
@@ -80,6 +78,7 @@ import RentalOrderDetails from "./pages/RentalOrderDetails";
 import RentalPayment from "./pages/RentalPayment";
 import Signin from "./pages/Signin";
 import FirstStepForm from "./features/multi-step-form/FirstStepForm";
+import FormContainer from "./features/multi-step-form/FormContainer";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -98,7 +97,7 @@ const COMPONENT_MAP = {
   ForgotPassword, ResetPassword,
   Wishlist, Cart, Checkout, InvoiceDetails,
   Notifications, Maintenance, ComingSoon,
-  Signin, Index2, Index3, FirstStepForm
+  Signin, Index2, Index3, FirstStepForm, FormContainer
 }
 
 const LanguageDetector = () => {
