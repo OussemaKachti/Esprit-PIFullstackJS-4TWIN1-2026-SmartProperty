@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import LocalizedLink from './LocalizedLink';
 
 const Footer = () => {
   return (
@@ -16,12 +16,12 @@ const Footer = () => {
               <div className="footer-widget">
                 <h5 className="footer-title">Pages</h5>
                 <ul className="footer-menu">
-                  <li><Link to="/our-team">Our Team</Link></li>
-                  <li><Link to="/pricing">Pricing Plans</Link></li>
-                  <li><Link to="/gallery">Gallery</Link></li>
+                  <li><LocalizedLink to="/our-team">Our Team</LocalizedLink></li>
+                  <li><LocalizedLink to="/pricing">Pricing Plans</LocalizedLink></li>
+                  <li><LocalizedLink to="/gallery">Gallery</LocalizedLink></li>
                   <li><a href="#">Settings</a></li>
                   <li><a href="#">Profile</a></li>
-                  <li><Link to="/buy-property-list">Listings</Link></li>
+                  <li><LocalizedLink to="/buy-property-list">Listings</LocalizedLink></li>
                 </ul>
               </div>
             </div>
@@ -30,11 +30,11 @@ const Footer = () => {
               <div className="footer-widget">
                 <h5 className="footer-title">Company</h5>
                 <ul className="footer-menu">
-                  <li><Link to="/about-us">About Us</Link></li>
+                  <li><LocalizedLink to="/about-us">About Us</LocalizedLink></li>
                   <li><a href="#">Careers</a></li>
-                  <li><Link to="/blog-grid">Blog</Link></li>
+                  <li><LocalizedLink to="/blog-grid">Blog</LocalizedLink></li>
                   <li><a href="#">Affiliate Program</a></li>
-                  <li><Link to="/add-property-buy">Add Your Listing</Link></li>
+                  <li><LocalizedLink to="/add-property-buy">Add Your Listing</LocalizedLink></li>
                   <li><a href="#">Our Partners</a></li>
                 </ul>
               </div>
@@ -59,11 +59,11 @@ const Footer = () => {
                 <h5 className="footer-title">Useful Links</h5>
                 <ul className="footer-menu">
                   <li><a href="#">Legal Notice</a></li>
-                  <li><Link to="/privacy-policy">Privacy Policy</Link></li>
-                  <li><Link to="/terms-condition">Terms & Conditions</Link></li>
+                  <li><LocalizedLink to="/privacy-policy">Privacy Policy</LocalizedLink></li>
+                  <li><LocalizedLink to="/terms-condition">Terms & Conditions</LocalizedLink></li>
                   <li><a href="#">Support</a></li>
                   <li><a href="#">Refund Policy</a></li>
-                  <li><Link to="/contact-us">Contact Us</Link></li>
+                  <li><LocalizedLink to="/contact-us">Contact Us</LocalizedLink></li>
                 </ul>
               </div>
             </div>

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import LocalizedLink from './LocalizedLink';
+import { localizeRoute, getLanguageFromPath } from '../routes/routeConfig';
 
 const Header = () => {
   const { t, i18n } = useTranslation();
@@ -11,38 +13,26 @@ const Header = () => {
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     
-    // Update URL based on language
+    // Update URL based on language using the route utility
     const currentPath = location.pathname;
-    let newPath;
-    
-    if (lang === 'en') {
-      // Remove /fr prefix for English
-      newPath = currentPath.replace(/^\/fr/, '') || '/';
-    } else if (lang === 'fr') {
-      // Add /fr prefix for French
-      if (currentPath.startsWith('/fr')) {
-        newPath = currentPath;
-      } else {
-        newPath = '/fr' + currentPath;
-      }
-    }
+    const newPath = localizeRoute(currentPath, lang);
     
     navigate(newPath);
   };
 
   const getCurrentLanguage = () => {
-    return i18n.language || 'en';
+    return getLanguageFromPath(location.pathname);
   };
 
   const getLanguageFlag = () => {
     const lang = getCurrentLanguage();
-    switch(lang) {
-      case 'fr': return 'fr';
-      case 'de': return 'de';
-      case 'it': return 'it';
-      case 'en':
-      default: return 'us';
-    }
+    const flagMap = {
+      'en': 'us',
+      'fr': 'fr',
+      'de': 'de',
+      'it': 'it'
+    };
+    return flagMap[lang] || 'us';
   };
 
   return (
@@ -51,12 +41,12 @@ const Header = () => {
         <div className="container">
           <nav className="navbar navbar-expand-lg header-nav">
             <div className="navbar-header">
-              <Link to="/" className="navbar-brand logo">
+              <LocalizedLink to="/" className="navbar-brand logo">
                 <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
-              </Link>
-              <Link to="/" className="navbar-brand logo-dark">
+              </LocalizedLink>
+              <LocalizedLink to="/" className="navbar-brand logo-dark">
                 <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
-              </Link>
+              </LocalizedLink>
               <a id="mobile_btn" href="#">
                 <i className="material-icons-outlined">menu</i>
               </a>
@@ -64,12 +54,12 @@ const Header = () => {
 
             <div className="main-menu-wrapper">
               <div className="menu-header">
-                <Link to="/" className="menu-logo">
+                <LocalizedLink to="/" className="menu-logo">
                   <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
-                </Link>
-                <Link to="/" className="menu-logo menu-logo-dark">
+                </LocalizedLink>
+                <LocalizedLink to="/" className="menu-logo menu-logo-dark">
                   <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
-                </Link>
+                </LocalizedLink>
                 <a id="menu_close" className="menu-close" href="#">
                   <i className="material-icons-outlined">close</i>
                 </a>
@@ -80,7 +70,7 @@ const Header = () => {
 
               <ul className="main-nav">
                 <li className="has-submenu megamenu active">
-                  <Link to="/">{t('navigation.home')} </Link>
+                  <LocalizedLink to="/">{t('navigation.home')} </LocalizedLink>
                 </li>
                 <li className="has-submenu">
                   <a href="#">{t('navigation.listing')} <i className="material-icons-outlined">expand_more</i></a>
@@ -88,25 +78,25 @@ const Header = () => {
                     <li className="has-submenu">
                       <a href="#">{t('navigation.buyProperty')}</a>
                       <ul className="submenu">
-                        <li><Link to="/buy-property-grid">{t('navigation.buyGrid')}</Link></li>
-                        <li><Link to="/buy-property-list">{t('navigation.buyList')}</Link></li>
-                        <li><Link to="/buy-property-grid-sidebar">{t('navigation.buyGridSidebar')}</Link></li>
-                        <li><Link to="/buy-property-list-sidebar">{t('navigation.buyListSidebar')}</Link></li>
-                        <li><Link to="/buy-grid-map">{t('navigation.buyGridMap')}</Link></li>
-                        <li><Link to="/buy-list-map">{t('navigation.buyListMap')}</Link></li>
-                        <li><Link to="/buy-details">{t('navigation.buyDetails')}</Link></li>
+                        <li><LocalizedLink to="/buy-property-grid">{t('navigation.buyGrid')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-property-list">{t('navigation.buyList')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-property-grid-sidebar">{t('navigation.buyGridSidebar')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-property-list-sidebar">{t('navigation.buyListSidebar')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-grid-map">{t('navigation.buyGridMap')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-list-map">{t('navigation.buyListMap')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-details">{t('navigation.buyDetails')}</LocalizedLink></li>
                       </ul>
                     </li>
                     <li className="has-submenu">
                       <a href="#">{t('navigation.rentProperty')}</a>
                       <ul className="submenu">
-                        <li><Link to="/rent-property-grid">{t('navigation.rentGrid')}</Link></li>
-                        <li><Link to="/rent-property-list">{t('navigation.rentList')}</Link></li>
-                        <li><Link to="/rent-property-grid-sidebar">{t('navigation.rentGridSidebar')}</Link></li>
-                        <li><Link to="/rent-property-list-sidebar">{t('navigation.rentListSidebar')}</Link></li>
-                        <li><Link to="/rent-grid-map">{t('navigation.rentGridMap')}</Link></li>
-                        <li><Link to="/rent-list-map">{t('navigation.rentListMap')}</Link></li>
-                        <li><Link to="/rent-details">{t('navigation.rentDetails')}</Link></li>
+                        <li><LocalizedLink to="/rent-property-grid">{t('navigation.rentGrid')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-property-list">{t('navigation.rentList')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-property-grid-sidebar">{t('navigation.rentGridSidebar')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-property-list-sidebar">{t('navigation.rentListSidebar')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-grid-map">{t('navigation.rentGridMap')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-list-map">{t('navigation.rentListMap')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/rent-details">{t('navigation.rentDetails')}</LocalizedLink></li>
                       </ul>
                     </li>
                   </ul>
@@ -114,63 +104,63 @@ const Header = () => {
                 <li className="has-submenu">
                   <a href="#">{t('navigation.agent')} <i className="material-icons-outlined">expand_more</i></a>
                   <ul className="submenu">
-                    <li><Link to="/agent-grid">{t('navigation.agentGrid')}</Link></li>
-                    <li><Link to="/agent-list">{t('navigation.agentList')}</Link></li>
-                    <li><Link to="/agent-grid-sidebar">{t('navigation.agentGridSidebar')}</Link></li>
-                    <li><Link to="/agent-list-sidebar">{t('navigation.agentListSidebar')}</Link></li>
-                    <li><Link to="/agent-details">{t('navigation.agentDetails')}</Link></li>
+                    <li><LocalizedLink to="/agent-grid">{t('navigation.agentGrid')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agent-list">{t('navigation.agentList')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agent-grid-sidebar">{t('navigation.agentGridSidebar')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agent-list-sidebar">{t('navigation.agentListSidebar')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agent-details">{t('navigation.agentDetails')}</LocalizedLink></li>
                   </ul>
                 </li>
                 <li className="has-submenu">
                   <a href="#">{t('navigation.agency')} <i className="material-icons-outlined">expand_more</i></a>
                   <ul className="submenu">
-                    <li><Link to="/agency-grid">{t('navigation.agencyGrid')}</Link></li>
-                    <li><Link to="/agency-list">{t('navigation.agencyList')}</Link></li>
-                    <li><Link to="/agency-grid-sidebar">{t('navigation.agencyGridSidebar')}</Link></li>
-                    <li><Link to="/agency-list-sidebar">{t('navigation.agencyListSidebar')}</Link></li>
-                    <li><Link to="/agency-details">{t('navigation.agencyDetails')}</Link></li>
+                    <li><LocalizedLink to="/agency-grid">{t('navigation.agencyGrid')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agency-list">{t('navigation.agencyList')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agency-grid-sidebar">{t('navigation.agencyGridSidebar')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agency-list-sidebar">{t('navigation.agencyListSidebar')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/agency-details">{t('navigation.agencyDetails')}</LocalizedLink></li>
                   </ul>
                 </li>
                 <li className="has-submenu">
                   <a href="#">{t('navigation.pages')} <i className="material-icons-outlined">expand_more</i></a>
                   <ul className="submenu">
-                    <li><Link to="/about-us">{t('navigation.aboutUs')}</Link></li>
+                    <li><LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink></li>
                     <li className="has-submenu">
                       <a href="#">{t('navigation.authentication')}</a>
                       <ul className="submenu">
-                        <li><Link to="/signup">{t('navigation.signUp')}</Link></li>
-                        <li><Link to="/login">{t('navigation.signIn')}</Link></li>
-                        <li><Link to="/forgot-password">{t('navigation.forgotPassword')}</Link></li>
-                        <li><Link to="/reset-password">{t('navigation.resetPassword')}</Link></li>
+                        <li><LocalizedLink to="/signup">{t('navigation.signUp')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/login">{t('navigation.signIn')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/forgot-password">{t('navigation.forgotPassword')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/reset-password">{t('navigation.resetPassword')}</LocalizedLink></li>
                       </ul>
                     </li>
-                    <li><Link to="/invoice-details">{t('navigation.invoiceDetails')}</Link></li>
-                    <li><Link to="/contact-us">{t('navigation.contactUs')}</Link></li>
-                    <li><Link to="/wishlist">{t('navigation.wishlist')}</Link></li>
+                    <li><LocalizedLink to="/invoice-details">{t('navigation.invoiceDetails')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/wishlist">{t('navigation.wishlist')}</LocalizedLink></li>
                     <li className="has-submenu">
                       <a href="#">{t('navigation.errorPage')}</a>
                       <ul className="submenu">
-                        <li><Link to="/error-404">{t('navigation.error404')}</Link></li>
-                        <li><Link to="/error-500">{t('navigation.error500')}</Link></li>
+                        <li><LocalizedLink to="/error-404">{t('navigation.error404')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/error-500">{t('navigation.error500')}</LocalizedLink></li>
                       </ul>
                     </li>
-                    <li><Link to="/pricing">{t('navigation.pricing')}</Link></li>
-                    <li><Link to="/faq">{t('navigation.faq')}</Link></li>
-                    <li><Link to="/gallery">{t('navigation.gallery')}</Link></li>
-                    <li><Link to="/our-team">{t('navigation.ourTeam')}</Link></li>
-                    <li><Link to="/testimonial">{t('navigation.testimonials')}</Link></li>
-                    <li><Link to="/terms-condition">{t('navigation.termsConditions')}</Link></li>
-                    <li><Link to="/privacy-policy">{t('navigation.privacyPolicy')}</Link></li>
-                    <li><Link to="/maintenance">{t('navigation.maintenance')}</Link></li>
-                    <li><Link to="/coming-soon">{t('navigation.comingSoon')}</Link></li>
+                    <li><LocalizedLink to="/pricing">{t('navigation.pricing')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/faq">{t('navigation.faq')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/gallery">{t('navigation.gallery')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/our-team">{t('navigation.ourTeam')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/testimonial">{t('navigation.testimonials')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/terms-condition">{t('navigation.termsConditions')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/privacy-policy">{t('navigation.privacyPolicy')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/maintenance">{t('navigation.maintenance')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/coming-soon">{t('navigation.comingSoon')}</LocalizedLink></li>
                   </ul>
                 </li>
                 <li className="has-submenu">
                   <a href="#">{t('navigation.blog')} <i className="material-icons-outlined">expand_more</i></a>
                   <ul className="submenu">
-                    <li><Link to="/blog-list">{t('navigation.blogList')}</Link></li>
-                    <li><Link to="/blog-grid">{t('navigation.blogGrid')}</Link></li>
-                    <li><Link to="/blog-details">{t('navigation.blogDetails')}</Link></li>
+                    <li><LocalizedLink to="/blog-list">{t('navigation.blogList')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/blog-grid">{t('navigation.blogGrid')}</LocalizedLink></li>
+                    <li><LocalizedLink to="/blog-details">{t('navigation.blogDetails')}</LocalizedLink></li>
                   </ul>
                 </li>
               </ul>
@@ -189,15 +179,15 @@ const Header = () => {
               </div>
 
               <div className="menu-login">
-                <Link to="/login" className="btn btn-primary w-100 mb-2">{t('common.signIn')}</Link>
-                <Link to="/signup" className="btn btn-secondary w-100">{t('common.register')}</Link>
+                <LocalizedLink to="/login" className="btn btn-primary w-100 mb-2">{t('common.signIn')}</LocalizedLink>
+                <LocalizedLink to="/signup" className="btn btn-secondary w-100">{t('common.register')}</LocalizedLink>
               </div>
             </div>
 
             <div className="nav header-items">
-              <Link to="/index-3" className="topbar-link btn btn-light topbar-search" data-bs-toggle="modal" data-bs-target="#search-modal">
+              <LocalizedLink to="/index-3" className="topbar-link btn btn-light topbar-search" data-bs-toggle="modal" data-bs-target="#search-modal">
                 <i className="material-icons-outlined">search</i>
-              </Link>
+              </LocalizedLink>
 
               <div className="dropdown topbar-lang">
                 <a className="topbar-link btn btn-light" data-bs-toggle="dropdown">
@@ -257,13 +247,13 @@ const Header = () => {
 
             
 
-              <Link to="/login" className="btn btn-lg btn-primary d-inline-flex align-items-center">
+              <LocalizedLink to="/login" className="btn btn-lg btn-primary d-inline-flex align-items-center">
                 <i className="material-icons-outlined me-1">lock</i>{t('common.signIn')}
-              </Link>
+              </LocalizedLink>
 
-              <Link to="/signup" className="btn btn-lg btn-dark d-inline-flex align-items-center">
+              <LocalizedLink to="/signup" className="btn btn-lg btn-dark d-inline-flex align-items-center">
                 <i className="material-icons-outlined me-1">perm_identity</i>{t('common.register')}
-              </Link>
+              </LocalizedLink>
             </div>
           </nav>
         </div>
