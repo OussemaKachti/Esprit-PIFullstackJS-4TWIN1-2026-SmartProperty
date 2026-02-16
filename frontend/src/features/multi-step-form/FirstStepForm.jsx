@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
 import '../../styles/firstStepForm.css';
 
 const CreateProperty = () => {
@@ -10,6 +9,41 @@ const CreateProperty = () => {
   const [totalArea, setTotalArea] = useState("");
   const [rooms, setRooms] = useState("");
   const [errors, setErrors] = useState({});
+
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markerInstance = useRef(null);
+
+  // Initialize map once
+  useEffect(() => {
+    if (!window.google || !mapRef.current) return;
+
+    mapInstance.current = new window.google.maps.Map(mapRef.current, {
+      center: { lat: 40.7128, lng: -74.006 },
+      zoom: 13,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!window.google || !mapInstance.current || !propertyAddress) return;
+
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: propertyAddress }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const location = results[0].geometry.location;
+        mapInstance.current.setCenter(location);
+
+        if (markerInstance.current) {
+          markerInstance.current.setMap(null);
+        }
+
+        markerInstance.current = new window.google.maps.Marker({
+          map: mapInstance.current,
+          position: location,
+        });
+      }
+    });
+  }, [propertyAddress]);
 
   const validate = () => {
     const newErrors = {};
@@ -23,13 +57,8 @@ const CreateProperty = () => {
   };
 
   const handleContinue = () => {
-  if (validate()) {
-    navigate("/form?step=2");
-  }
+    if (validate()) navigate("/form?step=2");
   };
-
-
-  
 
   return (
     <div className="create-property-container">
@@ -88,7 +117,7 @@ const CreateProperty = () => {
 
         <div className="create-property-row">
           <div className={`create-property-field half ${errors.totalArea ? "error" : ""}`}>
-            <label className="create-property-label">TOTAL AREA (m²)</label>
+            <label className="create-property-label">TOTAL AREA (mÂ²)</label>
             <div className="create-property-input-wrapper">
               <input
                 type="number"
@@ -117,7 +146,10 @@ const CreateProperty = () => {
         </div>
 
         <div className="create-property-map">
-          <p>Google Map preview will appear here</p>
+          <div
+            ref={mapRef}
+            style={{ height: "300px", width: "100%", borderRadius: "12px", background: "#f5f5f5" }}
+          />
         </div>
 
         <button
