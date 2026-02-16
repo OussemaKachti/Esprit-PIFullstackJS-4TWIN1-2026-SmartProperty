@@ -6,12 +6,22 @@ const PropertyType = {
   HOUSE: 'HOUSE',
   VILLA: 'VILLA',
   STUDIO: 'STUDIO',
+  LAND: 'LAND',
+  COMMERCIAL: 'COMMERCIAL',
+  OFFICE: 'OFFICE',
+  VACATION_RENTAL: 'VACATION_RENTAL',
+  OTHER: 'OTHER',
 };
 
 const PropertyStatus = {
   AVAILABLE: 'AVAILABLE',
   RENTED: 'RENTED',
   ARCHIVED: 'ARCHIVED',
+};
+
+const ListingType = {
+  FOR_SALE: 'FOR_SALE',
+  FOR_RENT: 'FOR_RENT',
 };
 
 const propertySchema = new mongoose.Schema(
@@ -36,6 +46,11 @@ const propertySchema = new mongoose.Schema(
       enum: Object.values(PropertyType),
       required: true,
     },
+    listingType: {
+      type: String,
+      enum: Object.values(ListingType),
+      default: ListingType.FOR_SALE,
+    },
     status: {
       type: String,
       enum: Object.values(PropertyStatus),
@@ -48,27 +63,32 @@ const propertySchema = new mongoose.Schema(
     },
     surface: {
       type: Number,
-      required: true,
       min: 0,
     },
     rooms: {
       type: Number,
-      required: true,
       min: 0,
     },
-    address: {
-      type: String,
-      required: true,
-      trim: true,
+    bathrooms: {
+      type: Number,
+      min: 0,
     },
+    // address: {
+    //   type: String,
+    //   trim: true,
+    // },
     city: {
       type: String,
       required: true,
       trim: true,
     },
+    region: {
+      type: String,
+      trim: true,
+    },
     country: {
       type: String,
-      required: true,
+      default: 'Tunisia',
       trim: true,
     },
     // Champs additionnels pour Module 1
@@ -76,6 +96,7 @@ const propertySchema = new mongoose.Schema(
       {
         url: String,
         publicId: String,
+        fieldName: String, // Field name used in form-data (image, image1, photo, etc.)
         uploadedAt: {
           type: Date,
           default: Date.now,
@@ -105,7 +126,7 @@ const propertySchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Made optional for data imports
     },
   },
   {
@@ -128,4 +149,4 @@ propertySchema.statics.generateReference = async function () {
 
 const Property = mongoose.model('Property', propertySchema);
 
-module.exports = { Property, PropertyType, PropertyStatus };
+module.exports = { Property, PropertyType, PropertyStatus, ListingType };

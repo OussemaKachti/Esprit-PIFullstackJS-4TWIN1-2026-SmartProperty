@@ -5,12 +5,14 @@ const router = express.Router();
 const propertyRoutes = require('./property.routes');
 const aiRoutes = require('./ai.routes');
 const userRoutes = require('./user.routes');
+const uploadRoutes = require('./upload.routes');
 
 
 // Mount routes
 router.use('/properties', propertyRoutes);
 router.use('/ai', aiRoutes);
 router.use('/users', userRoutes);
+router.use('/upload', uploadRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

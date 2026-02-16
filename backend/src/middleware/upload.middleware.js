@@ -33,8 +33,28 @@ const upload = multer({
   },
 });
 
-// Middleware for multiple image uploads
-exports.uploadImages = upload.array('images', 20);
+// Middleware for multiple image uploads - simple and flexible
+// Accepts files with ANY field name or even without field names
+exports.uploadImages = (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    
+    // Log uploaded files for debugging
+    if (req.files && req.files.length > 0) {
+      console.log(`📸 Received ${req.files.length} file(s):`, req.files.map(f => `${f.fieldname || 'file'}: ${f.originalname}`));
+      
+      // If files don't have field names, assign default ones
+      req.files = req.files.map((file, index) => ({
+        ...file,
+        fieldname: file.fieldname || `image${index + 1}`
+      }));
+    }
+    
+    next();
+  });
+};
 
 // Middleware for single image upload
 exports.uploadSingleImage = upload.single('image');

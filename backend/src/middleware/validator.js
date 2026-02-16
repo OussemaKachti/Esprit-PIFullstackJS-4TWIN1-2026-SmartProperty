@@ -9,24 +9,29 @@ const { apiResponse } = require('../utils/apiResponse');
 // Property validation schema
 const propertySchema = Joi.object({
   title: Joi.string().min(5).max(200).required(),
-  description: Joi.string().max(5000).allow(''),
+  description: Joi.string().max(5000).allow('').optional(),
   type: Joi.string()
     .valid(...Object.values(PropertyType))
     .required(),
+  listingType: Joi.string()
+    .valid('FOR_SALE', 'FOR_RENT')
+    .optional(),
   status: Joi.string()
     .valid(...Object.values(PropertyStatus))
     .optional(),
   price: Joi.number().min(0).required(),
-  surface: Joi.number().min(0).required(),
-  rooms: Joi.number().integer().min(0).required(),
-  address: Joi.string().required(),
+  surface: Joi.number().min(0).optional(),
+  rooms: Joi.number().integer().min(0).optional(),
+  bathrooms: Joi.number().integer().min(0).optional(),
+  address: Joi.string().optional(),
   city: Joi.string().required(),
-  country: Joi.string().required(),
+  region: Joi.string().optional(),
+  country: Joi.string().optional(),
   location: Joi.object({
     type: Joi.string().valid('Point'),
     coordinates: Joi.array().items(Joi.number()).length(2),
   }).optional(),
-});
+}).unknown(true);
 
 // Property update schema (all fields optional)
 const propertyUpdateSchema = Joi.object({
@@ -35,14 +40,19 @@ const propertyUpdateSchema = Joi.object({
   type: Joi.string()
     .valid(...Object.values(PropertyType))
     .optional(),
+  listingType: Joi.string()
+    .valid('FOR_SALE', 'FOR_RENT')
+    .optional(),
   status: Joi.string()
     .valid(...Object.values(PropertyStatus))
     .optional(),
   price: Joi.number().min(0).optional(),
   surface: Joi.number().min(0).optional(),
   rooms: Joi.number().integer().min(0).optional(),
+  bathrooms: Joi.number().integer().min(0).optional(),
   address: Joi.string().optional(),
   city: Joi.string().optional(),
+  region: Joi.string().optional(),
   country: Joi.string().optional(),
   location: Joi.object({
     type: Joi.string().valid('Point'),

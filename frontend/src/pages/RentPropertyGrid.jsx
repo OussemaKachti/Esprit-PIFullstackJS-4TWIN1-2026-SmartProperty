@@ -1,7 +1,60 @@
-﻿import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+﻿import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { getProperties, getImageUrl } from '../services/propertyService';
 
 const RentPropertyGrid = () => {
+  const location = useLocation();
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalResults, setTotalResults] = useState(0);
+
+  // Fetch properties based on URL parameters
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Parse URL search parameters
+        const searchParams = new URLSearchParams(location.search);
+        
+        // Build filters object - ALWAYS use FOR_RENT for this page
+        const filters = {
+          listingType: 'FOR_RENT'
+        };
+
+        // Add optional filters from URL (ignore listingType from URL)
+        if (searchParams.get('type')) filters.type = searchParams.get('type');
+        if (searchParams.get('city')) filters.city = searchParams.get('city');
+        if (searchParams.get('minPrice')) filters.minPrice = searchParams.get('minPrice');
+        if (searchParams.get('maxPrice')) filters.maxPrice = searchParams.get('maxPrice');
+        if (searchParams.get('rooms')) filters.rooms = searchParams.get('rooms');
+        if (searchParams.get('bathrooms')) filters.bathrooms = searchParams.get('bathrooms');
+        if (searchParams.get('minSurface')) filters.minSurface = searchParams.get('minSurface');
+
+        console.log('🏠 RentPropertyGrid - Fetching with filters:', filters);
+        const data = await getProperties(filters);
+        console.log('✅ RentPropertyGrid - Received properties:', data.properties?.length, 'properties');
+        
+        // Log first property's image data for debugging
+        if (data.properties?.length > 0) {
+          console.log('📸 First property image data:', data.properties[0].images);
+        }
+        
+        setProperties(data.properties || []);
+        setTotalResults(data.total || 0);
+      } catch (err) {
+        console.error('Error fetching properties:', err);
+        setError('Failed to load properties. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [location.search]);
+
   useEffect(() => {
     // Force enable scrolling
     const enableScrolling = () => {
@@ -92,7 +145,10 @@ const RentPropertyGrid = () => {
                             
                             <div className="row align-items-center">
                                 <div className="col-lg-3">
-                                    <p className="mb-4 mb-lg-0 mb-md-3 text-lg-start text-md-start  text-center">Showing result <span className="result-value"> 06</span> of<span className="result-value"> 125</span></p>
+                                    <p className="mb-4 mb-lg-0 mb-md-3 text-lg-start text-md-start  text-center">
+                                        Showing result <span className="result-value"> {properties.length}</span> of
+                                        <span className="result-value"> {totalResults}</span>
+                                    </p>
                                 </div> 
 
                                 <div className="col-lg-9">
@@ -128,522 +184,130 @@ const RentPropertyGrid = () => {
                         </div>
                     </div> 
 
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="text-center py-5">
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="mt-3">Loading properties...</p>
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && (
+                        <div className="alert alert-danger" role="alert">
+                            <i className="material-icons-outlined me-2">error</i>
+                            {error}
+                        </div>
+                    )}
+
+                    {/* No Results */}
+                    {!loading && !error && properties.length === 0 && (
+                        <div className="text-center py-5">
+                            <i className="material-icons-outlined" style={{ fontSize: '48px', color: '#ccc' }}>search_off</i>
+                            <h5 className="mt-3">No properties found</h5>
+                            <p className="text-muted">Try adjusting your search filters</p>
+                        </div>
+                    )}
+
+                    {/* Properties Grid */}
+                    {!loading && !error && properties.length > 0 && (
+                        <div className="row mb-4">
+                            {properties.map((property) => (
+                                <div key={property._id} className="col-xl-4 col-lg-6 col-md-6 d-flex">
+                                    <div className="property-card mb-lg-0 flex-fill">
+                                        <div className="property-listing-item p-0 mb-0 shadow-none">
+                                            <div className="buy-grid-img mb-0 rounded-0">
+                                                <Link to={`/rent-details/${property._id}`}>
+                                                    <img 
+                                                        className="img-fluid" 
+                                                        src={getImageUrl(property.images?.[0]) || '/assets/img/buy/buy-grid-img-01.jpg'} 
+                                                        alt={property.title || 'Property'}
+                                                        style={{ height: '250px', objectFit: 'cover' }}
+                                                        onError={(e) => { e.target.src = '/assets/img/buy/buy-grid-img-01.jpg'; }}
+                                                    />
+                                                </Link>
+                                                <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
+                                                    <h6 className="text-white mb-0">
+                                                        ${property.price?.toLocaleString() || 'N/A'} 
+                                                        <span className="fs-14 fw-normal"> / {property.rentalPeriod || 'Month'} </span>
+                                                    </h6>
+                                                    <a href="javascript:void(0)" className="favourite">
+                                                        <i className="material-icons-outlined">favorite_border</i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div className="buy-grid-content">
+                                                <div className="d-flex align-items-center justify-content-between mb-3">
+                                                    <div className="d-flex align-items-center justify-content-center">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <i key={i} className="material-icons-outlined text-warning">star</i>
+                                                        ))}
+                                                        <span className="ms-1 fs-14">Excellent</span>
+                                                    </div>
+                                                    <span className="badge bg-secondary">{property.type || 'Property'}</span>
+                                                </div>
+                                                <div className="d-flex align-items-center justify-content-between mb-3">
+                                                    <div>
+                                                        <h6 className="title mb-1">
+                                                            <Link to={`/rent-details/${property._id}`}>
+                                                                {property.title || property.description?.substring(0, 50) || 'Property for Rent'}
+                                                            </Link>
+                                                        </h6>
+                                                        <p className="d-flex align-items-center fs-14 mb-0">
+                                                            <i className="material-icons-outlined me-1 ms-0">location_on</i>
+                                                            {property.address || `${property.city || ''}, ${property.region || ''}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
+                                                    <li className="d-flex align-items-center gap-1">
+                                                        <i className="material-icons-outlined bg-white text-secondary">bed</i>
+                                                        {property.rooms || 0} Bedroom
+                                                    </li>
+                                                    <li className="d-flex align-items-center gap-1">
+                                                        <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
+                                                        {property.bathrooms || 0} Bath
+                                                    </li>
+                                                    <li className="d-flex align-items-center gap-1">
+                                                        <i className="material-icons-outlined bg-white text-secondary">straighten</i>
+                                                        {property.surface || 'N/A'} Sq Ft
+                                                    </li>
+                                                </ul>
+                                                <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <div className="avatar avatar-lg user-avatar">
+                                                            <img src="/assets/img/users/user-18.jpg" alt="" className="rounded-circle" />
+                                                        </div>
+                                                        <a href="#" className="mb-0 fs-16 fw-medium text-dark">
+                                                            Owner
+                                                            <span className="d-block fs-14 text-body pt-1">{property.city || 'Tunisia'}</span>
+                                                        </a>
+                                                    </div>
+                                                    <Link to={`/rent-details/${property._id}`} className="btn btn-dark">View Details</Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     
-                    <div className="row mb-4">
+                    {/* Load More Button - Only show if there are results */}
+                    {!loading && !error && properties.length > 0 && (
+                        <div className="text-center">
+                            <a href="javascript:void(0)" className="btn btn-dark d-inline-flex align-items-center">
+                                <i className="material-icons-outlined me-1">autorenew</i>Load More
+                            </a>
+                        </div>
+                    )}
 
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-01.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 p-3 z-1">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="badge badge-sm bg-danger d-flex align-items-center">
-                                                    <i className="material-icons-outlined">offline_bolt</i>New
-                                                </div>
-                                                <div className="badge badge-sm bg-orange d-flex align-items-center">
-                                                    <i className="material-icons-outlined">loyalty</i>Featured
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$21000 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Lodge</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Serenity Condo Suite</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>17, Grove Towers, New York, USA</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                4 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                4 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                350 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-10.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Ethan Brooks<span className="d-block fs-14 text-body pt-1">United States</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
+                    
+                    <div className="row mb-4" style={{ display: 'none' }}>
 
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-02.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$1130 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Apartment</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Getaway Apartment</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>54, Coral Apartments, Gold Coast, Australia</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                2 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                4 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                350 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-11.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Olivia Hayes<span className="d-block fs-14 text-body pt-1">Australia</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-03.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$2450 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Condo</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Cozy Urban Condo</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>130, Elmstone Flats, Manchester, UK</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                4 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                3 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                520 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-12.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Daniel Carter<span className="d-block fs-14 text-body pt-1">United Kingdom</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-04.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$1580 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Residency</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Coral Bay Cabins</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>7, Rosewood Court, Brighton, UK</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                5 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                3 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                700 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-13.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Sophia Mitchell<span className="d-block fs-14 text-body pt-1">United Kingdom</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-05.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$4500 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Residency</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Majestic Stay</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>10, Bella Vista Villas, Rome, Italy</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                2 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                1 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                400 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-14.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Leo Ramirez<span className="d-block fs-14 text-body pt-1">Italy</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-06.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$3000 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Lodge</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Noble Nest</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>76, Sakura Heights, Kyoto, Japan</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                3 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                2 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                550 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-15.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Maya Rivera<span className="d-block fs-14 text-body pt-1">Japan</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card mb-lg-0 flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-07.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$1800 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Villa</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Holiday Haven Homes</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>88, Eucalypt Lane Suites, Sydney, Australia</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                2 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                1 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                480 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-16.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Marcus Bennett<span className="d-block fs-14 text-body pt-1">Australia</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
-
-                        
-                        <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
-                            <div className="property-card mb-lg-0 flex-fill">
-                                <div className="property-listing-item p-0 mb-0 shadow-none">
-                                    <div className="buy-grid-img mb-0 rounded-0">
-                                        <Link to="/rent-details">
-                                            <img className="img-fluid" src="/assets/img/rent/rent-grid-img-08.jpg" alt="" />
-                                        </Link>
-                                        <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                            <h6 className="text-white mb-0">$2680 <span className="fs-14 fw-normal"> / Night </span></h6>
-                                            <a href="javascript:void(0)" className="favourite">
-                                                <i className="material-icons-outlined">favorite_border</i>
-                                            </a>
-                                        </div>
-                                    </div> 
-                                    <div className="buy-grid-content">
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <i className="material-icons-outlined text-warning">star</i>
-                                                <span className="ms-1 fs-14">Excellent</span>
-                                            </div>
-                                            <span className="badge bg-secondary"> Apartment</span>
-                                        </div>
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <h6 className="title mb-1">
-                                                    <Link to="/rent-details">Rentora Apartment</Link> 
-                                                </h6>
-                                                <p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>305, Palm View Towers, Dubai, UAE</p>
-                                            </div>
-                                        </div>
-                                        <ul className="d-flex buy-grid-details d-flex mb-3 bg-light rounded p-3 justify-content-between align-items-center flex-wrap gap-1">
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bed</i>
-                                                2 Bedroom
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">bathtub</i>
-                                                2 Bath
-                                            </li>
-                                            <li className="d-flex align-items-center gap-1">
-                                                <i className="material-icons-outlined bg-white text-secondary">straighten</i>
-                                                350 Sq Ft
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap border-top border-light-100 pt-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="avatar avatar-lg user-avatar">
-                                                    <img src="/assets/img/users/user-17.jpg" alt="" className="rounded-circle" />
-                                                </div>
-                                                <a href="#" className="mb-0 fs-16 fw-medium text-dark">Zara Collins<span className="d-block fs-14 text-body pt-1">United Arab Emirates</span> </a>
-                                            </div>
-                                            <Link to="/rent-details" className="btn btn-dark">Book Now</Link>
-                                        </div>
-                                    </div>
-                                </div> 
-                            </div> 
-                        </div> 
+                    
 
                         
                         <div className="col-xl-4 col-lg-6 col-md-6 d-flex">
@@ -711,9 +375,9 @@ const RentPropertyGrid = () => {
                     </div>
                     
 
-                    <div className="text-center">
+                    {/* <div className="text-center" style={{ display: 'none' }}>
                         <a href="javascript:void(0)" className="btn btn-dark d-inline-flex align-items-center"><i className="material-icons-outlined me-1">autorenew</i>Load More </a>
-                    </div>
+                    </div> */}
 
                 </div>
 			</div>

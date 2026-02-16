@@ -10,23 +10,42 @@ exports.getAllProperties = async (req, res, next) => {
       page = 1, 
       limit = 10, 
       type, 
-      status, 
-      city, 
+      status,
+      listingType,
+      city,
+      region,
       minPrice, 
       maxPrice,
+      rooms,
+      bathrooms,
+      minSurface,
       search 
     } = req.query;
+
+    // Validate listingType if provided
+    const validListingTypes = ['FOR_SALE', 'FOR_RENT'];
+    if (listingType && !validListingTypes.includes(listingType)) {
+      return res.status(400).json(
+        apiResponse(false, `Invalid listingType. Must be one of: ${validListingTypes.join(', ')}`)
+      );
+    }
 
     // Build filter object
     const filter = {};
     if (type) filter.type = type;
     if (status) filter.status = status;
+    // Filter by listing type: FOR_SALE or FOR_RENT
+    if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');
+    if (region) filter.region = new RegExp(region, 'i');
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
+    if (rooms) filter.rooms = { $gte: Number(rooms) };
+    if (bathrooms) filter.bathrooms = { $gte: Number(bathrooms) };
+    if (minSurface) filter.surface = { $gte: Number(minSurface) };
     if (search) {
       filter.$text = { $search: search };
     }
@@ -86,19 +105,30 @@ exports.createProperty = async (req, res, next) => {
     const propertyData = {
       ...req.body,
       reference,
-      createdBy: req.user._id, // Capturer l'utilisateur connecté
     };
 
-    // Handle image uploads if present
+    // Add createdBy if user is authenticated
+    if (req.user && req.user._id) {
+      propertyData.createdBy = req.user._id;
+    }
+
+    // Handle image uploads - accepts any field names (image, image1, photo, etc.)
     if (req.files && req.files.length > 0) {
       propertyData.images = req.files.map(file => ({
         url: file.path,
         publicId: file.filename,
+        fieldName: file.fieldname, // Store which field was used
       }));
+      
+      console.log(`✅ Uploaded ${req.files.length} image(s)`);
     }
 
     const property = await Property.create(propertyData);
-    await property.populate('createdBy', 'login email role firstName lastName');
+    
+    // Populate createdBy if it exists
+    if (property.createdBy) {
+      await property.populate('createdBy', 'login email role firstName lastName');
+    }
 
     res.status(201).json(
       apiResponse(true, 'Property created successfully', property)
@@ -121,13 +151,18 @@ exports.updateProperty = async (req, res, next) => {
       );
     }
 
-    // Handle new image uploads
+    // Handle new image uploads - accepts any field names
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => ({
         url: file.path,
         publicId: file.filename,
+        fieldName: file.fieldname,
       }));
+      
+      // Merge existing images with new ones
       req.body.images = [...property.images, ...newImages];
+      
+      console.log(`✅ Added ${req.files.length} new image(s). Total: ${req.body.images.length}`);
     }
 
     const updatedProperty = await Property.findByIdAndUpdate(

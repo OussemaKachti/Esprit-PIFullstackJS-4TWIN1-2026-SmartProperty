@@ -1,9 +1,62 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const Index3 = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  // Filter states
+  const [buyFilters, setBuyFilters] = useState({
+    type: '',
+    location: '',
+    minPrice: '',
+    maxPrice: ''
+  });
+
+  const [rentFilters, setRentFilters] = useState({
+    type: '',
+    location: '',
+    minPrice: '',
+    maxPrice: ''
+  });
+
+  // Filter change handlers
+  const handleBuyChange = (field, value) => {
+    setBuyFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRentChange = (field, value) => {
+    setRentFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Search handlers
+  const handleBuySearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    
+    if (buyFilters.type) params.append('type', buyFilters.type);
+    if (buyFilters.location) params.append('city', buyFilters.location);
+    if (buyFilters.minPrice) params.append('minPrice', buyFilters.minPrice);
+    if (buyFilters.maxPrice) params.append('maxPrice', buyFilters.maxPrice);
+    params.append('listingType', 'FOR_SALE');
+    
+    navigate(`/buy-property-grid?${params.toString()}`);
+  };
+
+  const handleRentSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    
+    if (rentFilters.type) params.append('type', rentFilters.type);
+    if (rentFilters.location) params.append('city', rentFilters.location);
+    if (rentFilters.minPrice) params.append('minPrice', rentFilters.minPrice);
+    if (rentFilters.maxPrice) params.append('maxPrice', rentFilters.maxPrice);
+    params.append('listingType', 'FOR_RENT');
+    
+    navigate(`/rent-property-grid?${params.toString()}`);
+  };
+
   useEffect(() => {
     // Force enable scrolling - more comprehensive approach
     const enableScrolling = () => {
@@ -147,19 +200,14 @@ const Index3 = () => {
 											<div>
 												<ul className="nav nav-tabs justify-content-lg-end" role="tablist">
 													<li className="nav-item" role="presentation">
-														<Link className="nav-link active" data-bs-toggle="tab" to="/" role="tab" aria-controls="buy_property" aria-selected="true"> 
+														<a className="nav-link active" data-bs-toggle="tab" href="#buy_property" role="tab" aria-controls="buy_property" aria-selected="true"> 
 															<i className="material-icons-outlined me-2">shopping_basket</i>{t('search.buyProperty')}
-														</Link>
+														</a>
 													</li>
 													<li className="nav-item" role="presentation">
-														<Link className="nav-link" data-bs-toggle="tab" to="/" role="tab" aria-controls="rent_property" aria-selected="false">
+														<a className="nav-link" data-bs-toggle="tab" href="#rent_property" role="tab" aria-controls="rent_property" aria-selected="false">
 															<i className="material-icons-outlined me-2">king_bed</i>{t('search.rentProperty')}
-														</Link>
-													</li>
-													<li className="nav-item" role="presentation">
-														<Link className="nav-link" data-bs-toggle="tab" to="/" role="tab" aria-controls="commercial_property" aria-selected="false">
-															<i className="material-icons-outlined me-2">home</i>{t('search.commercial')}
-														</Link>
+														</a>
 													</li>
 												</ul>
 											</div>
@@ -172,7 +220,7 @@ const Index3 = () => {
 								<div className="tab-content">
 									<div className="tab-pane fade show active" id="buy_property" role="tabpanel">
 										<div>
-											<form action="buy-property-grid-sidebar.html">
+											<form onSubmit={handleBuySearch}>
 
 												
 												<div className="row g-3">
@@ -180,14 +228,35 @@ const Index3 = () => {
 													<div className="col-lg-4">
 														<div>
 															<label className="form-label">{t('search.typeRental')}</label>
-															<input type="email" className="form-control" placeholder={t('search.typePlaceholder')} />
+															<select 
+																className="form-control"
+																value={buyFilters.type}
+																onChange={(e) => handleBuyChange('type', e.target.value)}
+															>
+																<option value="">{t('search.typePlaceholder')}</option>
+																<option value="APARTMENT">Apartment</option>
+																<option value="HOUSE">House</option>
+																<option value="VILLA">Villa</option>
+																<option value="STUDIO">Studio</option>
+																<option value="LAND">Land</option>
+																<option value="COMMERCIAL">Commercial</option>
+																<option value="OFFICE">Office</option>
+																<option value="VACATION_RENTAL">Vacation Rental</option>
+																<option value="OTHER">Other</option>
+															</select>
 														</div>
 													</div> 
 
 													<div className="col-lg-4">
 														<div>
 															<label className="form-label">{t('search.location')}</label>
-															<input type="email" className="form-control" placeholder={t('search.searchLocation')} />
+															<input 
+																type="text" 
+																className="form-control" 
+																placeholder={t('search.searchLocation')}
+																value={buyFilters.location}
+																onChange={(e) => handleBuyChange('location', e.target.value)}
+															/>
 														</div>
 													</div> 
 
@@ -195,14 +264,26 @@ const Index3 = () => {
 														<div className="d-flex align-items-end">
 															<div className="flex-fill me-3">
 																<label className="form-label">{t('search.minPrice')}</label>
-																<input type="text" className="form-control" placeholder="$" />
+																<input 
+																	type="number" 
+																	className="form-control" 
+																	placeholder="$"
+																	value={buyFilters.minPrice}
+																	onChange={(e) => handleBuyChange('minPrice', e.target.value)}
+																/>
 															</div>
 															<div className="flex-fill me-3">
 																<label className="form-label">{t('search.maxPrice')}</label>
-																<input type="text" className="form-control" placeholder="$" />
+																<input 
+																	type="number" 
+																	className="form-control" 
+																	placeholder="$"
+																	value={buyFilters.maxPrice}
+																	onChange={(e) => handleBuyChange('maxPrice', e.target.value)}
+																/>
 															</div>
 															<div>
-																<button type="submit" className="btn btn-primary"><span><i class='material-icons-outlined'>search</i></span></button>
+																<button type="submit" className="btn btn-primary"><span><i className='material-icons-outlined'>search</i></span></button>
 															</div>
 														</div>
 													</div> 
@@ -215,7 +296,7 @@ const Index3 = () => {
 									</div>
 									<div className="tab-pane fade" id="rent_property" role="tabpanel">
 										<div>
-											<form action="buy-property-grid-sidebar.html">
+											<form onSubmit={handleRentSearch}>
 
 												
 												<div className="row g-3">
@@ -223,10 +304,21 @@ const Index3 = () => {
 													<div className="col-lg-4">
 														<div>
 															<label className="form-label">Type of Property</label>
-															<select className="select">
-																<option>Select</option>
-																<option>Buy Property</option>
-																<option>Rent Property</option>
+															<select 
+																className="form-control"
+																value={rentFilters.type}
+																onChange={(e) => handleRentChange('type', e.target.value)}
+															>
+																<option value="">Select</option>
+																<option value="APARTMENT">Apartment</option>
+																<option value="HOUSE">House</option>
+																<option value="VILLA">Villa</option>
+																<option value="STUDIO">Studio</option>
+																<option value="LAND">Land</option>
+																<option value="COMMERCIAL">Commercial</option>
+																<option value="OFFICE">Office</option>
+																<option value="VACATION_RENTAL">Vacation Rental</option>
+																<option value="OTHER">Other</option>
 															</select>
 														</div>
 													</div> 
@@ -234,7 +326,13 @@ const Index3 = () => {
 													<div className="col-lg-4">
 														<div>
 															<label className="form-label">Location</label>
-															<input type="email" className="form-control" placeholder="Search location" />
+															<input 
+																type="text" 
+																className="form-control" 
+																placeholder="Search location"
+																value={rentFilters.location}
+																onChange={(e) => handleRentChange('location', e.target.value)}
+															/>
 														</div>
 													</div> 
 
@@ -242,61 +340,26 @@ const Index3 = () => {
 														<div className="d-flex align-items-end">
 															<div className="banner-property-grid flex-fill me-3">
 																<label className="form-label">Min Price</label>
-																<input type="text" className="form-control" placeholder="$" />
+																<input 
+																	type="number" 
+																	className="form-control" 
+																	placeholder="$"
+																	value={rentFilters.minPrice}
+																	onChange={(e) => handleRentChange('minPrice', e.target.value)}
+																/>
 															</div>
 															<div className="flex-fill me-3">
 																<label className="form-label">Max Price</label>
-																<input type="text" className="form-control" placeholder="$" />
+																<input 
+																	type="number" 
+																	className="form-control" 
+																	placeholder="$"
+																	value={rentFilters.maxPrice}
+																	onChange={(e) => handleRentChange('maxPrice', e.target.value)}
+																/>
 															</div>
 															<div>
-																<button type="submit" className="btn btn-primary"><span><i class='material-icons-outlined'>search</i></span></button>
-															</div>
-														</div>
-													</div> 
-
-												</div>
-												
-
-											</form>
-										</div>
-									</div>
-									<div className="tab-pane fade" id="commercial_property" role="tabpanel">
-										<div>
-											<form action="buy-property-grid-sidebar.html">
-
-												
-												<div className="row g-3">
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">Type of Property</label>
-															<select className="select">
-																<option>Select</option>
-																<option>Buy Property</option>
-																<option>Rent Property</option>
-															</select>
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">Location</label>
-															<input type="email" className="form-control" placeholder="Search location" />
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div className="d-flex align-items-end">
-															<div className="banner-property-grid flex-fill me-3">
-																<label className="form-label">Min Price</label>
-																<input type="text" className="form-control" placeholder="$" />
-															</div>
-															<div className="flex-fill me-3">
-																<label className="form-label">Max Price</label>
-																<input type="text" className="form-control" placeholder="$" />
-															</div>
-															<div>
-																<button type="submit" className="btn btn-primary"><span><i class='material-icons-outlined'>search</i></span></button>
+																<button type="submit" className="btn btn-primary"><span><i className='material-icons-outlined'>search</i></span></button>
 															</div>
 														</div>
 													</div> 
