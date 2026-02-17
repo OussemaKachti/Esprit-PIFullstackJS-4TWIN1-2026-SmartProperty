@@ -1,6 +1,27 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import '../../styles/firstStepForm.css';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "../../styles/firstStepForm.css";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+function ChangeMapView({ center }) {
+  const map = useMap();
+  const mapRef = useRef(map);
+
+  useEffect(() => {
+    mapRef.current.flyTo(center, 15, { duration: 1.5 });
+  }, [center]);
+
+  return null;
+}
 
 const CreateProperty = () => {
   const navigate = useNavigate();
@@ -9,40 +30,26 @@ const CreateProperty = () => {
   const [totalArea, setTotalArea] = useState("");
   const [rooms, setRooms] = useState("");
   const [errors, setErrors] = useState({});
-
-  const mapRef = useRef(null);
-  const mapInstance = useRef(null);
-  const markerInstance = useRef(null);
-
-  // Initialize map once
-  useEffect(() => {
-    if (!window.google || !mapRef.current) return;
-
-    mapInstance.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: 40.7128, lng: -74.006 },
-      zoom: 13,
-    });
-  }, []);
+  const [position, setPosition] = useState([36.8065, 10.1815]);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
-    if (!window.google || !mapInstance.current || !propertyAddress) return;
+    if (!propertyAddress) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: propertyAddress }, (results, status) => {
-      if (status === "OK" && results[0]) {
-        const location = results[0].geometry.location;
-        mapInstance.current.setCenter(location);
-
-        if (markerInstance.current) {
-          markerInstance.current.setMap(null);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${propertyAddress}`
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
         }
-
-        markerInstance.current = new window.google.maps.Marker({
-          map: mapInstance.current,
-          position: location,
-        });
+      } catch (err) {
+        console.log(err);
       }
-    });
+    }, 700);
   }, [propertyAddress]);
 
   const validate = () => {
@@ -52,7 +59,6 @@ const CreateProperty = () => {
     if (!totalArea) newErrors.totalArea = "Total area is required.";
     if (!rooms) newErrors.rooms = "Number of rooms is required.";
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -63,10 +69,7 @@ const CreateProperty = () => {
   return (
     <div className="create-property-container">
       <div className="create-property-image">
-        <img
-          src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
-          alt="bg-login"
-        />
+        <img src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg" alt="bg-login" />
       </div>
 
       <div className="create-property-form">
@@ -87,10 +90,7 @@ const CreateProperty = () => {
         <div className={`create-property-field ${errors.propertyType ? "error" : ""}`}>
           <label className="create-property-label">PROPERTY TYPE</label>
           <div className="create-property-input-wrapper">
-            <select
-              value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value)}
-            >
+            <select value={propertyType} onChange={(e) => setPropertyType(e.target.value)}>
               <option value="">Select property type</option>
               <option value="apartment">Apartment</option>
               <option value="villa">Villa</option>
@@ -146,16 +146,24 @@ const CreateProperty = () => {
         </div>
 
         <div className="create-property-map">
-          <div
-            ref={mapRef}
-            style={{ height: "300px", width: "100%", borderRadius: "12px", background: "#f5f5f5" }}
-          />
+          <MapContainer
+            center={position}
+            zoom={15}
+            scrollWheelZoom={true}
+            style={{ height: "300px", width: "100%", borderRadius: "12px" }}
+          >
+            <ChangeMapView center={position} />
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={position}>
+              <Popup>{propertyAddress || "Property Location"}</Popup>
+            </Marker>
+          </MapContainer>
         </div>
 
-        <button
-          className="create-property-button"
-          onClick={handleContinue}
-        >
+        <button className="create-property-button" onClick={handleContinue}>
           Continue
         </button>
       </div>
