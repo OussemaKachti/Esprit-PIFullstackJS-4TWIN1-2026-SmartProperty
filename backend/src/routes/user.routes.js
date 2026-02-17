@@ -21,7 +21,7 @@ router.post('/2fa/verify', protect, userController.verify2FA);
 router.post('/2fa/disable', protect, userController.disable2FA);
 router.post('/2fa/validate', userController.validate2FAToken);
 
-// Sample protected route with role-based access
+// Get current user profile
 router.get(
   '/profile',
   protect,
@@ -32,9 +32,7 @@ router.get(
     UserRole.TENANT,
     UserRole.BUYER
   ),
-  (req, res) => {
-    res.json({ message: 'This is a protected route', user: req.user });
-  }
+  userController.getProfile
 );
 
 module.exports = router;
