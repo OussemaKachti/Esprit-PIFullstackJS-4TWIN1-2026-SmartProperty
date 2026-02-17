@@ -1,5 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import PageMeta from "../components/common/PageMeta";
+
+// Fix Leaflet default icon issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+// Component to animate map view when position changes
+function ChangeMapView({ center }: { center: [number, number] }) {
+  const map = useMap();
+  const mapRef = useRef(map);
+
+  useEffect(() => {
+    mapRef.current.flyTo(center, 15, { duration: 1.5 });
+  }, [center]);
+
+  return null;
+}
 
 type StaticProperty = {
   id: number;
@@ -168,6 +191,30 @@ export default function MyProperties() {
     description: "",
   });
   const [imagesCount, setImagesCount] = useState(0);
+  const [mapPosition, setMapPosition] = useState<[number, number]>([36.8065, 10.1815]); // Default: Tunis
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Geocode address when address field changes (debounced)
+  useEffect(() => {
+    const fullAddress = `${form.address}, ${form.city}, ${form.country}`.trim();
+    if (!fullAddress || fullAddress === ",") return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setMapPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      } catch (err) {
+        console.error("Geocoding error:", err);
+      }
+    }, 700);
+  }, [form.address, form.city, form.country]);
 
   const handleFieldChange = (
     field: keyof NewPropertyForm,
@@ -628,11 +675,33 @@ export default function MyProperties() {
 
                   <div className="space-y-2">
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                      Google Map preview
+                      Map preview
                     </label>
-                    <div className="flex items-center justify-center w-full h-40 text-xs text-gray-500 border border-dashed border-gray-300 rounded-2xl bg-gray-50 dark:bg-gray-900 dark:border-gray-700">
-                      Interactive map placeholder
+                    <div className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <MapContainer
+                        center={mapPosition}
+                        zoom={15}
+                        scrollWheelZoom={true}
+                        style={{ height: "100%", width: "100%" }}
+                        className="z-0"
+                      >
+                        <ChangeMapView center={mapPosition} />
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={mapPosition}>
+                          <Popup>
+                            {form.address
+                              ? `${form.address}, ${form.city || ""}, ${form.country || ""}`.trim()
+                              : "Property Location"}
+                          </Popup>
+                        </Marker>
+                      </MapContainer>
                     </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      Map updates automatically when you enter an address
+                    </p>
                   </div>
                 </div>
               )}
