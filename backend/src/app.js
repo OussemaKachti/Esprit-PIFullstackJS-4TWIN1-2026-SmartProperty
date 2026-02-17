@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -36,10 +37,8 @@ app.get('/uploads/:filename', (req, res) => {
   });
 });
 
-// Security middleware - Configure helmet to allow cross-origin resources
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+// Security middleware
+app.use(helmet());
 
 // CORS configuration
 // Allow both frontend and backoffice origins
