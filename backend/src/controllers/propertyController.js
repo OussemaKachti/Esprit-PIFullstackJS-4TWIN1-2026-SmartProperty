@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 
@@ -14,7 +15,8 @@ exports.getAllProperties = async (req, res, next) => {
       city, 
       minPrice, 
       maxPrice,
-      search 
+      search,
+      owner // Add owner filter support
     } = req.query;
 
     // Build filter object
@@ -22,6 +24,7 @@ exports.getAllProperties = async (req, res, next) => {
     if (type) filter.type = type;
     if (status) filter.status = status;
     if (city) filter.city = new RegExp(city, 'i');
+    if (owner) filter.createdBy = owner; // Filter by owner/createdBy
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
@@ -54,12 +57,119 @@ exports.getAllProperties = async (req, res, next) => {
   }
 };
 
+// @desc    Get properties of the connected user (my properties)
+// @route   GET /api/properties/my
+// @access  Private
+exports.getMyProperties = async (req, res, next) => {
+  try {
+    const userId = req.user._id.toString();
+    const {
+      page = 1,
+      limit = 10,
+      type,
+      status,
+      city,
+      minPrice,
+      maxPrice,
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
+
+    const filter = { createdBy: userId };
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+    if (city) filter.city = new RegExp(city, 'i');
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    const skip = (pageNum - 1) * limitNum;
+
+    const properties = await Property.find(filter)
+      .limit(limitNum)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .populate('createdBy', 'login email role firstName lastName');
+
+    const total = await Property.countDocuments(filter);
+
+    res.status(200).json(
+      apiResponse(true, 'My properties retrieved successfully', {
+        properties,
+        totalPages: Math.ceil(total / limitNum),
+        currentPage: pageNum,
+        total,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get properties by user (createdBy)
+// @route   GET /api/properties/user/:userId
+// @access  Public
+exports.getPropertiesByUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const {
+      page = 1,
+      limit = 10,
+      type,
+      status,
+      city,
+      minPrice,
+      maxPrice,
+    } = req.query;
+
+    const filter = { createdBy: userId };
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+    if (city) filter.city = new RegExp(city, 'i');
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const properties = await Property.find(filter)
+      .limit(limit * 1)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .populate('createdBy', 'login email role firstName lastName');
+
+    const total = await Property.countDocuments(filter);
+
+    res.status(200).json(
+      apiResponse(true, 'Properties by user retrieved successfully', {
+        properties,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        total,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get single property by ID
 // @route   GET /api/properties/:id
 // @access  Public
 exports.getPropertyById = async (req, res, next) => {
   try {
-    const property = await Property.findById(req.params.id)
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+    const property = await Property.findById(id)
       .populate('createdBy', 'login email role firstName lastName'); // Peupler les infos user
 
     if (!property) {
