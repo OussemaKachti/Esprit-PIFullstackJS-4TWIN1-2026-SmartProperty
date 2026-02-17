@@ -16,6 +16,7 @@ import BasicTables from "./pages/Tables/BasicTables";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import MyProperties from "./pages/MyProperties";
+import PropertyDetailsPage from "./pages/PropertyDetails";
 import Performance from "./pages/Performance";
 import Documents from "./pages/Documents";
 import AppLayout from "./layout/AppLayout";
@@ -35,6 +36,7 @@ export default function App() {
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/my-properties" element={<MyProperties />} />
+            <Route path="/my-properties/:id" element={<PropertyDetailsPage />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/calendar" element={<Calendar />} />

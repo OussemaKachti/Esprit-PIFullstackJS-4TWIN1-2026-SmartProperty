@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -26,119 +27,20 @@ function ChangeMapView({ center }: { center: [number, number] }) {
   return null;
 }
 
-type StaticProperty = {
-  id: number;
+type BackendProperty = {
+  _id: string;
   title: string;
   city: string;
-  country: string;
-  price: string;
-  priceLabel: string;
-  status?: "New" | "Featured" | "Popular" | "Booked";
-  bookingLabel?: string;
+  country?: string;
+  price: number;
+  surface?: number;
+  rooms?: number;
+  bathrooms?: number;
   type: string;
-  beds: number;
-  baths: number;
-  area: string;
-  imageUrl: string;
+  status?: string;
+  listingType?: string;
+  description?: string;
 };
-
-const staticProperties: StaticProperty[] = [
-  {
-    id: 1,
-    title: "Serenity Condo Suite",
-    city: "London",
-    country: "United Kingdom",
-    price: "$2,100",
-    priceLabel: "/ month",
-    status: "New",
-    bookingLabel: "For Rent",
-    type: "Loft",
-    beds: 3,
-    baths: 2,
-    area: "1,250 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/7606060/pexels-photo-7606060.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-  {
-    id: 2,
-    title: "Getaway Apartment",
-    city: "Paris",
-    country: "France",
-    price: "$1,130",
-    priceLabel: "/ night",
-    status: "Featured",
-    bookingLabel: "For Rent",
-    type: "Apartment",
-    beds: 2,
-    baths: 1,
-    area: "850 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-  {
-    id: 3,
-    title: "Cozy Urban Condo",
-    city: "New York",
-    country: "USA",
-    price: "$2,480",
-    priceLabel: "/ month",
-    status: "Popular",
-    bookingLabel: "For Rent",
-    type: "Condo",
-    beds: 2,
-    baths: 2,
-    area: "1,050 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/439391/pexels-photo-439391.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-  {
-    id: 4,
-    title: "Coral Bay Cabins",
-    city: "Brighton",
-    country: "UK",
-    price: "$950",
-    priceLabel: "/ night",
-    status: "New",
-    bookingLabel: "Booked",
-    type: "Cabin",
-    beds: 4,
-    baths: 3,
-    area: "1,600 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/259580/pexels-photo-259580.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-  {
-    id: 5,
-    title: "Majestic Stay",
-    city: "Rome",
-    country: "Italy",
-    price: "$4,500",
-    priceLabel: "/ month",
-    status: "Featured",
-    bookingLabel: "For Rent",
-    type: "Villa",
-    beds: 5,
-    baths: 4,
-    area: "2,450 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/261187/pexels-photo-261187.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-  {
-    id: 6,
-    title: "Noble Nest",
-    city: "Berlin",
-    country: "Germany",
-    price: "$1,380",
-    priceLabel: "/ month",
-    bookingLabel: "For Rent",
-    type: "Apartment",
-    beds: 2,
-    baths: 1,
-    area: "900 Sq Ft",
-    imageUrl:
-      "https://images.pexels.com/photos/439227/pexels-photo-439227.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  },
-];
 
 // Simple, clean icons for list / grid view (no material-icons text)
 const ListViewIcon = () => (
@@ -202,6 +104,17 @@ export default function MyProperties() {
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [mapPosition, setMapPosition] = useState<[number, number]>([36.8065, 10.1815]); // Default: Tunis
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [myProperties, setMyProperties] = useState<BackendProperty[]>([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState<boolean>(true);
+
+  const formattedPrice = (price: number | undefined | null) => {
+    if (price == null) return "—";
+    try {
+      return `${new Intl.NumberFormat("fr-TN").format(price)} TND`;
+    } catch {
+      return `${price} TND`;
+    }
+  };
 
   // Geocode address when address field changes (debounced)
   useEffect(() => {
@@ -227,6 +140,42 @@ export default function MyProperties() {
       }
     }, 700);
   }, [form.address, form.city, form.country]);
+
+  // Load properties of the connected user
+  useEffect(() => {
+    const loadMyProperties = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setIsLoadingProperties(false);
+          return;
+        }
+
+        const res = await fetch(`${API_URL}/properties/my`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Failed to load my properties:", text);
+          setIsLoadingProperties(false);
+          return;
+        }
+
+        const data = await res.json();
+        const payload = data.data || data;
+        setMyProperties(payload.properties || []);
+      } catch (err) {
+        console.error("Error while loading my properties:", err);
+      } finally {
+        setIsLoadingProperties(false);
+      }
+    };
+
+    loadMyProperties();
+  }, []);
 
   const handleFieldChange = (
     field: keyof NewPropertyForm,
@@ -353,8 +302,11 @@ export default function MyProperties() {
               My Properties
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Showing {staticProperties.length} selected properties from your
-              portfolio.
+              Showing{" "}
+              <span className="font-semibold">
+                {myProperties.length}
+              </span>{" "}
+              properties from your portfolio.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -401,8 +353,11 @@ export default function MyProperties() {
         {/* Toolbar / summary */}
         <div className="flex flex-col gap-3 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Showing <span className="font-semibold">1 – {staticProperties.length}</span>{" "}
-            of <span className="font-semibold">25</span> results
+            {isLoadingProperties
+              ? "Loading your properties..."
+              : myProperties.length > 0
+              ? `Showing ${myProperties.length} property(ies)`
+              : "No properties created yet."}
           </p>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <div className="flex items-center gap-2">
@@ -425,15 +380,16 @@ export default function MyProperties() {
         {/* Properties grid or list */}
         {viewMode === "grid" ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {staticProperties.map((property) => (
+            {myProperties.map((property) => (
               <article
-                key={property.id}
+                key={property._id}
                 className="flex flex-col overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-gray-900 dark:border-gray-800"
               >
                 {/* Image block */}
                 <div className="relative overflow-hidden">
+                  {/* TODO: replace placeholder with real image URL when wired */}
                   <img
-                    src={property.imageUrl}
+                    src="https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200"
                     alt={property.title}
                     className="object-cover w-full h-52"
                   />
@@ -444,9 +400,9 @@ export default function MyProperties() {
                           {property.status}
                         </span>
                       )}
-                      {property.bookingLabel && (
+                      {property.listingType && (
                         <span className="px-2.5 py-1 text-xs font-semibold text-white rounded-full bg-brand-500">
-                          {property.bookingLabel}
+                          {property.listingType === "FOR_RENT" ? "For Rent" : "For Sale"}
                         </span>
                       )}
                     </div>
@@ -457,10 +413,7 @@ export default function MyProperties() {
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div>
                       <div className="text-sm font-semibold text-white">
-                        {property.price}
-                        <span className="ml-1 text-xs font-normal text-gray-200">
-                          {property.priceLabel}
-                        </span>
+                        {formattedPrice(property.price)}
                       </div>
                     </div>
                     <span className="px-2.5 py-1 text-xs font-semibold text-white rounded-full bg-indigo-500/90">
@@ -476,19 +429,19 @@ export default function MyProperties() {
                   </h3>
                   <p className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                     <span className="inline-block w-1.5 h-1.5 mr-2 bg-emerald-500 rounded-full" />
-                    {property.city}, {property.country}
+                    {property.city}, {property.country || "Tunisia"}
                   </p>
 
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
                       <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-50 dark:bg-white/5">
-                        {property.beds} Bed
+                        {property.rooms ?? 0} Rooms
                       </span>
                       <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-50 dark:bg-white/5">
-                        {property.baths} Bath
+                        {property.bathrooms ?? 0} Bathrooms
                       </span>
                       <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-50 dark:bg-white/5">
-                        {property.area}
+                        {property.surface ? `${property.surface} m²` : "Surface N/A"}
                       </span>
                     </div>
                   </div>
@@ -500,9 +453,12 @@ export default function MyProperties() {
                         4.9
                       </span>
                     </div>
-                    <button className="px-3 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900">
+                    <Link
+                      to={`/my-properties/${property._id}`}
+                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900"
+                    >
                       View details
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </article>
@@ -510,15 +466,16 @@ export default function MyProperties() {
           </div>
         ) : (
           <div className="space-y-4">
-            {staticProperties.map((property) => (
+            {myProperties.map((property) => (
               <article
-                key={property.id}
+                key={property._id}
                 className="flex flex-col overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-gray-900 dark:border-gray-800 md:flex-row"
               >
                 {/* Image */}
                 <div className="relative w-full overflow-hidden md:w-64 lg:w-72">
+                  {/* TODO: replace placeholder with real image URL when wired */}
                   <img
-                    src={property.imageUrl}
+                    src="https://images.pexels.com/photos/439227/pexels-photo-439227.jpeg?auto=compress&cs=tinysrgb&w=1200"
                     alt={property.title}
                     className="object-cover w-full h-52 md:h-full"
                   />
@@ -529,19 +486,16 @@ export default function MyProperties() {
                           {property.status}
                         </span>
                       )}
-                      {property.bookingLabel && (
+                      {property.listingType && (
                         <span className="px-2.5 py-1 text-xs font-semibold text-white rounded-full bg-brand-500">
-                          {property.bookingLabel}
+                          {property.listingType === "FOR_RENT" ? "For Rent" : "For Sale"}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div className="text-sm font-semibold text-white">
-                      {property.price}
-                      <span className="ml-1 text-xs font-normal text-gray-200">
-                        {property.priceLabel}
-                      </span>
+                      {formattedPrice(property.price)}
                     </div>
                     <button className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-black/60 backdrop-blur">
                       ♥
@@ -558,7 +512,7 @@ export default function MyProperties() {
                       </h3>
                       <p className="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-block w-1.5 h-1.5 mr-2 bg-emerald-500 rounded-full" />
-                        {property.city}, {property.country}
+                        {property.city}, {property.country || "Tunisia"}
                       </p>
                     </div>
                     <span className="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full dark:bg-indigo-500/10 dark:text-indigo-300">
@@ -571,19 +525,19 @@ export default function MyProperties() {
                       <span className="inline-flex items-center justify-center w-6 h-6 mr-1 text-xs text-emerald-500 bg-white rounded-full dark:bg-gray-900">
                         🛏
                       </span>
-                      {property.beds} Bedroom
+                      {property.rooms ?? 0} Rooms
                     </li>
                     <li className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
                       <span className="inline-flex items-center justify-center w-6 h-6 mr-1 text-xs text-emerald-500 bg-white rounded-full dark:bg-gray-900">
                         🛁
                       </span>
-                      {property.baths} Bath
+                      {property.bathrooms ?? 0} Bathrooms
                     </li>
                     <li className="flex items-center gap-1 text-gray-700 dark:text-gray-200">
                       <span className="inline-flex items-center justify-center w-6 h-6 mr-1 text-xs text-emerald-500 bg-white rounded-full dark:bg-gray-900">
                         ▢
                       </span>
-                      {property.area}
+                      {property.surface ? `${property.surface} m²` : "Surface N/A"}
                     </li>
                   </ul>
 
@@ -594,9 +548,12 @@ export default function MyProperties() {
                         4.9 Excellent
                       </span>
                     </div>
-                    <button className="px-4 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900">
-                      Book now
-                    </button>
+                    <Link
+                      to={`/my-properties/${property._id}`}
+                      className="px-4 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900"
+                    >
+                      View details
+                    </Link>
                   </div>
                 </div>
               </article>
