@@ -4,6 +4,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PageMeta from "../components/common/PageMeta";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -165,12 +167,14 @@ const GridViewIcon = () => (
 );
 
 type NewPropertyForm = {
+  title: string;
   type: string;
   address: string;
   city: string;
   country: string;
   surface: string;
   rooms: string;
+  price: string;
   description: string;
 };
 
@@ -182,29 +186,37 @@ export default function MyProperties() {
     "professional"
   );
   const [form, setForm] = useState<NewPropertyForm>({
+    title: "",
     type: "",
     address: "",
     city: "",
     country: "",
     surface: "",
     rooms: "",
+    price: "",
     description: "",
   });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagesCount, setImagesCount] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [mapPosition, setMapPosition] = useState<[number, number]>([36.8065, 10.1815]); // Default: Tunis
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Geocode address when address field changes (debounced)
   useEffect(() => {
-    const fullAddress = `${form.address}, ${form.city}, ${form.country}`.trim();
-    if (!fullAddress || fullAddress === ",") return;
+    const rawAddress = `${form.address}, ${form.city}, ${form.country}`;
+    const cleaned = rawAddress.replace(/,/g, " ").trim();
+
+    // Si l'utilisateur n'a encore rien saisi, ne pas appeler l'API (évite q=", ,")
+    if (!cleaned) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleaned)}`
         );
         const data = await res.json();
         if (data && data.length > 0) {
@@ -225,9 +237,42 @@ export default function MyProperties() {
 
   const handleImagesChange = (files: FileList | null) => {
     if (!files) return;
-    setImagesCount((prev) =>
-      Math.min(20, prev + files.length)
+
+    const allFiles = Array.from(files);
+    const imageFilesOnly = allFiles.filter((file) =>
+      file.type.startsWith("image/")
     );
+
+    // Si certains fichiers ne sont pas des images, on les ignore et on informe l'utilisateur
+    if (imageFilesOnly.length !== allFiles.length) {
+      alert("Only image files are allowed (jpeg, jpg, png, webp, heic).");
+    }
+
+    if (imageFilesOnly.length === 0) return;
+
+    const incoming = imageFilesOnly;
+    setImageFiles((prev) => {
+      const remainingSlots = Math.max(0, 20 - prev.length);
+      const toAdd = incoming.slice(0, remainingSlots);
+      return [...prev, ...toAdd];
+    });
+
+    setImagesCount((prev) => {
+      const remainingSlots = Math.max(0, 20 - prev);
+      const toAddCount = Math.min(remainingSlots, files.length);
+      return prev + toAddCount;
+    });
+  };
+
+  const handleDropFiles = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      handleImagesChange(event.dataTransfer.files);
+      event.dataTransfer.clearData();
+    }
   };
 
   const closeForm = () => {
@@ -235,14 +280,63 @@ export default function MyProperties() {
     setActiveStep(1);
   };
 
-  const handleSubmit = () => {
-    // For now we just close the form; hook into API later
-    console.log("Submitting new property:", {
-      ...form,
-      tone,
-      imagesCount,
-    });
-    closeForm();
+  const handleSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!form.title || !form.type || !form.city || !form.price) {
+        alert("Please fill Title, Type, City and Price before submitting.");
+        return;
+      }
+
+      const formData = new FormData();
+      // Required / core fields
+      formData.append("title", form.title);
+      formData.append("type", form.type);
+      formData.append("city", form.city);
+      formData.append("price", form.price);
+
+      // Optional / additional fields
+      if (form.address) formData.append("address", form.address);
+      if (form.country) formData.append("country", form.country);
+      if (form.surface) formData.append("surface", form.surface);
+      if (form.rooms) formData.append("rooms", form.rooms);
+      if (form.description) formData.append("description", form.description);
+
+      // Tone & AI flag (optional, backend accepte les champs inconnus)
+      formData.append("tone", tone);
+      formData.append("aiGeneratedDescription", "false");
+
+      // Multiple images
+      imageFiles.forEach((file, index) => {
+        formData.append(`image${index + 1}`, file);
+      });
+
+      const response = await fetch(`${API_URL}/properties`, {
+        method: "POST",
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : undefined,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to create property:", errorText);
+        alert("Failed to create property. Please check your inputs.");
+        return;
+      }
+
+      // Optionnel: const data = await response.json();
+      // console.log("Property created:", data);
+
+      closeForm();
+    } catch (err) {
+      console.error("Error while creating property:", err);
+      alert("An unexpected error occurred while creating the property.");
+    }
   };
 
   return (
@@ -583,6 +677,20 @@ export default function MyProperties() {
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Property Title
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                        placeholder="e.g. Luxury villa with sea view"
+                        value={form.title}
+                        onChange={(e) =>
+                          handleFieldChange("title", e.target.value)
+                        }
+                      />
+                    </div>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                         Property Type
@@ -600,6 +708,20 @@ export default function MyProperties() {
                         <option value="VILLA">Villa</option>
                         <option value="STUDIO">Studio</option>
                       </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Price
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                        placeholder="e.g. 850000"
+                        value={form.price}
+                        onChange={(e) =>
+                          handleFieldChange("price", e.target.value)
+                        }
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -755,9 +877,88 @@ export default function MyProperties() {
                     />
                     <button
                       type="button"
-                      className="inline-flex items-center px-4 py-2 mt-1 text-xs font-semibold text-white rounded-full shadow-sm bg-brand-500 hover:bg-brand-600"
+                      onClick={async () => {
+                        if (!form.type || !form.city) {
+                          alert("Please fill at least Type and City before generating an AI description.");
+                          return;
+                        }
+
+                        try {
+                          setIsGeneratingDescription(true);
+
+                          const token = localStorage.getItem("token");
+                          if (!token) {
+                            alert("You must be logged in to generate an AI description.");
+                            return;
+                          }
+
+                          const aiRes = await fetch(
+                            `${API_URL.replace(/\/api$/, "")}/api/ai/generate-description-preview`,
+                            {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                              body: JSON.stringify({
+                                tone,
+                                length: "medium",
+                                property: {
+                                  title: form.title,
+                                  type: form.type,
+                                  surface: form.surface,
+                                  rooms: form.rooms,
+                                  address: form.address,
+                                  city: form.city,
+                                  country: form.country,
+                                  price: form.price,
+                                },
+                              }),
+                            }
+                          );
+
+                          if (!aiRes.ok) {
+                            const errText = await aiRes.text();
+                            console.error("Failed to generate AI description:", errText);
+                            alert("Failed to generate AI description.");
+                            return;
+                          }
+
+                          const aiData = await aiRes.json();
+                          const payload = aiData.data || aiData;
+
+                          // On prend la première variante par défaut
+                          const generated =
+                            payload.variant1 ||
+                            payload.description ||
+                            payload.text ||
+                            "";
+
+                          if (!generated) {
+                            alert("AI did not return a description.");
+                            return;
+                          }
+
+                          // Mettre la description dans le textarea
+                          setForm((prev) => ({
+                            ...prev,
+                            description: generated,
+                          }));
+                        } catch (err) {
+                          console.error("Error generating AI description:", err);
+                          alert("An unexpected error occurred while generating the AI description.");
+                        } finally {
+                          setIsGeneratingDescription(false);
+                        }
+                      }}
+                      disabled={isGeneratingDescription}
+                      className={`inline-flex items-center px-4 py-2 mt-1 text-xs font-semibold rounded-full shadow-sm ${
+                        isGeneratingDescription
+                          ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-300"
+                          : "bg-brand-500 text-white hover:bg-brand-600"
+                      }`}
                     >
-                      ✨ Generate AI Description
+                      {isGeneratingDescription ? "Generating..." : "✨ Generate AI Description"}
                     </button>
                   </div>
 
@@ -770,7 +971,24 @@ export default function MyProperties() {
                         {imagesCount}/20 photos
                       </span>
                     </div>
-                    <label className="flex flex-col items-center justify-center w-full px-6 py-8 text-center border-2 border-dashed rounded-2xl cursor-pointer border-gray-300 bg-gray-50 hover:border-brand-500 hover:bg-brand-50/40 dark:bg-gray-900 dark:border-gray-700">
+                    <label
+                      className={`flex flex-col items-center justify-center w-full px-6 py-8 text-center border-2 border-dashed rounded-2xl cursor-pointer bg-gray-50 dark:bg-gray-900 ${
+                        isDragOver
+                          ? "border-brand-500 bg-brand-50/40 dark:border-brand-400"
+                          : "border-gray-300 hover:border-brand-500 hover:bg-brand-50/40 dark:border-gray-700"
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragOver(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragOver(false);
+                      }}
+                      onDrop={handleDropFiles}
+                    >
                       <input
                         type="file"
                         multiple

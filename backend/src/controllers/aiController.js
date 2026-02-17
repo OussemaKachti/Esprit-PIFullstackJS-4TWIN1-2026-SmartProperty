@@ -32,3 +32,30 @@ exports.generateDescription = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Generate AI description from raw property data (no DB save)
+// @route   POST /api/ai/generate-description-preview
+// @access  Private (Admin/Agent)
+exports.generateDescriptionPreview = async (req, res, next) => {
+  try {
+    const { tone = 'professional', length = 'medium', property } = req.body;
+
+    if (!property) {
+      return res.status(400).json(
+        apiResponse(false, 'Property data is required')
+      );
+    }
+
+    const descriptions = await descriptionService.generateDescriptions(
+      property,
+      tone,
+      length
+    );
+
+    res.status(200).json(
+      apiResponse(true, 'Descriptions generated successfully', descriptions)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
