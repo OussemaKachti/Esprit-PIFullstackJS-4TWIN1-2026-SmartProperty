@@ -1,7 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "../../styles/firstStepForm.css";
 
-import '../../styles/firstStepForm.css';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+function ChangeMapView({ center }) {
+  const map = useMap();
+  const mapRef = useRef(map);
+
+  useEffect(() => {
+    mapRef.current.flyTo(center, 15, { duration: 1.5 });
+  }, [center]);
+
+  return null;
+}
 
 const CreateProperty = () => {
   const navigate = useNavigate();
@@ -10,6 +30,27 @@ const CreateProperty = () => {
   const [totalArea, setTotalArea] = useState("");
   const [rooms, setRooms] = useState("");
   const [errors, setErrors] = useState({});
+  const [position, setPosition] = useState([36.8065, 10.1815]);
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    if (!propertyAddress) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${propertyAddress}`
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    }, 700);
+  }, [propertyAddress]);
 
   const validate = () => {
     const newErrors = {};
@@ -18,26 +59,17 @@ const CreateProperty = () => {
     if (!totalArea) newErrors.totalArea = "Total area is required.";
     if (!rooms) newErrors.rooms = "Number of rooms is required.";
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
   const handleContinue = () => {
-  if (validate()) {
-    navigate("/form?step=2");
-  }
+    if (validate()) navigate("/form?step=2");
   };
-
-
-  
 
   return (
     <div className="create-property-container">
       <div className="create-property-image">
-        <img
-          src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
-          alt="bg-login"
-        />
+        <img src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg" alt="bg-login" />
       </div>
 
       <div className="create-property-form">
@@ -58,10 +90,7 @@ const CreateProperty = () => {
         <div className={`create-property-field ${errors.propertyType ? "error" : ""}`}>
           <label className="create-property-label">PROPERTY TYPE</label>
           <div className="create-property-input-wrapper">
-            <select
-              value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value)}
-            >
+            <select value={propertyType} onChange={(e) => setPropertyType(e.target.value)}>
               <option value="">Select property type</option>
               <option value="apartment">Apartment</option>
               <option value="villa">Villa</option>
@@ -88,7 +117,7 @@ const CreateProperty = () => {
 
         <div className="create-property-row">
           <div className={`create-property-field half ${errors.totalArea ? "error" : ""}`}>
-            <label className="create-property-label">TOTAL AREA (m²)</label>
+            <label className="create-property-label">TOTAL AREA (mÂ²)</label>
             <div className="create-property-input-wrapper">
               <input
                 type="number"
@@ -117,13 +146,24 @@ const CreateProperty = () => {
         </div>
 
         <div className="create-property-map">
-          <p>Google Map preview will appear here</p>
+          <MapContainer
+            center={position}
+            zoom={15}
+            scrollWheelZoom={true}
+            style={{ height: "300px", width: "100%", borderRadius: "12px" }}
+          >
+            <ChangeMapView center={position} />
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={position}>
+              <Popup>{propertyAddress || "Property Location"}</Popup>
+            </Marker>
+          </MapContainer>
         </div>
 
-        <button
-          className="create-property-button"
-          onClick={handleContinue}
-        >
+        <button className="create-property-button" onClick={handleContinue}>
           Continue
         </button>
       </div>
