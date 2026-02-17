@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const mongoose = require('mongoose');
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 
@@ -282,13 +281,6 @@ exports.getPropertiesByUser = async (req, res, next) => {
 // @access  Public
 exports.getPropertyById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json(
-        apiResponse(false, 'Property not found')
-      );
-    }
-    const property = await Property.findById(id)
     const { id } = req.params;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json(
