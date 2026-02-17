@@ -13,18 +13,22 @@
   --container-width: 800px;
 }
 
-/* Scoped styles for CreateProperty component */
-.create-property-container {
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  box-sizing: border-box;
+*{
+  color: var(--color-black);
 }
 
+.create-property-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--color-white);
+}
+
+
 .create-property-image {
-  width: 40%;
-  height: 100%;
-  position: relative;
+  flex: 1 1 40%;
+  min-height: 300px;
 }
 
 .create-property-image img {
@@ -33,56 +37,49 @@
   object-fit: cover;
 }
 
+
 .create-property-form {
-  flex: 1;
-  height: 100%;
+  flex: 1 1 60%;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  padding: 50px 250px 0 250px;
+  padding: 40px 280px 0 280px;
   box-sizing: border-box;
-  overflow-y: auto;
 }
 
+
 .create-property-header {
-  width: 100%;
   max-width: var(--container-width);
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  margin: 0 auto 20px auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-top: 100px;
-  margin-bottom: 20px;
+  align-items: center;
 }
 
 .create-property-step-indicator {
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--color-gray-200);
+  color: var(--color-gray-600);
   letter-spacing: 0.08em;
 }
 
 .create-property-step-title {
-  font-size: 17px;
-  font-weight: 400;
+  font-size: 15px;
   color: var(--color-black);
 }
 
+
 .create-property-progress {
-  width: 100%;
   max-width: var(--container-width);
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  margin: 0 auto 30px auto;
   display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 10px;
 }
 
 .create-property-progress-bar {
   flex: 1;
-  height: 6px;
+  height: 5px;
   border-radius: 20px;
   background-color: var(--color-gray-200);
 }
@@ -91,20 +88,19 @@
   background-color: var(--color-black);
 }
 
+
 .create-property-title {
   font-size: var(--title-xl);
-  font-weight: 500;
-  color: var(--color-black);
-  margin-bottom: 10px;
+  font-weight: 600;
+  margin: 10px auto 30px auto;
+  max-width: var(--container-width);
+  width: 100%;
 }
 
 .create-property-field {
-  font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.1;
-  color: var(--color-gray-700);
-  margin-top: 15px;
-  font-weight: 500;
+  max-width: var(--container-width);
+  width: 100%;
+  margin: 0 auto 20px auto;
 }
 
 .create-property-label {
@@ -117,101 +113,126 @@
 .create-property-input-wrapper {
   margin-top: 8px;
   width: 100%;
-  height: 50px;
+  height: 48px;
   border: 1px solid var(--color-gray-400);
   display: flex;
   align-items: center;
-  justify-content: center;
   padding: 0 15px;
-  box-sizing: border-box;
-  transition: border 0.3s ease;
-  border-radius: 20px;
+  border-radius: 25px;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.create-property-input-wrapper:focus-within {
+  border-color: var(--color-black);
 }
 
 .create-property-input-wrapper input,
 .create-property-input-wrapper select {
-  font-size: 15px;
+  width: 100%;
   border: none;
   outline: none;
-  width: 100%;
-  height: 100%;
-  font-family: var(--font-mono);
+  font-size: 14px;
   background: transparent;
 }
 
 .create-property-input-wrapper select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
   cursor: pointer;
 }
 
+
 .create-property-row {
+  max-width: var(--container-width);
+  width: 100%;
+  margin: 0 auto;
   display: flex;
   gap: 20px;
-  width: 100%;
 }
 
 .create-property-field.half {
-  width: 50%;
+  flex: 1;
 }
+
 
 .create-property-map {
-  width: 100%;
   max-width: var(--container-width);
-  height: 200px;
-  margin: 30px auto 0 auto;
-  border: 1px solid var(--color-gray-400);
-  background-color: var(--color-gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-gray-600);
-  font-style: italic;
-  font-size: 14px;
-  user-select: none;
-  border-radius: 10px;
+  width: 100%;
+  margin: 30px auto;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
+
 .create-property-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 40px;
-  margin-top: 20px;
   max-width: var(--container-width);
-  padding: 16px 0;
-  font-size: 14px;
-  background-color: var(--color-black);
-  color: var(--color-white);
+  width: 100%;
+  margin: 10px auto 40px auto;
+  height: 48px;
+  border-radius: 25px;
   border: none;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  border-radius: 20px;
+  transition: 0.2s ease;
 }
+
+.create-property-button:hover {
+  opacity: 0.9;
+}
+
 
 .create-property-field.error .create-property-input-wrapper {
   border-color: var(--color-error);
 }
 
 .create-property-error {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
   margin-top: 6px;
-  font-weight: 500;
   font-size: 12px;
   color: var(--color-error);
-  font-family: var(--font-mono);
 }
 
-@media (max-width: 700px) {
-  .create-property-header {
-    margin-top: 0;
+
+@media (max-width: 1024px) {
+  .create-property-image {
+    flex: 1 1 35%;
   }
-  
+
   .create-property-form {
-    padding: 20px 30px;
+    flex: 1 1 65%;
+  }
+}
+
+@media (max-width: 768px) {
+  .create-property-container {
+    flex-direction: column;
+  }
+
+  .create-property-image {
+    height: 250px;
+  }
+
+  .create-property-form {
+    padding: 40px 20px;
+  }
+
+  .create-property-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .create-property-field.half {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .create-property-form {
+    padding: 30px 15px;
+  }
+
+  .create-property-title {
+    font-size: 22px;
   }
 }
