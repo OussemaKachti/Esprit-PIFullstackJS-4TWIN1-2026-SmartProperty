@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import ToneSwitcher from "./components/ToneSwitcher";
 import DescriptionInput from "./components/DescriptionInput";
 import UploadZone from "./components/UploadZone";
@@ -8,6 +9,7 @@ import GenerateWithAI from "./components/GenerateWithAI";
 import '../../styles/secondStepForm.css';
 
 const SecondStepForm = () => {
+  const navigate = useNavigate(); 
   const [description, setDescription] = useState("");
   const [selectedTone, setSelectedTone] = useState("Luxury");
   const [images, setImages] = useState([]);
@@ -38,7 +40,6 @@ const SecondStepForm = () => {
 
   const handleGenerate = async () => {
     setLoading(true);
-    // TODO: call your AI API here
     setLoading(false);
   };
 
@@ -63,7 +64,7 @@ const SecondStepForm = () => {
 
         <div className="ss-progress">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={`ss-bar ${i === 1 ? "active" : ""}`} />
+            <div key={i} className={`ss-bar ${i <= 1 ? "active" : ""}`} />
           ))}
         </div>
 
@@ -113,7 +114,9 @@ const SecondStepForm = () => {
           )}
         </UploadZone>
 
-        <button className="ss-submit-btn">Continue</button>
+        <button className="ss-submit-btn" onClick={() => navigate("/form?step=3")}> 
+          Continue
+        </button>
       </div>
     </div>
   );
