@@ -21,6 +21,9 @@ router.post('/2fa/verify', protect, userController.verify2FA);
 router.post('/2fa/disable', protect, userController.disable2FA);
 router.post('/2fa/validate', userController.validate2FAToken);
 
+// Logout (optional: call before clearing token on client)
+router.post('/logout', protect, userController.logout);
+
 // Get current user profile
 router.get(
   '/profile',
@@ -33,6 +36,20 @@ router.get(
     UserRole.BUYER
   ),
   userController.getProfile
+);
+
+// Update current user profile
+router.put(
+  '/profile',
+  protect,
+  authorize(
+    UserRole.ADMIN,
+    UserRole.AGENCY,
+    UserRole.OWNER,
+    UserRole.TENANT,
+    UserRole.BUYER
+  ),
+  userController.updateProfile
 );
 
 module.exports = router;

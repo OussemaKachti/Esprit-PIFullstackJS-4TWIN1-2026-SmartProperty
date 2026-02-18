@@ -1,8 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import PageMeta from "../components/common/PageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// Fix Leaflet default icon issue (Vite/React)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+// Component to animate map view when position changes
+function ChangeMapView({ center }: { center: [number, number] }) {
+  const map = useMap();
+  const mapRef = useRef(map);
+
+  useEffect(() => {
+    mapRef.current.flyTo(center, 15, { duration: 1.5 });
+  }, [center]);
+
+  return null;
+}
 
 type PropertyDetails = {
   _id: string;
@@ -16,10 +39,15 @@ type PropertyDetails = {
   surface?: number;
   rooms?: number;
   bathrooms?: number;
+  address?: string;
   city: string;
   region?: string;
   country?: string;
   images?: { url: string }[];
+  location?: {
+    type?: string;
+    coordinates?: [number, number]; // [longitude, latitude]
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +66,8 @@ export default function PropertyDetailsPage() {
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapPosition, setMapPosition] = useState<[number, number] | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [sectionsOpen, setSectionsOpen] = useState({
     description: true,
     features: true,
@@ -86,10 +116,153 @@ export default function PropertyDetailsPage() {
     loadProperty();
   }, [id]);
 
-  const mainImage =
-    property?.images && property.images.length > 0
-      ? property.images[0].url
-      : "https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200";
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [property?._id]);
+
+  // Geocode address - always geocode if address exists, even if coordinates are stored
+  useEffect(() => {
+    if (!property) {
+      setMapPosition(null);
+      return;
+    }
+
+    // Build address parts for geocoding
+    const addressParts = [
+      property.address,
+      property.city,
+      property.region,
+      property.country || "Tunisia",
+    ].filter(Boolean);
+
+    // If no address at all, check if we have valid stored coordinates
+    if (addressParts.length === 0) {
+      const coords = property.location?.coordinates;
+      if (coords && Array.isArray(coords) && coords.length === 2) {
+        const [lon, lat] = coords;
+        if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
+          console.log("No address, using stored coordinates:", [lat, lon]);
+          setMapPosition([lat, lon]);
+          return;
+        }
+      }
+      console.log("No address parts and no valid coordinates, using default Tunis");
+      setMapPosition([36.8065, 10.1815]); // Default: Tunis
+      return;
+    }
+
+    // Always geocode the address if it exists (even if coordinates are stored)
+    // This ensures the map shows the correct location based on the address
+    const query = addressParts.join(", ");
+    console.log("Geocoding address:", query);
+    
+    const geocodeTimeout = setTimeout(async () => {
+      try {
+        // Try with full address first
+        let res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
+          {
+            headers: {
+              'User-Agent': 'SmartProperty/1.0'
+            }
+          }
+        );
+        let data = await res.json();
+        
+        // If no results, try with just address + city
+        if (!data || data.length === 0) {
+          const simplifiedQuery = [property.address, property.city].filter(Boolean).join(", ");
+          console.log("No results, trying simplified query:", simplifiedQuery);
+          res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simplifiedQuery)}&limit=1&addressdetails=1&countrycodes=tn`,
+            {
+              headers: {
+                'User-Agent': 'SmartProperty/1.0'
+              }
+            }
+          );
+          data = await res.json();
+        }
+        
+        console.log("Geocoding response:", data);
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          if (Number.isFinite(lat) && Number.isFinite(lon)) {
+            console.log("Geocoded coordinates:", [lat, lon], "for address:", query);
+            setMapPosition([lat, lon]);
+          } else {
+            console.log("Invalid coordinates from geocoding, using default");
+            setMapPosition([36.8065, 10.1815]); // Default: Tunis
+          }
+        } else {
+          console.log("No results from geocoding, using default");
+          setMapPosition([36.8065, 10.1815]); // Default: Tunis
+        }
+      } catch (err) {
+        console.error("Geocoding error:", err);
+        setMapPosition([36.8065, 10.1815]); // Default: Tunis
+      }
+    }, 500);
+
+    return () => clearTimeout(geocodeTimeout);
+  }, [property]);
+
+  const resolveImageUrl = (relativeUrl?: string) => {
+    if (!relativeUrl) {
+      return "https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200";
+    }
+
+    // Normalise les backslashes Windows -> slashes
+    const normalized = relativeUrl.replace(/\\/g, "/");
+
+    // Si c'est déjà une URL absolue (http/https), on la renvoie telle quelle
+    if (/^https?:\/\//i.test(normalized)) {
+      return normalized;
+    }
+
+    // si ça commence par /uploads ou uploads -> pointer vers backend
+    const baseApi = API_URL.replace(/\/api$/, "");
+    if (normalized.startsWith("/uploads/")) {
+      return `${baseApi}${normalized}`;
+    }
+    if (normalized.startsWith("uploads/")) {
+      return `${baseApi}/${normalized}`;
+    }
+
+    return `${baseApi}/${normalized}`;
+  };
+
+  const imageUrls = (() => {
+    const imgs = property?.images ?? [];
+    if (!imgs || imgs.length === 0) return [resolveImageUrl()];
+    return imgs.map((img) => resolveImageUrl(img.url));
+  })();
+
+  const safeImageIndex = Math.min(currentImageIndex, imageUrls.length - 1);
+  const currentImageUrl = imageUrls[safeImageIndex];
+  const canNavigateImages = imageUrls.length > 1;
+
+  const goPrevImage = () => {
+    if (!canNavigateImages) return;
+    setCurrentImageIndex((i) => (i - 1 + imageUrls.length) % imageUrls.length);
+  };
+
+  const goNextImage = () => {
+    if (!canNavigateImages) return;
+    setCurrentImageIndex((i) => (i + 1) % imageUrls.length);
+  };
+
+  const mapCenter: [number, number] = mapPosition || [36.8065, 10.1815]; // Default: Tunis
+
+  const displayAddress =
+    property?.address?.trim() ||
+    [property?.city, property?.region, property?.country || "Tunisia"]
+      .filter(Boolean)
+      .join(", ");
+
+  // Force map to re-render when position changes
+  const mapKey = mapPosition ? `${mapPosition[0]}-${mapPosition[1]}` : 'default';
 
   return (
     <>
@@ -142,10 +315,40 @@ export default function PropertyDetailsPage() {
               <div className="overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800">
                 <div className="relative">
                   <img
-                    src={mainImage}
+                    src={currentImageUrl}
                     alt={property.title}
-                    className="object-cover w-full h-72 md:h-96"
+                    className="object-contain w-full h-72 md:h-96 bg-gray-50 dark:bg-gray-800"
                   />
+
+                  {canNavigateImages && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={goPrevImage}
+                        aria-label="Previous image"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition-colors"
+                      >
+                        <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M12.5 15l-5-5 5-5" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goNextImage}
+                        aria-label="Next image"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/70 transition-colors"
+                      >
+                        <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M7.5 5l5 5-5 5" />
+                        </svg>
+                      </button>
+
+                      <div className="absolute right-3 top-3 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                        {safeImageIndex + 1}/{imageUrls.length}
+                      </div>
+                    </>
+                  )}
+
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div>
                       <div className="text-lg font-semibold text-white">
@@ -163,17 +366,24 @@ export default function PropertyDetailsPage() {
 
                 {property.images && property.images.length > 1 && (
                   <div className="grid grid-cols-4 gap-1 p-3 border-t border-gray-100 dark:border-gray-800">
-                    {property.images.slice(0, 8).map((img, index) => (
-                      <div
-                        key={index}
-                        className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800"
+                    {imageUrls.slice(0, 8).map((url, index) => (
+                      <button
+                        key={url + index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`overflow-hidden rounded-xl border transition-colors ${
+                          index === safeImageIndex
+                            ? "border-brand-500 ring-2 ring-brand-500/30"
+                            : "border-gray-100 hover:border-gray-200 dark:border-gray-800 dark:hover:border-gray-700"
+                        }`}
+                        aria-label={`View image ${index + 1}`}
                       >
                         <img
-                          src={img.url}
+                          src={url}
                           alt={`${property.title} ${index + 1}`}
                           className="object-cover w-full h-20"
                         />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -533,55 +743,7 @@ export default function PropertyDetailsPage() {
                 </div>
               </div>
 
-              {/* Provider Details */}
-              <div className="border border-gray-200 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Provider Details
-                  </h3>
-                </div>
-                <div className="px-4 py-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                  <div className="flex items-center gap-3 p-3 border border-gray-100 rounded-2xl bg-gray-50 dark:bg-gray-900 dark:border-gray-800">
-                    <div className="flex items-center justify-center w-10 h-10 text-sm font-semibold text-white bg-emerald-500 rounded-full">
-                      {property.city?.[0] || "A"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Company Agent
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        SmartProperty
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 px-3 py-2 text-xs border border-gray-200 rounded-2xl dark:border-gray-800">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-emerald-500 bg-emerald-50 rounded-full dark:bg-emerald-500/10">
-                        📞
-                      </span>
-                      <span className="text-gray-700 dark:text-gray-200">
-                        Call us: <span className="font-medium">+216 00 000 000</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2 text-xs border border-gray-200 rounded-2xl dark:border-gray-800">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-indigo-500 bg-indigo-50 rounded-full dark:bg-indigo-500/10">
-                        ✉️
-                      </span>
-                      <span className="text-gray-700 dark:text-gray-200">
-                        Email: <span className="font-medium">contact@smartproperty.tn</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button className="flex-1 px-3 py-2 text-xs font-semibold text-white rounded-full bg-emerald-500 hover:bg-emerald-600">
-                      Whatsapp
-                    </button>
-                    <button className="flex-1 px-3 py-2 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900">
-                      Chat Now
-                    </button>
-                  </div>
-                </div>
-              </div>
+              
 
               {/* Why Book With Us */}
               <div className="border border-gray-200 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -633,10 +795,45 @@ export default function PropertyDetailsPage() {
                 </div>
                 <div className="px-4 py-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
                   <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800">
-                    {/* Placeholder map image; can be replaced with real map later */}
-                    <div className="flex items-center justify-center h-40 bg-gradient-to-br from-sky-500 to-blue-700 text-white text-xs font-semibold">
-                      View Location on Map
+                    <div className="h-44">
+                      {mapPosition && (
+                        <MapContainer
+                          key={mapKey}
+                          center={mapCenter}
+                          zoom={15}
+                          scrollWheelZoom={false}
+                          style={{ height: "100%", width: "100%" }}
+                          className="z-0"
+                        >
+                          <ChangeMapView center={mapCenter} />
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={mapCenter}>
+                            <Popup>
+                              <div className="text-xs">
+                                <div className="font-semibold">{property?.title}</div>
+                                <div className="opacity-80">{displayAddress}</div>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        </MapContainer>
+                      )}
+                      {!mapPosition && (
+                        <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Loading map...</p>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  <div className="px-3 py-2 border border-gray-200 rounded-2xl bg-gray-50 dark:bg-gray-900 dark:border-gray-800">
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">
+                      Property Address
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                      {displayAddress}
+                    </p>
                   </div>
                   <ul className="space-y-1 text-xs">
                     <li className="flex items-center gap-2">

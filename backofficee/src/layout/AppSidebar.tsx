@@ -16,6 +16,10 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const FRONTEND_SIGNIN_URL =
+  import.meta.env.VITE_FRONTEND_URL || "http://localhost:3000";
+
 type NavItem = {
   name: string;
   icon: React.ReactNode;
@@ -73,6 +77,27 @@ const AppSidebar: React.FC = () => {
     (path: string) => location.pathname === path,
     [location.pathname]
   );
+
+  const handleLogout = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    try {
+      if (token) {
+        await fetch(`${API_URL}/users/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch {
+      // ignore network errors; we still clear local session
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = `${FRONTEND_SIGNIN_URL}/login`;
+    }
+  }, []);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -262,44 +287,30 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${
+        className={`pt-4 pb-2 flex items-start shrink-0 ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-            </>
-          ) : (
-            <img
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
-          )}
+        <Link to="/" className="block w-full">
+          <img
+            src="/images/logo/Smart.png"
+            alt="Smart Property"
+            className={`object-contain object-left ${
+              isExpanded || isHovered || isMobileOpen
+                ? "w-full max-w-[250px] h-auto"
+                : "mx-auto w-[72px] h-auto max-h-12"
+            }`}
+            width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
+            height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
+          />
         </Link>
       </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
+      <div className="flex flex-col flex-1 min-h-0">
+        <nav className="flex-1 overflow-y-auto duration-300 ease-linear no-scrollbar mb-6 pt-1">
           <div className="flex flex-col gap-4">
             <div>
               <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                className={`mb-3 text-xs uppercase flex leading-[20px] text-gray-400 ${
                   !isExpanded && !isHovered
                     ? "lg:justify-center"
                     : "justify-start"
@@ -333,9 +344,9 @@ const AppSidebar: React.FC = () => {
             )}
           </div>
         </nav>
-        {/* Bottom: user profile + logout */}
+        {/* Bottom: user profile + logout — toujours en bas */}
         {(isExpanded || isHovered || isMobileOpen) && (
-          <div className="mt-auto pb-6 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+          <div className="flex-shrink-0 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
             <Link
               to="/profile"
               className={`menu-item group ${
@@ -355,11 +366,7 @@ const AppSidebar: React.FC = () => {
             </Link>
             <button
               type="button"
-              onClick={() => {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-                window.location.href = "/signin";
-              }}
+              onClick={handleLogout}
               className="w-full text-left menu-item group menu-item-inactive text-error-600 hover:text-error-600"
             >
               <span className="menu-item-icon-size menu-item-icon-inactive">

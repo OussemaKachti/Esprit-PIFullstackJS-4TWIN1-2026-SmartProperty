@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import toast from "react-hot-toast";
 import PageMeta from "../components/common/PageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -27,9 +28,22 @@ function ChangeMapView({ center }: { center: [number, number] }) {
   return null;
 }
 
+// Preview thumbnail for a selected file (creates/revokes object URL properly)
+function ImagePreviewThumb({ file, alt }: { file: File; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  if (!url) return <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />;
+  return <img src={url} alt={alt} className="w-full h-full object-cover" />;
+}
+
 type BackendProperty = {
   _id: string;
   title: string;
+  address?: string;
   city: string;
   country?: string;
   price: number;
@@ -40,6 +54,32 @@ type BackendProperty = {
   status?: string;
   listingType?: string;
   description?: string;
+  images?: { url: string }[];
+};
+
+const resolveImageUrl = (relativeUrl?: string) => {
+  if (!relativeUrl) {
+    return "https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200";
+  }
+
+  // Normalize Windows backslashes -> slashes
+  const normalized = relativeUrl.replace(/\\/g, "/");
+
+  // Already absolute URL
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  // Point to backend (API_URL is .../api)
+  const baseApi = API_URL.replace(/\/api$/, "");
+  if (normalized.startsWith("/uploads/")) {
+    return `${baseApi}${normalized}`;
+  }
+  if (normalized.startsWith("uploads/")) {
+    return `${baseApi}/${normalized}`;
+  }
+
+  return `${baseApi}/${normalized}`;
 };
 
 // Simple, clean icons for list / grid view (no material-icons text)
@@ -106,6 +146,14 @@ export default function MyProperties() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [myProperties, setMyProperties] = useState<BackendProperty[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState<boolean>(true);
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const [existingPropertyImages, setExistingPropertyImages] = useState<{ url: string; publicId?: string; _id?: string }[]>([]);
+  const [removingImageId, setRemovingImageId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; propertyId: string | null; propertyTitle: string }>({
+    isOpen: false,
+    propertyId: null,
+    propertyTitle: "",
+  });
 
   const formattedPrice = (price: number | undefined | null) => {
     if (price == null) return "—";
@@ -141,39 +189,38 @@ export default function MyProperties() {
     }, 700);
   }, [form.address, form.city, form.country]);
 
-  // Load properties of the connected user
-  useEffect(() => {
-    const loadMyProperties = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setIsLoadingProperties(false);
-          return;
-        }
-
-        const res = await fetch(`${API_URL}/properties/my`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("Failed to load my properties:", text);
-          setIsLoadingProperties(false);
-          return;
-        }
-
-        const data = await res.json();
-        const payload = data.data || data;
-        setMyProperties(payload.properties || []);
-      } catch (err) {
-        console.error("Error while loading my properties:", err);
-      } finally {
+  const loadMyProperties = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
         setIsLoadingProperties(false);
+        return;
       }
-    };
 
+      const res = await fetch(`${API_URL}/properties/my`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Failed to load my properties:", text);
+        setIsLoadingProperties(false);
+        return;
+      }
+
+      const data = await res.json();
+      const payload = data.data || data;
+      setMyProperties(payload.properties || []);
+    } catch (err) {
+      console.error("Error while loading my properties:", err);
+    } finally {
+      setIsLoadingProperties(false);
+    }
+  };
+
+  useEffect(() => {
     loadMyProperties();
   }, []);
 
@@ -224,9 +271,146 @@ export default function MyProperties() {
     }
   };
 
+  const initialFormState: NewPropertyForm = {
+    title: "",
+    type: "",
+    address: "",
+    city: "",
+    country: "",
+    surface: "",
+    rooms: "",
+    price: "",
+    description: "",
+  };
+
   const closeForm = () => {
     setIsFormOpen(false);
     setActiveStep(1);
+    setEditingPropertyId(null);
+    setForm(initialFormState);
+    setImageFiles([]);
+    setImagesCount(0);
+    setExistingPropertyImages([]);
+    setRemovingImageId(null);
+  };
+
+  const handleDeleteClick = (property: BackendProperty) => {
+    setDeleteConfirm({
+      isOpen: true,
+      propertyId: property._id,
+      propertyTitle: property.title,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.propertyId) return;
+
+    const deleteToast = toast.loading("Deleting property...");
+    
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/properties/${deleteConfirm.propertyId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.message || "Deletion failed. You may not have permission to do this.", {
+          id: deleteToast,
+        });
+        setDeleteConfirm({ isOpen: false, propertyId: null, propertyTitle: "" });
+        return;
+      }
+
+      toast.success("Property deleted successfully", {
+        id: deleteToast,
+      });
+      setDeleteConfirm({ isOpen: false, propertyId: null, propertyTitle: "" });
+      await loadMyProperties();
+    } catch (err) {
+      console.error("Error deleting property:", err);
+      toast.error("An unexpected error occurred while deleting the property.", {
+        id: deleteToast,
+      });
+      setDeleteConfirm({ isOpen: false, propertyId: null, propertyTitle: "" });
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, propertyId: null, propertyTitle: "" });
+  };
+
+  const handleRemoveExistingImage = async (imageId: string) => {
+    if (!editingPropertyId) return;
+    setRemovingImageId(imageId);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/properties/${editingPropertyId}/images/${imageId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.message || "Failed to remove image.");
+        return;
+      }
+      setExistingPropertyImages((prev) => prev.filter((img) => String(img._id) !== imageId));
+      toast.success("Image removed");
+    } catch (err) {
+      console.error("Error removing image:", err);
+      toast.error("Failed to remove image.");
+    } finally {
+      setRemovingImageId(null);
+    }
+  };
+
+  const handleEdit = async (property: BackendProperty) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/properties/${property._id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        toast.error("Couldn't load property details for editing.");
+        return;
+      }
+      const data = await res.json();
+      const p = data.data || data.property || data;
+      setForm({
+        title: p.title ?? "",
+        type: p.type ?? "",
+        address: (p as { address?: string }).address ?? "",
+        city: p.city ?? "",
+        country: p.country ?? "",
+        surface: p.surface != null ? String(p.surface) : "",
+        rooms: p.rooms != null ? String(p.rooms) : "",
+        price: p.price != null ? String(p.price) : "",
+        description: p.description ?? "",
+      });
+      if (p.location?.coordinates && Array.isArray(p.location.coordinates) && p.location.coordinates.length >= 2) {
+        const [lon, lat] = p.location.coordinates;
+        setMapPosition([lat, lon]);
+      }
+      setEditingPropertyId(property._id);
+      setImageFiles([]);
+      setImagesCount(0);
+      setExistingPropertyImages(
+        Array.isArray(p.images)
+          ? p.images.map((img: { url: string; publicId?: string; _id?: unknown }) => ({
+              url: img.url,
+              publicId: img.publicId,
+              _id: img._id != null ? String(img._id) : undefined,
+            }))
+          : []
+      );
+      setActiveStep(1);
+      toast.success("Property loaded for editing");
+      setIsFormOpen(true);
+    } catch (err) {
+      console.error("Error loading property for edit:", err);
+      toast.error("An unexpected error occurred while loading the property.");
+    }
   };
 
   const handleSubmit = async () => {
@@ -234,7 +418,7 @@ export default function MyProperties() {
       const token = localStorage.getItem("token");
 
       if (!form.title || !form.type || !form.city || !form.price) {
-        alert("Please fill Title, Type, City and Price before submitting.");
+        toast.error("Please fill the required fields: Title, Type, City, and Price.");
         return;
       }
 
@@ -261,8 +445,13 @@ export default function MyProperties() {
         formData.append(`image${index + 1}`, file);
       });
 
-      const response = await fetch(`${API_URL}/properties`, {
-        method: "POST",
+      const url = editingPropertyId
+        ? `${API_URL}/properties/${editingPropertyId}`
+        : `${API_URL}/properties`;
+      const method = editingPropertyId ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: token
           ? {
               Authorization: `Bearer ${token}`,
@@ -273,18 +462,17 @@ export default function MyProperties() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Failed to create property:", errorText);
-        alert("Failed to create property. Please check your inputs.");
+        console.error(editingPropertyId ? "Failed to update property:" : "Failed to create property:", errorText);
+        toast.error(editingPropertyId ? "Update failed. Please check your inputs." : "Creation failed. Please check your inputs.");
         return;
       }
 
-      // Optionnel: const data = await response.json();
-      // console.log("Property created:", data);
-
+      toast.success(editingPropertyId ? "Property updated successfully" : "Property created successfully");
       closeForm();
+      await loadMyProperties();
     } catch (err) {
-      console.error("Error while creating property:", err);
-      alert("An unexpected error occurred while creating the property.");
+      console.error(editingPropertyId ? "Error while updating property:" : "Error while creating property:", err);
+      toast.error("An unexpected error occurred.");
     }
   };
 
@@ -316,7 +504,15 @@ export default function MyProperties() {
             <button
               className="px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm bg-brand-500 hover:bg-brand-600"
               type="button"
-              onClick={() => setIsFormOpen(true)}
+              onClick={() => {
+                setForm(initialFormState);
+                setEditingPropertyId(null);
+                setImageFiles([]);
+                setImagesCount(0);
+                setExistingPropertyImages([]);
+                setActiveStep(1);
+                setIsFormOpen(true);
+              }}
             >
               + Add Property
             </button>
@@ -387,9 +583,8 @@ export default function MyProperties() {
               >
                 {/* Image block */}
                 <div className="relative overflow-hidden">
-                  {/* TODO: replace placeholder with real image URL when wired */}
                   <img
-                    src="https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                    src={resolveImageUrl(property.images?.[0]?.url)}
                     alt={property.title}
                     className="object-cover w-full h-52"
                   />
@@ -406,9 +601,6 @@ export default function MyProperties() {
                         </span>
                       )}
                     </div>
-                    <button className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-black/60 backdrop-blur">
-                      ♥
-                    </button>
                   </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div>
@@ -446,19 +638,35 @@ export default function MyProperties() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
                     <div className="flex items-center gap-1 text-xs text-amber-500">
                       ★★★★★
                       <span className="ml-1 text-[11px] text-gray-500 dark:text-gray-400">
                         4.9
                       </span>
                     </div>
-                    <Link
-                      to={`/my-properties/${property._id}`}
-                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900"
-                    >
-                      View details
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/my-properties/${property._id}`}
+                        className="px-3 py-1.5 text-xs font-semibold text-white rounded-full bg-brand-500 hover:bg-brand-600 dark:bg-brand-500 dark:hover:bg-brand-600 transition-colors"
+                      >
+                        View details
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleEdit(property); }}
+                        className="px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-200 rounded-full hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-400 dark:border-brand-500/30 dark:hover:bg-brand-500/25 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(property); }}
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-error-600 rounded-full hover:bg-error-700 dark:bg-error-600 dark:hover:bg-error-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -471,13 +679,12 @@ export default function MyProperties() {
                 key={property._id}
                 className="flex flex-col overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-gray-900 dark:border-gray-800 md:flex-row"
               >
-                {/* Image */}
-                <div className="relative w-full overflow-hidden md:w-64 lg:w-72">
-                  {/* TODO: replace placeholder with real image URL when wired */}
+                {/* Image - fixed height so all list cards have the same size */}
+                <div className="relative w-full overflow-hidden md:w-64 lg:w-72 h-52 md:h-52 shrink-0">
                   <img
-                    src="https://images.pexels.com/photos/439227/pexels-photo-439227.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                    src={resolveImageUrl(property.images?.[0]?.url)}
                     alt={property.title}
-                    className="object-cover w-full h-52 md:h-full"
+                    className="object-cover w-full h-full"
                   />
                   <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
                     <div className="flex flex-wrap gap-2">
@@ -497,25 +704,22 @@ export default function MyProperties() {
                     <div className="text-sm font-semibold text-white">
                       {formattedPrice(property.price)}
                     </div>
-                    <button className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-black/60 backdrop-blur">
-                      ♥
-                    </button>
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex flex-col flex-1 p-4 space-y-3 md:p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 md:text-base dark:text-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-gray-900 md:text-base dark:text-white mb-1">
                         {property.title}
                       </h3>
-                      <p className="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <p className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-block w-1.5 h-1.5 mr-2 bg-emerald-500 rounded-full" />
                         {property.city}, {property.country || "Tunisia"}
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full dark:bg-indigo-500/10 dark:text-indigo-300">
+                    <span className="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full dark:bg-indigo-500/10 dark:text-indigo-300 shrink-0">
                       {property.type}
                     </span>
                   </div>
@@ -541,19 +745,35 @@ export default function MyProperties() {
                     </li>
                   </ul>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800 gap-2 flex-wrap">
                     <div className="flex items-center gap-1 text-xs text-amber-500">
                       ★★★★★
                       <span className="ml-1 text-[11px] text-gray-500 dark:text-gray-400">
                         4.9 Excellent
                       </span>
                     </div>
-                    <Link
-                      to={`/my-properties/${property._id}`}
-                      className="px-4 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900"
-                    >
-                      View details
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/my-properties/${property._id}`}
+                        className="px-4 py-1.5 text-xs font-semibold text-white rounded-full bg-brand-500 hover:bg-brand-600 dark:bg-brand-500 dark:hover:bg-brand-600 transition-colors"
+                      >
+                        View details
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleEdit(property); }}
+                        className="px-4 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-200 rounded-full hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-400 dark:border-brand-500/30 dark:hover:bg-brand-500/25 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(property); }}
+                        className="px-4 py-1.5 text-xs font-semibold text-white bg-error-600 rounded-full hover:bg-error-700 dark:bg-error-600 dark:hover:bg-error-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -577,7 +797,7 @@ export default function MyProperties() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Add New Property
+                  {editingPropertyId ? "Edit Property" : "Add New Property"}
                 </h2>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Step {activeStep} of 3
@@ -965,6 +1185,92 @@ export default function MyProperties() {
                         JPG, PNG up to 10MB each
                       </p>
                     </label>
+
+                    {/* Existing property images (when editing) */}
+                    {existingPropertyImages.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">
+                          Current property images ({existingPropertyImages.length})
+                        </p>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                          {existingPropertyImages.map((img, index) => (
+                            <div
+                              key={img._id ?? img.publicId ?? img.url ?? index}
+                              className="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 aspect-square"
+                            >
+                              <img
+                                src={resolveImageUrl(img.url)}
+                                alt={`Current ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-600 text-white">
+                                {index + 1}
+                              </span>
+                              {img._id && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleRemoveExistingImage(img._id!);
+                                  }}
+                                  disabled={removingImageId === img._id}
+                                  className="absolute top-1 right-1 flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 disabled:opacity-50"
+                                  title="Remove image"
+                                  aria-label="Remove image"
+                                >
+                                  {removingImageId === img._id ? (
+                                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preview of newly selected images */}
+                    {imageFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400">
+                          {existingPropertyImages.length > 0 ? "New images" : "Selected images"} ({imageFiles.length})
+                        </p>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                          {imageFiles.map((file, index) => (
+                            <div
+                              key={`${file.name}-${index}`}
+                              className="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 aspect-square"
+                            >
+                              <ImagePreviewThumb file={file} alt={`Preview ${index + 1}`} />
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/60 text-white">
+                                {index + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setImageFiles((prev) => prev.filter((_, i) => i !== index));
+                                  setImagesCount((prev) => Math.max(0, prev - 1));
+                                }}
+                                className="absolute top-1 right-1 flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                title="Remove image"
+                                aria-label="Remove image"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1074,6 +1380,73 @@ export default function MyProperties() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal - z-index above AppHeader so it covers the whole screen */}
+      {deleteConfirm.isOpen && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                  <svg
+                    className="w-6 h-6 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Confirm deletion
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    This action can't be undone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                Are you sure you want to delete this property?
+              </p>
+              <p className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+                "{deleteConfirm.propertyTitle}"
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                All associated data will be permanently removed and cannot be recovered.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80">
+              <button
+                type="button"
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+              >
+                Delete permanently
+              </button>
             </div>
           </div>
         </div>
