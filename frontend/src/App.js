@@ -79,6 +79,8 @@ import RentalPayment from "./pages/RentalPayment";
 import Signin from "./pages/Signin";
 import FirstStepForm from "./features/multi-step-form/FirstStepForm";
 import FormContainer from "./features/multi-step-form/FormContainer";
+import AgencyDoc from "./features/auth/AgencyDocsForm";
+import CINForm from "./features/auth/CINForm";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -97,7 +99,7 @@ const COMPONENT_MAP = {
   ForgotPassword, ResetPassword,
   Wishlist, Cart, Checkout, InvoiceDetails,
   Notifications, Maintenance, ComingSoon,
-  Signin, Index2, Index3, FirstStepForm, FormContainer
+  Signin, Index2, Index3, FirstStepForm, FormContainer, AgencyDoc, CINForm
 }
 
 const LanguageDetector = () => {
@@ -122,6 +124,8 @@ const AUTH_ROUTES = [
   '/forgot-password', '/fr/forgot-password',
   '/reset-password', '/fr/reset-password',
   '/form',
+  '/agencydoc', '/fr/agencydoc',
+  '/cinform', '/fr/cinform',
 ];
 
 const AppLayout = ({ children }) => {

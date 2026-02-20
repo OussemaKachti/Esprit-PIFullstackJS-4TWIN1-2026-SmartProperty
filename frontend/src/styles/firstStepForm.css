@@ -234,5 +234,39 @@
 
   .create-property-title {
     font-size: 22px;
+
+  }
+}
+
+@media (max-width: 768px) {
+  .create-property-container {
+    flex-direction: column;
+  }
+
+  .create-property-image {
+    height: 250px;
+  }
+
+  .create-property-form {
+    padding: 40px 20px;
+  }
+
+  .create-property-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .create-property-field.half {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .create-property-form {
+    padding: 30px 15px;
+  }
+
+  .create-property-title {
+    font-size: 22px;
   }
 }

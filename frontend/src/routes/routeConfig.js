@@ -15,7 +15,9 @@ export const AUTH_ROUTES = [
   '/signin',
   '/forgot-password',
   '/reset-password',
-  '/form'
+  '/form',
+  '/agencydoc',
+  '/cinform'
 ];
 
 /**
@@ -35,6 +37,8 @@ export const ROUTES = [
   { path: '/forgot-password', component: 'ForgotPassword' },
   { path: '/reset-password', component: 'ResetPassword' },
   { path: '/form', component: 'FormContainer' },
+  { path: '/agencydoc', component: 'AgencyDoc' },
+  { path: '/cinform', component: 'CINForm' },
 
   // Protected Routes
   { path: '/dashboard', component: 'Dashboard', protected: true },
