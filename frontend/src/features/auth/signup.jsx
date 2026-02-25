@@ -73,9 +73,11 @@ export default function Signup() {
       setIsLoading(false);
 
       if (response.ok) {
-        if (role === "AGENCY") navigate("/agencydoc");
-        else if (role === "OWNER") navigate("/cinform");
-        else navigate("/");
+        if (role === "AGENCY") {
+          navigate("/agencydoc");
+        } else {
+          navigate("/cinform");
+        }
       } else {
         const msg = data.message || "Registration failed.";
         setFieldErrors((prev) => ({ ...prev, login: msg }));

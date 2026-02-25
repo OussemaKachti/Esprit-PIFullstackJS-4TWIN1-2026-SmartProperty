@@ -56,11 +56,52 @@ exports.login = async (req, res) => {
         lastName: user.lastName,
         phone: user.phone,
         role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled
+        twoFactorEnabled: user.twoFactorEnabled,
+        hasCompletedOnboarding: user.hasCompletedOnboarding,
       }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Mark multi-step onboarding / listing form as completed for current user
+exports.completeOnboarding = async (req, res) => {
+  try {
+    const userId = req.user && (req.user._id || req.user.id || req.user.userId);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (!user.hasCompletedOnboarding) {
+      user.hasCompletedOnboarding = true;
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Onboarding status updated',
+      hasCompletedOnboarding: user.hasCompletedOnboarding,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
   }
 };
 
@@ -455,7 +496,8 @@ exports.validate2FAToken = async (req, res) => {
         lastName: user.lastName,
         phone: user.phone,
         role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled
+        twoFactorEnabled: user.twoFactorEnabled,
+        hasCompletedOnboarding: user.hasCompletedOnboarding,
       }
     });
     

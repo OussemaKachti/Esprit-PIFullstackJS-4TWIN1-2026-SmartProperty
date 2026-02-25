@@ -18,9 +18,6 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
-app.use('/api/tone-changer', toneChangerApi);
-
-
 
 // Security middleware - Configure helmet to allow cross-origin resources
 app.use(helmet({
@@ -34,6 +31,9 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
+
+// Tone changer API (with CORS enabled)
+app.use('/api/tone-changer', toneChangerApi);
 
 // Serve static files from uploads directory with CORS headers
 app.use('/uploads', (req, res, next) => {
