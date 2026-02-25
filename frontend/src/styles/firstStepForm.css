@@ -42,7 +42,7 @@
   flex: 1 1 60%;
   display: flex;
   flex-direction: column;
-  padding: 40px 280px 0 280px;
+  padding: 50px 280px 0 280px;
   box-sizing: border-box;
 }
 
@@ -100,7 +100,7 @@
 .create-property-field {
   max-width: var(--container-width);
   width: 100%;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 10px auto;
 }
 
 .create-property-label {
@@ -123,6 +123,10 @@
   background: #fff;
 }
 
+.address-input-wrapper {
+  position: relative;
+}
+
 .create-property-input-wrapper:focus-within {
   border-color: var(--color-black);
 }
@@ -138,6 +142,36 @@
 
 .create-property-input-wrapper select {
   cursor: pointer;
+}
+
+.address-suggestions {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.address-suggestion-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-black);
+}
+
+.address-suggestion-item:hover {
+  background: var(--color-gray-100);
 }
 
 
@@ -157,7 +191,7 @@
 .create-property-map {
   max-width: var(--container-width);
   width: 100%;
-  margin: 30px auto;
+  margin: 20px auto;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -210,7 +244,7 @@
   }
 
   .create-property-image {
-    height: 250px;
+    display: none;
   }
 
   .create-property-form {

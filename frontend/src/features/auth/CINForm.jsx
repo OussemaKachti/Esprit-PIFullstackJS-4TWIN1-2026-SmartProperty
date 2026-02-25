@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ScanZone from "./ScanZone";
 import CINPreview from "./CINPreview";
-import "../../styles/fourthStepForm.css";
+import "../../styles/agencyDocsForm.css";
 
 const CINForm = () => {
   const navigate = useNavigate();
@@ -43,29 +43,30 @@ const CINForm = () => {
   };
 
   return (
-    <div className="fs-container">
-      <div className="fs-image">
+    <div className="ad-container">
+      <div className="ad-image">
         <img
           src="https://images.pexels.com/photos/9060306/pexels-photo-9060306.jpeg"
-          alt="property"
+          alt="identity"
         />
       </div>
 
-      <div className="fs-form">
-        <div className="fs-header">
-          <div className="fs-step-indicator">AGENT VERIFICATION</div>
-          <div className="fs-step-title">Identity Check</div>
+      <div className="ad-form">
+        <div className="ad-header">
+          <div className="ad-step-indicator">AGENT VERIFICATION</div>
+          <div className="ad-step-title">Identity Check</div>
         </div>
 
-        <div className="fs-progress">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="fs-bar active" />
-          ))}
+        <div className="ad-progress">
+          <div className="ad-bar active" />
+          <div className="ad-bar active" />
+          <div className="ad-bar active" />
+          <div className="ad-bar active" />
         </div>
 
-        <div className="fs-title">Scan your CIN</div>
+        <div className="ad-title">Scan your CIN</div>
 
-        <p className="fs-subtitle">
+        <p className="ad-subtitle">
           Upload both sides of your Tunisian National Identity Card (CIN).
           Your information is encrypted and used only for verification.
         </p>
@@ -96,7 +97,7 @@ const CINForm = () => {
           />
         )}
 
-        <div className="fs-notice">
+        <div className="ad-notice">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
@@ -106,19 +107,19 @@ const CINForm = () => {
         </div>
 
         <button
-          className={`fs-button ${submitting ? "loading" : ""}`}
+          className={`ad-button ${submitting ? "loading" : ""}`}
           onClick={handleSubmit}
           disabled={submitting}
         >
           {submitting ? (
-            <><span className="fs-spinner" />Verifying…</>
+            <><span className="ad-spinner" />Verifying…</>
           ) : (
             "Submit & Finish"
           )}
         </button>
 
         <button
-          style={{ maxWidth: "var(--container-width)", width: "100%", margin: "0 auto 20px auto", display: "flex", justifyContent: "center", background: "none", border: "none", fontSize: "13px", color: "var(--color-gray-600)", cursor: "pointer", textDecoration: "underline" }}
+          className="ad-skip"
           onClick={() => navigate("/")}
         >
           Skip for now — complete later

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Enum pour les rôles
 const UserRole = {
   ADMIN: 'ADMIN',
   AGENCY: 'AGENCY',
@@ -35,6 +34,10 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+    },
+    hasCompletedOnboarding: {
+      type: Boolean,
+      default: false,
     },
     role: {
       type: String,
@@ -74,11 +77,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Index pour recherche
-// userSchema.index({ email: 1 });
-// userSchema.index({ login: 1 });
-
-// Méthode pour générer le reset token
 userSchema.methods.getResetPasswordToken = function() {
   const crypto = require('crypto');
   

@@ -342,6 +342,220 @@
     color: var(--color-black);
 }
 
+/* ── CIN specific layout (reuses agency doc look) ── */
+.fs-cin-row {
+    max-width: var(--container-width);
+    width: 100%;
+    margin: 0 auto 20px auto;
+    display: flex;
+    gap: 16px;
+}
+
+.fs-cin-row > * {
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .fs-cin-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+/* ScanZone styling */
+.sz-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sz-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.sz-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-gray-700);
+    letter-spacing: 0.05em;
+}
+
+.sz-hint {
+    font-size: 11px;
+    color: var(--color-gray-600);
+}
+
+.sz-zone {
+    border: 2px dashed var(--color-gray-400);
+    border-radius: 14px;
+    padding: 22px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    text-align: center;
+    background: var(--color-gray-100);
+}
+
+.sz-zone.drag-over,
+.sz-zone:hover {
+    border-color: var(--color-black);
+    background: #ebebeb;
+}
+
+.sz-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sz-upload-text {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.sz-format {
+    font-size: 11px;
+    color: var(--color-gray-600);
+}
+
+.sz-error {
+    font-size: 12px;
+    color: var(--color-error);
+}
+
+.sz-preview {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--color-gray-200);
+}
+
+.sz-preview img {
+    display: block;
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+}
+
+.sz-clear {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-gray-700);
+    transition: background 0.2s, color 0.2s;
+}
+
+.sz-clear:hover {
+    background: var(--color-error);
+    color: #fff;
+}
+
+.sz-ready-badge {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.95);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* CINPreview styling */
+.cp-wrap {
+    max-width: var(--container-width);
+    width: 100%;
+    margin: 0 auto 18px auto;
+}
+
+.cp-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-gray-700);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.cp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cp-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--color-gray-200);
+    background: #fff;
+}
+
+.cp-thumb {
+    width: 50px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.cp-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.cp-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cp-meta {
+    font-size: 11px;
+    color: var(--color-gray-600);
+}
+
+.cp-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
 @media (max-width: 1200px) {
     .ad-form {
         padding: 40px 80px;
