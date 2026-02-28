@@ -1,0 +1,162 @@
+/* Index3 banner & search — organised layout for Tunisian market */
+
+.index3-banner .index3-banner-content {
+  margin-bottom: 0;
+}
+
+.index3-banner{
+    height: 900px;
+}
+
+.index3-banner-subtitle {
+  max-width: 520px;
+  margin-bottom: 1.25rem !important;
+  line-height: 1.6;
+  opacity: 0.95;
+}
+
+.index3-banner .btn-lg {
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* Search card */
+.index3-banner-search {
+  margin-top: 2.5rem;
+  margin-bottom: -4rem;
+  padding: 1.5rem 1.5rem 1.75rem !important;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 991.98px) {
+  .index3-banner-search {
+    margin-top: 1.75rem;
+    margin-bottom: -3rem;
+    padding: 1.25rem !important;
+  }
+}
+
+.white-icon {
+  color: white;
+}
+
+.index3-search-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.index3-search-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-900, #1a1a1a);
+}
+
+.index3-search-tabs {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 0.5rem;
+}
+
+.index3-search-tabs .nav-link {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--gray-200, #e5e5e5);
+  color: var(--gray-700, #555);
+  transition: all 0.2s ease;
+}
+
+.index3-search-tabs .nav-link:hover {
+  border-color: var(--gray-400, #999);
+  color: var(--dark, #000);
+}
+
+.index3-search-tabs .nav-link.active {
+  background: var(--dark, #1a1a1a);
+  border-color: var(--dark, #1a1a1a);
+  color: #fff;
+}
+
+.index3-tab-content {
+  padding-top: 0;
+}
+
+.index3-search-form .form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-700, #555);
+  margin-bottom: 0.35rem;
+  text-transform: none;
+}
+
+.index3-search-form .form-control,
+.index3-search-form .form-select {
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.index3-search-form .form-control:focus,
+.index3-search-form .form-select:focus {
+  border-color: var(--primary, #0d6efd);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.index3-currency {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-600, #666);
+  background: var(--gray-100, #f5f5f5);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  min-width: 2.75rem;
+  justify-content: center;
+}
+
+.index3-search-form .input-group .form-control {
+  border-radius: 8px 0 0 8px;
+}
+
+.index3-search-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .index3-search-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .index3-search-tabs {
+    justify-content: stretch;
+  }
+
+  .index3-search-tabs .nav-link {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .index3-search-btn {
+    margin-top: 0.25rem;
+  }
+}
