@@ -72,27 +72,22 @@ const Header = () => {
                 <li className="active">
                   <LocalizedLink to="/">{t('navigation.home')}</LocalizedLink>
                 </li>
-                <li className="has-submenu">
-                  <a href="#">{t('navigation.buyProperty')} <i className="material-icons-outlined">expand_more</i></a>
-                  <ul className="submenu">
-                    <li><LocalizedLink to="/buy-property-grid">{t('navigation.buyGrid')}</LocalizedLink></li>
-                    <li><LocalizedLink to="/buy-property-list">{t('navigation.buyList')}</LocalizedLink></li>
-                  </ul>
-                </li>
-                <li className="has-submenu">
-                  <a href="#">{t('navigation.rentProperty')} <i className="material-icons-outlined">expand_more</i></a>
-                  <ul className="submenu">
-                    <li><LocalizedLink to="/rent-property-grid">{t('navigation.rentGrid')}</LocalizedLink></li>
-                    <li><LocalizedLink to="/rent-property-list">{t('navigation.rentList')}</LocalizedLink></li>
-                  </ul>
-                </li>
-                <li className="has-submenu">
-                  <a href="#">{t('navigation.agency')} <i className="material-icons-outlined">expand_more</i></a>
-                  <ul className="submenu">
-                    <li><LocalizedLink to="/agency-grid">{t('navigation.agencyGrid')}</LocalizedLink></li>
-                    <li><LocalizedLink to="/agency-list">{t('navigation.agencyList')}</LocalizedLink></li>
-                  </ul>
-                </li>
+               <li>
+  <LocalizedLink to="/buy-property-grid">
+    {t('navigation.buyProperty')}
+  </LocalizedLink>
+</li>
+
+<li>
+  <LocalizedLink to="/rent-property-grid">
+    {t('navigation.rentProperty')}
+  </LocalizedLink>
+</li>
+               <li>
+  <LocalizedLink to="/agency-grid">
+    {t('navigation.agency')}
+  </LocalizedLink>
+</li>
                 <li><LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink></li>
                 <li><LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink></li>
               </ul>
