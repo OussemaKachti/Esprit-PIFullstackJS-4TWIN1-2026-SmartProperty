@@ -66,6 +66,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Tone changer API (with CORS enabled)
+app.use('/api/tone-changer', toneChangerApi);
+
 // Serve static files from uploads directory with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');

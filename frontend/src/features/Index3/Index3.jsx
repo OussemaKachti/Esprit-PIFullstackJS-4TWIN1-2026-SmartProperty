@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import './index3-banner.css';
 
 const Index3 = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Filter states
   const [buyFilters, setBuyFilters] = useState({
     type: '',
     location: '',
@@ -21,7 +21,6 @@ const Index3 = () => {
     maxPrice: ''
   });
 
-  // Filter change handlers
   const handleBuyChange = (field, value) => {
     setBuyFilters(prev => ({ ...prev, [field]: value }));
   };
@@ -30,7 +29,6 @@ const Index3 = () => {
     setRentFilters(prev => ({ ...prev, [field]: value }));
   };
 
-  // Search handlers
   const handleBuySearch = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -58,7 +56,6 @@ const Index3 = () => {
   };
 
   useEffect(() => {
-    // Force enable scrolling - more comprehensive approach
     const enableScrolling = () => {
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
@@ -66,20 +63,15 @@ const Index3 = () => {
       document.documentElement.style.overflow = 'auto';
       document.documentElement.style.height = 'auto';
       
-      // Remove any potential scroll-blocking classes
       document.body.classList.remove('no-scroll', 'modal-open', 'overflow-hidden');
       document.documentElement.classList.remove('no-scroll', 'modal-open', 'overflow-hidden');
     };
 
-    // Call immediately
     enableScrolling();
 
-    // Initialize plugins
     const initializePlugins = () => {
-      // Ensure scrolling is still enabled
       enableScrolling();
 
-      // Initialize AOS animations
       if (window.AOS) {
         window.AOS.refresh();
         window.AOS.init({
@@ -88,14 +80,12 @@ const Index3 = () => {
         });
       }
 
-      // Initialize Select2 dropdowns
       if (window.jQuery && window.jQuery.fn.select2) {
         window.jQuery('.select2').select2({
           minimumResultsForSearch: -1,
         });
       }
 
-      // Initialize Swiper sliders
       if (window.Swiper) {
         new window.Swiper('.partner-slider', {
           slidesPerView: 6,
@@ -115,7 +105,6 @@ const Index3 = () => {
         });
       }
 
-      // Initialize CounterUp
       if (window.jQuery && window.jQuery.fn.counterUp) {
         window.jQuery('.counter').counterUp({
           delay: 10,
@@ -123,9 +112,7 @@ const Index3 = () => {
         });
       }
 
-      // Re-run main script functions
       if (window.jQuery) {
-        // Mobile menu toggle
         window.jQuery('#mobile_btn').off('click').on('click', function() {
           window.jQuery('.main-menu-wrapper').addClass('open');
         });
@@ -134,7 +121,6 @@ const Index3 = () => {
           window.jQuery('.main-menu-wrapper').removeClass('open');
         });
 
-        // Dropdown submenus
         window.jQuery('.has-submenu > a').off('click').on('click', function(e) {
           if (window.jQuery(window).width() < 992) {
             e.preventDefault();
@@ -147,233 +133,162 @@ const Index3 = () => {
 
     const timer = setTimeout(initializePlugins, 300);
 
-    // Also check and re-enable scrolling after a delay
     const scrollCheckTimer = setTimeout(enableScrolling, 500);
 
-    // Cleanup
     return () => {
       clearTimeout(timer);
       clearTimeout(scrollCheckTimer);
     };
   }, []);
+
+  const PROPERTY_TYPES = [
+    { value: 'APARTMENT', labelKey: 'search.typeApartment' },
+    { value: 'HOUSE', labelKey: 'search.typeHouse' },
+    { value: 'VILLA', labelKey: 'search.typeVilla' },
+    { value: 'STUDIO', labelKey: 'search.typeStudio' },
+    { value: 'LAND', labelKey: 'search.typeLand' },
+    { value: 'COMMERCIAL', labelKey: 'search.typeCommercial' },
+    { value: 'OFFICE', labelKey: 'search.typeOffice' },
+    { value: 'OTHER', labelKey: 'search.typeOther' },
+  ];
+
+  const TUNISIAN_CITIES = [
+    { value: 'Tunis', labelKey: 'propertySection.location1' },
+    { value: 'Sousse', labelKey: 'propertySection.location2' },
+    { value: 'Sfax', labelKey: 'propertySection.location3' },
+    { value: 'Nabeul', labelKey: 'propertySection.location4' },
+    { value: 'Hammamet', labelKey: 'propertySection.location5' },
+    { value: 'Monastir', labelKey: 'propertySection.location6' },
+    { value: 'Bizerte', labelKey: 'propertySection.location7' },
+    { value: 'Gabès', labelKey: 'propertySection.location8' },
+    { value: 'La Marsa', labelKey: 'propertySection.location9' },
+    { value: 'Carthage', labelKey: 'propertySection.location10' },
+  ];
+
+  const renderSearchForm = (isBuy) => {
+    const filters = isBuy ? buyFilters : rentFilters;
+    const handleChange = isBuy ? handleBuyChange : handleRentChange;
+    const onSubmit = isBuy ? handleBuySearch : handleRentSearch;
+    return (
+      <form onSubmit={onSubmit} className="index3-search-form">
+        <div className="row g-3 align-items-end">
+          <div className="col-md-6 col-lg-3">
+            <label className="form-label">{t('search.typeRental')}</label>
+            <select
+              className="form-control form-select"
+              value={filters.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+            >
+              <option value="">{t('search.typePlaceholder')}</option>
+              {PROPERTY_TYPES.map(({ value, labelKey }) => (
+                <option key={value} value={value}>{t(labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-6 col-lg-3">
+            <label className="form-label">{t('search.location')}</label>
+            <select
+              className="form-control form-select"
+              value={filters.location}
+              onChange={(e) => handleChange('location', e.target.value)}
+            >
+              <option value="">{t('search.locationPlaceholder')}</option>
+              {TUNISIAN_CITIES.map(({ value, labelKey }) => (
+                <option key={value} value={value}>{t(labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-6 col-md-4 col-lg-2">
+            <label className="form-label">{t('search.minPrice')}</label>
+            <div className="input-group">
+              <input
+                type="number"
+                className="form-control"
+                placeholder="0"
+                min="0"
+                value={filters.minPrice}
+                onChange={(e) => handleChange('minPrice', e.target.value)}
+              />
+              <span className="input-group-text index3-currency">{t('search.currency')}</span>
+            </div>
+          </div>
+          <div className="col-6 col-md-4 col-lg-2">
+            <label className="form-label">{t('search.maxPrice')}</label>
+            <div className="input-group">
+              <input
+                type="number"
+                className="form-control"
+                placeholder="—"
+                min="0"
+                value={filters.maxPrice}
+                onChange={(e) => handleChange('maxPrice', e.target.value)}
+              />
+              <span className="input-group-text index3-currency">{t('search.currency')}</span>
+            </div>
+          </div>
+          <div className="col-12 col-md-4 col-lg-2">
+            <button type="submit" className="btn btn-primary w-100 index3-search-btn">
+              <i className="material-icons-outlined me-1">search</i>
+              {t('search.searchBtn')}
+            </button>
+          </div>
+        </div>
+      </form>
+    );
+  };
+
   return (
     <>
-			<section className="banner-section-three aos">
+			<section className="banner-section-three index3-banner aos">
 				<div className="container">
-
-					
 					<div className="row align-items-center justify-content-between">
-
-						<div className="col-xxl-6 col-lg-7">
-							<div className="banner-content" data-aos="fade-up">
+						<div className="col-xxl-7 col-lg-8">
+							<div className="banner-content index3-banner-content" data-aos="fade-up">
 								<div className="banner-badge d-inline-flex align-items-center">
 									<span className="badge bg-warning me-2">{t('banner.new')}</span>
 									<p className="mb-0">{t('banner.tagline')}</p>
 								</div>
 								<h1>{t('banner.title1')} <span>{t('banner.title2')}</span></h1>
-								<p>{t('banner.subtitle')}</p>
-								<Link to="/buy-property-grid" className="btn btn-primary"><i className="material-icons-outlined me-2">lock</i>{t('banner.listProperty')}</Link>
+								<p className="index3-banner-subtitle">{t('banner.subtitle')}</p>
+								<Link to="/form?step=1" className="btn btn-primary btn-lg">
+									<i className="material-icons-outlined me-2">add_home</i>
+									{t('banner.listProperty')}
+								</Link>
 							</div>
-						</div> 
-
-						
-
+						</div>
 					</div>
-					
 
-					
 					<div className="row">
-
-						<div className="col-lg-12">
-							<div className="banner-search banner-search-three"  data-aos="fade-down">
-								<div className="banner-tab">
-
-									
-									<div className="row">
-										<div className="col-lg-4">
-											<div>
-												<h5 className="mb-0">{t('search.title')}</h5>
-											</div>
-										</div> 
-
-										<div className="col-lg-8">
-											<div>
-												<ul className="nav nav-tabs justify-content-lg-end" role="tablist">
-													<li className="nav-item" role="presentation">
-														<a className="nav-link active" data-bs-toggle="tab" href="#buy_property" role="tab" aria-controls="buy_property" aria-selected="true"> 
-															<i className="material-icons-outlined me-2">shopping_basket</i>{t('search.buyProperty')}
-														</a>
-													</li>
-													<li className="nav-item" role="presentation">
-														<a className="nav-link" data-bs-toggle="tab" href="#rent_property" role="tab" aria-controls="rent_property" aria-selected="false">
-															<i className="material-icons-outlined me-2">king_bed</i>{t('search.rentProperty')}
-														</a>
-													</li>
-												</ul>
-											</div>
-										</div> 
-
-									</div>
-									
-
+						<div className="col-12">
+							<div className="banner-search banner-search-three index3-banner-search" data-aos="fade-down">
+								<div className="index3-search-header">
+									<h5 className="index3-search-title">{t('search.title')}</h5>
+									<ul className="nav nav-tabs index3-search-tabs" role="tablist">
+										<li className="nav-item" role="presentation">
+											<a className="nav-link active" data-bs-toggle="tab" href="#buy_property" role="tab" aria-controls="buy_property" aria-selected="true">
+<span class="material-icons-outlined me-2 white-icon">
+  home
+</span>												{t('search.buyProperty')}
+											</a>
+										</li>
+										<li className="nav-item" role="presentation">
+											<a className="nav-link" data-bs-toggle="tab" href="#rent_property" role="tab" aria-controls="rent_property" aria-selected="false">
+												<i className="material-icons-outlined me-2">king_bed</i>
+												{t('search.rentProperty')}
+											</a>
+										</li>
+									</ul>
 								</div>
-								<div className="tab-content">
+								<div className="tab-content index3-tab-content">
 									<div className="tab-pane fade show active" id="buy_property" role="tabpanel">
-										<div>
-											<form onSubmit={handleBuySearch}>
-
-												
-												<div className="row g-3">
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">{t('search.typeRental')}</label>
-															<select 
-																className="form-control"
-																value={buyFilters.type}
-																onChange={(e) => handleBuyChange('type', e.target.value)}
-															>
-																<option value="">{t('search.typePlaceholder')}</option>
-																<option value="APARTMENT">Apartment</option>
-																<option value="HOUSE">House</option>
-																<option value="VILLA">Villa</option>
-																<option value="STUDIO">Studio</option>
-																<option value="LAND">Land</option>
-																<option value="COMMERCIAL">Commercial</option>
-																<option value="OFFICE">Office</option>
-																<option value="VACATION_RENTAL">Vacation Rental</option>
-																<option value="OTHER">Other</option>
-															</select>
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">{t('search.location')}</label>
-															<input 
-																type="text" 
-																className="form-control" 
-																placeholder={t('search.searchLocation')}
-																value={buyFilters.location}
-																onChange={(e) => handleBuyChange('location', e.target.value)}
-															/>
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div className="d-flex align-items-end">
-															<div className="flex-fill me-3">
-																<label className="form-label">{t('search.minPrice')}</label>
-																<input 
-																	type="number" 
-																	className="form-control" 
-																	placeholder="$"
-																	value={buyFilters.minPrice}
-																	onChange={(e) => handleBuyChange('minPrice', e.target.value)}
-																/>
-															</div>
-															<div className="flex-fill me-3">
-																<label className="form-label">{t('search.maxPrice')}</label>
-																<input 
-																	type="number" 
-																	className="form-control" 
-																	placeholder="$"
-																	value={buyFilters.maxPrice}
-																	onChange={(e) => handleBuyChange('maxPrice', e.target.value)}
-																/>
-															</div>
-															<div>
-																<button type="submit" className="btn btn-primary"><span><i className='material-icons-outlined'>search</i></span></button>
-															</div>
-														</div>
-													</div> 
-
-												</div>
-												
-												
-											</form>
-										</div>
+										{renderSearchForm(true)}
 									</div>
 									<div className="tab-pane fade" id="rent_property" role="tabpanel">
-										<div>
-											<form onSubmit={handleRentSearch}>
-
-												
-												<div className="row g-3">
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">Type of Property</label>
-															<select 
-																className="form-control"
-																value={rentFilters.type}
-																onChange={(e) => handleRentChange('type', e.target.value)}
-															>
-																<option value="">Select</option>
-																<option value="APARTMENT">Apartment</option>
-																<option value="HOUSE">House</option>
-																<option value="VILLA">Villa</option>
-																<option value="STUDIO">Studio</option>
-																<option value="LAND">Land</option>
-																<option value="COMMERCIAL">Commercial</option>
-																<option value="OFFICE">Office</option>
-																<option value="VACATION_RENTAL">Vacation Rental</option>
-																<option value="OTHER">Other</option>
-															</select>
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div>
-															<label className="form-label">Location</label>
-															<input 
-																type="text" 
-																className="form-control" 
-																placeholder="Search location"
-																value={rentFilters.location}
-																onChange={(e) => handleRentChange('location', e.target.value)}
-															/>
-														</div>
-													</div> 
-
-													<div className="col-lg-4">
-														<div className="d-flex align-items-end">
-															<div className="banner-property-grid flex-fill me-3">
-																<label className="form-label">Min Price</label>
-																<input 
-																	type="number" 
-																	className="form-control" 
-																	placeholder="$"
-																	value={rentFilters.minPrice}
-																	onChange={(e) => handleRentChange('minPrice', e.target.value)}
-																/>
-															</div>
-															<div className="flex-fill me-3">
-																<label className="form-label">Max Price</label>
-																<input 
-																	type="number" 
-																	className="form-control" 
-																	placeholder="$"
-																	value={rentFilters.maxPrice}
-																	onChange={(e) => handleRentChange('maxPrice', e.target.value)}
-																/>
-															</div>
-															<div>
-																<button type="submit" className="btn btn-primary"><span><i className='material-icons-outlined'>search</i></span></button>
-															</div>
-														</div>
-													</div> 
-
-												</div>
-												
-
-											</form>
-										</div>
+										{renderSearchForm(false)}
 									</div>
 								</div>
 							</div>
-						</div> 
-
+						</div>
 					</div>
 					
 
@@ -418,9 +333,9 @@ const Index3 = () => {
 									<span className="bg-pink me-2">
 										<img src="/assets/img/icons/work-icon-03.svg" alt="icon" />
 									</span>
-									<h5>Direct Communication</h5>
+									<h5>{t('work.directTitle')}</h5>
 								</div>
-								<p>Connect instantly with sellers, agents, or property managersÃ¢â‚¬â€no middlemen.</p>
+								<p>{t('work.directDesc')}</p>
 							</div>
 						</div> 
 
@@ -430,9 +345,9 @@ const Index3 = () => {
 									<span className="bg-teal me-2">
 										<img src="/assets/img/icons/work-icon-04.svg" alt="icon" />
 									</span>
-									<h5>Time-Saving </h5>
+									<h5>{t('work.timeSavingTitle')}</h5>
 								</div>
-								<p>No need to hop between sitesÃ¢â‚¬â€everything you need to discover and decide is right here.</p>
+								<p>{t('work.timeSavingDesc')}</p>
 							</div>
 						</div> 
 
@@ -467,7 +382,7 @@ const Index3 = () => {
 									<Link to="/index-3"><img src="/assets/img/home-3/location/location-01.jpg" alt="" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
-											<h5>Ukraine</h5>
+											<h5>{t('propertySection.location1')}</h5>
 											<p>300 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
@@ -484,7 +399,7 @@ const Index3 = () => {
 									<Link to="/index-3"><img src="/assets/img/home-3/location/location-02.jpg" alt="" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
-											<h5>Russia</h5>
+											<h5>{t('propertySection.location2')}</h5>
 											<p>458 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
@@ -501,7 +416,7 @@ const Index3 = () => {
 									<Link to="/index-3"><img src="/assets/img/home-3/location/location-03.jpg" alt="" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
-											<h5>Thailand</h5>
+											<h5>{t('propertySection.location3')}</h5>
 											<p>175 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
@@ -518,7 +433,7 @@ const Index3 = () => {
 									<Link to="/index-3"><img src="/assets/img/home-3/location/location-04.jpg" alt="" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
-											<h5>Azerbaijan</h5>
+											<h5>{t('propertySection.location4')}</h5>
 											<p>155 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
@@ -535,7 +450,7 @@ const Index3 = () => {
 									<Link to="/index-3"><img src="/assets/img/home-3/location/location-05.jpg" alt="" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
-											<h5>Germany</h5>
+											<h5>{t('propertySection.location5')}</h5>
 											<p>265 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">

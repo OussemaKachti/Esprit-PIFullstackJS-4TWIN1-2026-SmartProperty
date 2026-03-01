@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import LocalizedLink from './LocalizedLink';
 
 const Footer = () => {
+  const { t } = useTranslation();
   return (
     <footer className="footer-three footer-dark">
       <div className="footer-bg">
@@ -14,56 +16,47 @@ const Footer = () => {
           <div className="row gy-4">
             <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
-                <h5 className="footer-title">Pages</h5>
+                <h5 className="footer-title">{t('footer.pages')}</h5>
                 <ul className="footer-menu">
-                  <li><LocalizedLink to="/our-team">Our Team</LocalizedLink></li>
-                  <li><LocalizedLink to="/pricing">Pricing Plans</LocalizedLink></li>
-                  <li><LocalizedLink to="/gallery">Gallery</LocalizedLink></li>
-                  <li><a href="#">Settings</a></li>
-                  <li><a href="#">Profile</a></li>
-                  <li><LocalizedLink to="/buy-property-list">Listings</LocalizedLink></li>
+                  <li><LocalizedLink to="/our-team">{t('navigation.ourTeam')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/pricing">{t('navigation.pricing')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/gallery">{t('navigation.gallery')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/buy-property-list">{t('footer.listings')}</LocalizedLink></li>
                 </ul>
               </div>
             </div>
 
             <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
-                <h5 className="footer-title">Company</h5>
+                <h5 className="footer-title">{t('footer.company')}</h5>
                 <ul className="footer-menu">
-                  <li><LocalizedLink to="/about-us">About Us</LocalizedLink></li>
-                  <li><a href="#">Careers</a></li>
-                  <li><LocalizedLink to="/blog-grid">Blog</LocalizedLink></li>
-                  <li><a href="#">Affiliate Program</a></li>
-                  <li><LocalizedLink to="/add-property-buy">Add Your Listing</LocalizedLink></li>
-                  <li><a href="#">Our Partners</a></li>
+                  <li><LocalizedLink to="/about-us">{t('footer.aboutUs')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/add-property-buy">{t('footer.addListing')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/contact-us">{t('footer.contactUs')}</LocalizedLink></li>
                 </ul>
               </div>
             </div>
 
             <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
-                <h5 className="footer-title">Destinations</h5>
+                <h5 className="footer-title">{t('footer.destinations')}</h5>
                 <ul className="footer-menu">
-                  <li><a href="#">Hawai</a></li>
-                  <li><a href="#">Istanbul</a></li>
-                  <li><a href="#">San Diego</a></li>
-                  <li><a href="#">Belgium</a></li>
-                  <li><a href="#">Newyork</a></li>
-                  <li><a href="#">Los Angeles</a></li>
+                  <li><LocalizedLink to="/buy-property-grid?city=Tunis">{t('propertySection.location1')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/buy-property-grid?city=Sousse">{t('propertySection.location2')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/buy-property-grid?city=Sfax">{t('propertySection.location3')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/buy-property-grid?city=Nabeul">{t('propertySection.location4')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/buy-property-grid?city=Hammamet">{t('propertySection.location5')}</LocalizedLink></li>
                 </ul>
               </div>
             </div>
 
             <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
-                <h5 className="footer-title">Useful Links</h5>
+                <h5 className="footer-title">{t('footer.quick_links')}</h5>
                 <ul className="footer-menu">
-                  <li><a href="#">Legal Notice</a></li>
-                  <li><LocalizedLink to="/privacy-policy">Privacy Policy</LocalizedLink></li>
-                  <li><LocalizedLink to="/terms-condition">Terms & Conditions</LocalizedLink></li>
-                  <li><a href="#">Support</a></li>
-                  <li><a href="#">Refund Policy</a></li>
-                  <li><LocalizedLink to="/contact-us">Contact Us</LocalizedLink></li>
+                  <li><LocalizedLink to="/privacy-policy">{t('footer.privacyPolicy')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/terms-condition">{t('footer.termsConditions')}</LocalizedLink></li>
+                  <li><LocalizedLink to="/contact-us">{t('footer.contactUs')}</LocalizedLink></li>
                 </ul>
               </div>
             </div>
@@ -88,8 +81,8 @@ const Footer = () => {
                   <div className="contact-info">
                     <span className="bg-primary"><i className="material-icons-outlined">headphones</i></span>
                     <div>
-                      <p>Customer Support</p>
-                      <h6>+1 56589 54598</h6>
+                      <p>{t('footer.call_us')}</p>
+                      <h6>+216 70 000 000</h6>
                     </div>
                   </div>
                 </div>
@@ -98,8 +91,8 @@ const Footer = () => {
                   <div className="contact-info">
                     <span className="bg-secondary"><i className="material-icons-outlined">message</i></span>
                     <div>
-                      <p>Drop Us an Email</p>
-                      <h6>info@dreamsestate.com</h6>
+                      <p>{t('footer.email_us')}</p>
+                      <h6>contact@smartproperty.tn</h6>
                     </div>
                   </div>
                 </div>
@@ -108,8 +101,8 @@ const Footer = () => {
                   <div className="contact-info">
                     <span className="bg-danger"><i className="material-icons-outlined">phone</i></span>
                     <div>
-                      <p>Customer Support</p>
-                      <h6>1800 5656 5458</h6>
+                      <p>{t('footer.visit_us')}</p>
+                      <h6>{t('footer.address')}</h6>
                     </div>
                   </div>
                 </div>
@@ -121,7 +114,7 @@ const Footer = () => {
 
       <div className="footer-bottom">
         <div className="text-center">
-          <p className="copy-right">Copyright &copy; {new Date().getFullYear()}. All Rights Reserved, Dreams Estate</p>
+          <p className="copy-right">{t('footer.copyright', { year: new Date().getFullYear().toString() })}</p>
         </div>
       </div>
     </footer>

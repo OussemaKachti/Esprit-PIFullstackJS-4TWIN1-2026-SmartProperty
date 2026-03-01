@@ -6,6 +6,10 @@ const propertyRoutes = require('./property.routes');
 const aiRoutes = require('./ai.routes');
 const userRoutes = require('./user.routes');
 const uploadRoutes = require('./upload.routes');
+const leaseRoutes = require('./lease.routes');
+const rentPaymentRoutes = require('./rentPayment.routes');
+const feedbackRoutes = require('./feedback.routes');
+const saleRoutes = require('./sale.routes');
 
 
 // Mount routes
@@ -13,6 +17,10 @@ router.use('/properties', propertyRoutes);
 router.use('/ai', aiRoutes);
 router.use('/users', userRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/leases', leaseRoutes);
+router.use('/rent-payments', rentPaymentRoutes);
+router.use('/feedbacks', feedbackRoutes);
+router.use('/sales', saleRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
