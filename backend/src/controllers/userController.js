@@ -604,3 +604,110 @@ exports.logout = async (req, res) => {
     });
   }
 };
+
+// ============ ADMIN FUNCTIONS ============
+
+// Get all users (Admin only)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('-password -twoFactorSecret -twoFactorBackupCodes')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Users retrieved successfully',
+      users,
+      total: users.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Update user by ID (Admin only)
+exports.updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, isActive, firstName, lastName, phone } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update allowed fields
+    if (role !== undefined) user.role = role;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Delete user by ID (Admin only)
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete admin users'
+      });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};

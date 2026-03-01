@@ -50,4 +50,9 @@ router.put(
 
 router.post('/complete-onboarding', protect, userController.completeOnboarding);
 
+// Admin routes
+router.get('/all', protect, authorize(UserRole.ADMIN), userController.getAllUsers);
+router.patch('/:id', protect, authorize(UserRole.ADMIN), userController.updateUser);
+router.delete('/:id', protect, authorize(UserRole.ADMIN), userController.deleteUser);
+
 module.exports = router;

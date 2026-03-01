@@ -26,6 +26,12 @@ router.put(
   validatePropertyUpdate,
   propertyController.updateProperty
 );
+router.patch(
+  '/:id',
+  auth.protect,
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
+  propertyController.updateProperty
+);
 router.delete('/:id', auth.protect, auth.authorize('ADMIN'), propertyController.deleteProperty);
 
 // Image management (protected)
