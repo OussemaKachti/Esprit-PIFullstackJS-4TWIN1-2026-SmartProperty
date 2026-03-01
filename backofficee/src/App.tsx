@@ -23,6 +23,9 @@ import Documents from "./pages/Documents";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+import AdminProperties from "./pages/Admin/AdminProperties";
+import AdminUsers from "./pages/Admin/AdminUsers";
 
 export default function App() {
   return (
@@ -110,6 +113,11 @@ export default function App() {
             {/* Charts */}
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
+
+            {/* Admin Routes - use same layout but sidebar will show different menu */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/properties" element={<AdminProperties />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
           </Route>
 
           {/* Auth Layout */}

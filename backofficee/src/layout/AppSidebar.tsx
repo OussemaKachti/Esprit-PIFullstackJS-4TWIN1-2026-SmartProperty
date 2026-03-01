@@ -27,7 +27,8 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
+// Regular user menu items
+const regularNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
@@ -55,6 +56,25 @@ const navItems: NavItem[] = [
   },
 ];
 
+// Admin menu items
+const adminNavItems: NavItem[] = [
+  {
+    icon: <GridIcon />,
+    name: "Dashboard",
+    subItems: [{ name: "Overview", path: "/admin", pro: false }],
+  },
+  {
+    icon: <ListIcon />,
+    name: "Properties",
+    path: "/admin/properties",
+  },
+  {
+    icon: <UserCircleIcon />,
+    name: "Users",
+    path: "/admin/users",
+  },
+];
+
 // No \"Others\" menu for now – we keep the config so the component works,
 // but with an empty list.
 const othersItems: NavItem[] = [];
@@ -62,6 +82,24 @@ const othersItems: NavItem[] = [];
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+
+  // Get user role from localStorage
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        setUserRole(userData.role || "");
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
+
+  // Determine which nav items to show based on user role
+  const navItems = userRole === "ADMIN" ? adminNavItems : regularNavItems;
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -121,7 +159,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, navItems]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -291,18 +329,36 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/" className="block w-full">
-          <img
-            src="/images/logo/Smart.png"
-            alt="Smart Property"
-            className={`object-contain object-left ${
-              isExpanded || isHovered || isMobileOpen
-                ? "w-full max-w-[250px] h-auto"
-                : "mx-auto w-[72px] h-auto max-h-12"
-            }`}
-            width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
-            height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
-          />
+        <Link to={userRole === "ADMIN" ? "/admin" : "/"} className="block w-full">
+          {userRole === "ADMIN" ? (
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-2xl shadow-lg flex-shrink-0">
+                A
+              </div>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
+                    Admin Panel
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Smart Property
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <img
+              src="/images/logo/Smart.png"
+              alt="Smart Property"
+              className={`object-contain object-left ${
+                isExpanded || isHovered || isMobileOpen
+                  ? "w-full max-w-[250px] h-auto"
+                  : "mx-auto w-[72px] h-auto max-h-12"
+              }`}
+              width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
+              height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
+            />
+          )}
         </Link>
       </div>
       <div className="flex flex-col flex-1 min-h-0">
@@ -317,7 +373,7 @@ const AppSidebar: React.FC = () => {
                 }`}
               >
                 {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
+                  userRole === "ADMIN" ? "Admin Menu" : "Menu"
                 ) : (
                   <HorizontaLDots className="size-6" />
                 )}
