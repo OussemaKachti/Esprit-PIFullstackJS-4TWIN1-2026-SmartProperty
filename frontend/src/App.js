@@ -81,6 +81,7 @@ import FirstStepForm from "./features/multi-step-form/FirstStepForm";
 import FormContainer from "./features/multi-step-form/FormContainer";
 import AgencyDoc from "./features/auth/AgencyDocsForm";
 import CINForm from "./features/auth/CINForm";
+import TwoFactorSetup from "./features/auth/TwoFactorSetup";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -126,6 +127,7 @@ const AUTH_ROUTES = [
   '/form',
   '/agencydoc', '/fr/agencydoc',
   '/cinform', '/fr/cinform',
+  '/setup-2fa',
 ];
 
 const AppLayout = ({ children }) => {
@@ -186,12 +188,12 @@ const toastOptions = {
 
 function ToastContainer() {
   const location = useLocation();
-  const isAuthRoute = AUTH_ROUTES.includes(location.pathname);
+  const isAuth = isAuthRoute(location.pathname);
   return (
     <div
       className="toast-wrapper"
       style={
-        isAuthRoute
+        isAuth
           ? {
               position: 'fixed',
               left: '70%',
@@ -206,7 +208,7 @@ function ToastContainer() {
       }
     >
       <Toaster
-        position={isAuthRoute ? 'top-center' : 'top-right'}
+        position={isAuth ? 'top-center' : 'top-right'}
         toastOptions={toastOptions}
       />
     </div>
@@ -254,6 +256,12 @@ function App() {
               />
             );
           })}
+
+          {/* 2FA setup — route dédiée, hors du système localisé */}
+          <Route path="/setup-2fa" element={<TwoFactorSetup />} />
+
+          {/* Reset password avec token — route dédiée */}
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Fallback 404 route */}
           <Route path="*" element={<Error404 />} />
