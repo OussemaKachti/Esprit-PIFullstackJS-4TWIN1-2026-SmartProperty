@@ -192,46 +192,68 @@ export default function AdminProperties() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800 shadow hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-3xl">🏠</div>
-              <span className="text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">TOTAL</span>
+          <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Properties</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                  {Array.isArray(properties) ? properties.length : 0}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{Array.isArray(properties) ? properties.length : 0}</div>
-            <div className="text-xs text-blue-600 dark:text-blue-400">Total Properties</div>
           </div>
 
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800 shadow hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-3xl">✅</div>
-              <span className="text-xs font-medium bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-1 rounded">ACTIVE</span>
+          <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Available</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                  {(Array.isArray(properties) ? properties : []).filter((p) => p.status?.toLowerCase() === "available").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-              {(Array.isArray(properties) ? properties : []).filter((p) => p.status?.toLowerCase() === "available").length}
-            </div>
-            <div className="text-xs text-green-600 dark:text-green-400">Available Now</div>
           </div>
 
-          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 shadow hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-3xl">💰</div>
-              <span className="text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-300 px-2 py-1 rounded">SALE</span>
+          <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">For Sale</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                  {(Array.isArray(properties) ? properties : []).filter((p) => p.listingType === "FOR_SALE").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
-              {(Array.isArray(properties) ? properties : []).filter((p) => p.listingType === "FOR_SALE").length}
-            </div>
-            <div className="text-xs text-orange-600 dark:text-orange-400">For Sale</div>
           </div>
 
-          <div className="bg-teal-50 dark:bg-teal-900/20 rounded-lg p-4 border border-teal-200 dark:border-teal-800 shadow hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-3xl">🔑</div>
-              <span className="text-xs font-medium bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300 px-2 py-1 rounded">RENT</span>
+          <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">For Rent</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                  {(Array.isArray(properties) ? properties : []).filter((p) => p.listingType === "FOR_RENT").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-teal-50 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">
-              {(Array.isArray(properties) ? properties : []).filter((p) => p.listingType === "FOR_RENT").length}
-            </div>
-            <div className="text-xs text-teal-600 dark:text-teal-400">For Rent</div>
           </div>
         </div>
 
