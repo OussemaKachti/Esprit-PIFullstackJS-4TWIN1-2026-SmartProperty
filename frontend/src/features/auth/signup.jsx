@@ -10,6 +10,7 @@ export default function Signup() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("");
 
@@ -164,14 +165,30 @@ export default function Signup() {
 
         <div className="password-container signup-field">
           Password
-          <div className={`password-input ${fieldErrors.password ? "error" : ""}`}>
+          <div className={`password-input ${fieldErrors.password ? "error" : ""}`} style={{ position: 'relative' }}>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" })); }}
               placeholder="Create a password"
               onFocus={() => setShowPasswordRules(true)}
             />
+            <span
+              onClick={() => setShowPassword((prev) => !prev)}
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 2 }}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 4C5.45455 4 1.72727 7.27273 1 10C1.72727 12.7273 5.45455 16 10 16C14.5455 16 18.2727 12.7273 19 10C18.2727 7.27273 14.5455 4 10 4ZM10 14C7.23858 14 5 11.7614 5 9C5 6.23858 7.23858 4 10 4C12.7614 4 15 6.23858 15 9C15 11.7614 12.7614 14 10 14ZM10 6C8.34315 6 7 7.34315 7 9C7 10.6569 8.34315 12 10 12C11.6569 12 13 10.6569 13 9C13 7.34315 11.6569 6 10 6Z" fill="#888"/>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 2L18 18" stroke="#888" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M10 4C5.45455 4 1.72727 7.27273 1 10C1.72727 12.7273 5.45455 16 10 16C14.5455 16 18.2727 12.7273 19 10C18.2727 7.27273 14.5455 4 10 4ZM10 14C7.23858 14 5 11.7614 5 9C5 6.23858 7.23858 4 10 4C12.7614 4 15 6.23858 15 9C15 11.7614 12.7614 14 10 14ZM10 6C8.34315 6 7 7.34315 7 9C7 10.6569 8.34315 12 10 12C11.6569 12 13 10.6569 13 9C13 7.34315 11.6569 6 10 6Z" fill="#888"/>
+                </svg>
+              )}
+            </span>
           </div>
           {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
           {showPasswordRules && (
