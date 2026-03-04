@@ -17,9 +17,6 @@ dotenv.config();
 
 const app = express();
 
-app.use(express.json());
-app.use('/api/tone-changer', toneChangerApi);
-
 // Serve uploaded images via explicit route (avoids static + helmet issues, works on Windows)
 const uploadsDir = path.resolve(__dirname, '..', 'uploads');
 app.get('/uploads/:filename', (req, res) => {
@@ -63,8 +60,27 @@ const corsOptions = {
   },
   credentials: true,
   optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Body parser middleware (BEFORE routes)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Compression middleware
+app.use(compression());
+
+// HTTP request logger
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', { stream: logger.stream }));
+}
 
 // Tone changer API (with CORS enabled)
 app.use('/api/tone-changer', toneChangerApi);
@@ -78,20 +94,6 @@ app.use('/uploads', (req, res, next) => {
   console.log('📁 Image request:', req.url);
   next();
 }, express.static(path.join(__dirname, '../uploads')));
-
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Compression middleware
-app.use(compression());
-
-// HTTP request logger
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  app.use(morgan('combined', { stream: logger.stream }));
-}
 
 // Rate limiting
 const limiter = rateLimit({
