@@ -746,45 +746,7 @@ export default function PropertyDetailsPage() {
               
 
               {/* Why Book With Us */}
-              <div className="border border-gray-200 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Why Book With Us
-                  </h3>
-                </div>
-                <div className="px-4 py-4 text-sm text-gray-600 space-y-2 dark:text-gray-300">
-                  <p className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-violet-500 bg-violet-50 rounded-full dark:bg-violet-500/10">
-                      ⭐
-                    </span>
-                    Expertise and Experience
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-violet-500 bg-violet-50 rounded-full dark:bg-violet-500/10">
-                      📋
-                    </span>
-                    Tailored Services
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-violet-500 bg-violet-50 rounded-full dark:bg-violet-500/10">
-                      📌
-                    </span>
-                    Comprehensive Planning
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-violet-500 bg-violet-50 rounded-full dark:bg-violet-500/10">
-                      🤝
-                    </span>
-                    Client Satisfaction
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-violet-500 bg-violet-50 rounded-full dark:bg-violet-500/10">
-                      🕒
-                    </span>
-                    24/7 Support
-                  </p>
-                </div>
-              </div>
+             
 
               {/* Nearby Landmarks & Visits */}
               <div className="border border-gray-200 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
