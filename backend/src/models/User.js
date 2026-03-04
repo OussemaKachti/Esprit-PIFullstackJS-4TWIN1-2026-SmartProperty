@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(UserRole),
       default: UserRole.BUYER,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     password: {
       type: String,
       select: false,

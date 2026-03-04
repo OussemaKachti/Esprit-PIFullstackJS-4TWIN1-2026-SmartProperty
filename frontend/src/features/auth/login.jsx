@@ -4,6 +4,7 @@ import "../../styles/login.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import GmailButton from "./GmailButton";
 import toast from "../../utils/toast";
+import { shouldAccessBackoffice, getRedirectUrl, storeUserData, redirectToBackofficeWithToken } from "../../utils/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -51,9 +52,24 @@ export default function Login() {
         return;
       }
 
+      // Store token and user data
       localStorage.setItem("token", data.token);
+      if (data.user) {
+        storeUserData(data.user);
+      }
+
       toast.success("Login successful");
-      navigate("/form?step=1");
+
+      // Redirect based on user role
+      const userRole = data.user?.role;
+      if (userRole && shouldAccessBackoffice(userRole)) {
+        // AGENCY, OWNER, ADMIN → redirect to backoffice
+        const backofficeUrl = getRedirectUrl(userRole);
+        redirectToBackofficeWithToken(backofficeUrl, data.token);
+      } else {
+        // TENANT, BUYER → stay in frontend
+        navigate("/");
+      }
     } catch (error) {
       toast.error("An error occurred. Please try again.");
       setIsLoading(false);

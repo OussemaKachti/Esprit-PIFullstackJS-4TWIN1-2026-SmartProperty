@@ -509,3 +509,205 @@ exports.validate2FAToken = async (req, res) => {
     });
   }
 };
+
+// Get current user profile
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password -twoFactorSecret -twoFactorBackupCodes');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        login: user.login,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Update current user profile (firstName, lastName, phone only)
+exports.updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, phone } = req.body;
+    const user = await User.findById(req.user._id).select('-password -twoFactorSecret -twoFactorBackupCodes');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        login: user.login,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Logout (client clears token; optional server-side hook for future token blacklist)
+exports.logout = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// ============ ADMIN FUNCTIONS ============
+
+// Get all users (Admin only)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('-password -twoFactorSecret -twoFactorBackupCodes')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Users retrieved successfully',
+      users,
+      total: users.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Update user by ID (Admin only)
+exports.updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, isActive, firstName, lastName, phone } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update allowed fields
+    if (role !== undefined) user.role = role;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Delete user by ID (Admin only)
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete admin users'
+      });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};

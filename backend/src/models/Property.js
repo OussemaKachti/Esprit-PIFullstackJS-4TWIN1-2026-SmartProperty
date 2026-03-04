@@ -73,10 +73,10 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    // address: {
-    //   type: String,
-    //   trim: true,
-    // },
+    address: {
+      type: String,
+      trim: true,
+    },
     city: {
       type: String,
       required: true,

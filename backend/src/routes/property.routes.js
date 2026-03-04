@@ -5,8 +5,10 @@ const { uploadImages } = require('../middleware/upload.middleware');
 const { validateProperty, validatePropertyUpdate } = require('../middleware/validator');
 const auth = require('../middleware/auth.middleware');
 
-// Property CRUD routes
+// Property CRUD routes (specific routes before /:id)
 router.get('/', propertyController.getAllProperties);
+router.get('/my', auth.protect, propertyController.getMyProperties);
+router.get('/user/:userId', propertyController.getPropertiesByUser);
 router.get('/:id', propertyController.getPropertyById);
 router.post(
   '/',
@@ -22,6 +24,12 @@ router.put(
   auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   uploadImages,
   validatePropertyUpdate,
+  propertyController.updateProperty
+);
+router.patch(
+  '/:id',
+  auth.protect,
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   propertyController.updateProperty
 );
 router.delete('/:id', auth.protect, auth.authorize('ADMIN'), propertyController.deleteProperty);

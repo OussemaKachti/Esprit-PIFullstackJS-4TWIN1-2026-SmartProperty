@@ -28,11 +28,12 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    lng: 'fr',
+    fallbackLng: 'fr',
     debug: false,
-    
+
     detection: {
-      order: ['path', 'cookie', 'htmlTag', 'localStorage', 'navigator'],
+      order: ['path', 'cookie', 'localStorage', 'navigator'],
       caches: ['cookie', 'localStorage'],
       lookupFromPathIndex: 0,
       checkWhitelist: true

@@ -33,31 +33,21 @@ exports.generateDescription = async (req, res, next) => {
   }
 };
 
-// @desc    Generate AI description from draft property (no saved property yet)
-// @route   POST /api/ai/generate-description-draft
-// @access  Public (for multi-step form)
-exports.generateDescriptionFromDraft = async (req, res, next) => {
+// @desc    Generate AI description from raw property data (no DB save)
+// @route   POST /api/ai/generate-description-preview
+// @access  Private (Admin/Agent)
+exports.generateDescriptionPreview = async (req, res, next) => {
   try {
-    const { property: draft, tone = 'professional', length = 'medium' } = req.body;
+    const { tone = 'professional', length = 'medium', property } = req.body;
 
-    if (!draft || typeof draft !== 'object') {
+    if (!property) {
       return res.status(400).json(
-        apiResponse(false, 'property object is required')
+        apiResponse(false, 'Property data is required')
       );
     }
 
-    const propertyLike = {
-      type: draft.type || 'apartment',
-      surface: Number(draft.surface) || 0,
-      rooms: Number(draft.rooms) || 0,
-      address: draft.address || '',
-      city: draft.city || '',
-      price: Number(draft.price) || 0,
-      detectedFeatures: null,
-    };
-
     const descriptions = await descriptionService.generateDescriptions(
-      propertyLike,
+      property,
       tone,
       length
     );

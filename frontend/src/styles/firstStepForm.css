@@ -17,16 +17,26 @@
   color: var(--color-black);
 }
 
+*{
+  color: var(--color-black);
+}
+
 .create-property-container {
+  min-height: 100vh;
   min-height: 100vh;
   width: 100%;
   display: flex;
   flex-wrap: wrap;
   background: var(--color-white);
+  flex-wrap: wrap;
+  background: var(--color-white);
 }
 
 
+
 .create-property-image {
+  flex: 1 1 40%;
+  min-height: 300px;
   flex: 1 1 40%;
   min-height: 300px;
 }
@@ -38,21 +48,30 @@
 }
 
 
+
 .create-property-form {
+  flex: 1 1 60%;
   flex: 1 1 60%;
   display: flex;
   flex-direction: column;
+ 
   padding: 50px 280px 0 280px;
+
+  padding: 40px 280px 0 280px;
   box-sizing: border-box;
 }
+
 
 
 .create-property-header {
   max-width: var(--container-width);
   width: 100%;
   margin: 0 auto 20px auto;
+  width: 100%;
+  margin: 0 auto 20px auto;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   align-items: center;
 }
 
@@ -60,25 +79,32 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-gray-600);
+  color: var(--color-gray-600);
   letter-spacing: 0.08em;
 }
 
 .create-property-step-title {
   font-size: 15px;
+  font-size: 15px;
   color: var(--color-black);
 }
+
 
 
 .create-property-progress {
   max-width: var(--container-width);
   width: 100%;
   margin: 0 auto 30px auto;
+  width: 100%;
+  margin: 0 auto 30px auto;
   display: flex;
+  gap: 10px;
   gap: 10px;
 }
 
 .create-property-progress-bar {
   flex: 1;
+  height: 5px;
   height: 5px;
   border-radius: 20px;
   background-color: var(--color-gray-200);
@@ -89,8 +115,13 @@
 }
 
 
+
 .create-property-title {
   font-size: var(--title-xl);
+  font-weight: 600;
+  margin: 10px auto 30px auto;
+  max-width: var(--container-width);
+  width: 100%;
   font-weight: 600;
   margin: 10px auto 30px auto;
   max-width: var(--container-width);
@@ -100,7 +131,9 @@
 .create-property-field {
   max-width: var(--container-width);
   width: 100%;
+
   margin: 0 auto 10px auto;
+  margin: 0 auto 20px auto;
 }
 
 .create-property-label {
@@ -113,6 +146,7 @@
 .create-property-input-wrapper {
   margin-top: 8px;
   width: 100%;
+  height: 48px;
   height: 48px;
   border: 1px solid var(--color-gray-400);
   display: flex;
@@ -127,6 +161,7 @@
   position: relative;
 }
 
+
 .create-property-input-wrapper:focus-within {
   border-color: var(--color-black);
 }
@@ -134,8 +169,10 @@
 .create-property-input-wrapper input,
 .create-property-input-wrapper select {
   width: 100%;
+  width: 100%;
   border: none;
   outline: none;
+  font-size: 14px;
   font-size: 14px;
   background: transparent;
 }
@@ -144,6 +181,7 @@
   cursor: pointer;
 }
 
+ 
 .address-suggestions {
   position: absolute;
   top: 110%;
@@ -175,7 +213,12 @@
 }
 
 
+
+
 .create-property-row {
+  max-width: var(--container-width);
+  width: 100%;
+  margin: 0 auto;
   max-width: var(--container-width);
   width: 100%;
   margin: 0 auto;
@@ -185,13 +228,17 @@
 
 .create-property-field.half {
   flex: 1;
+  flex: 1;
 }
+
 
 
 .create-property-map {
   max-width: var(--container-width);
   width: 100%;
   margin: 20px auto;
+
+  margin: 30px auto;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -205,7 +252,15 @@
   border-radius: 25px;
   border: none;
   background: var(--color-black);
+  width: 100%;
+  margin: 10px auto 40px auto;
+  height: 48px;
+  border-radius: 25px;
+  border: none;
+  background: var(--color-black);
   color: var(--color-white);
+  font-size: 14px;
+  font-weight: 500;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -214,7 +269,13 @@
 
 .create-property-button:hover {
   opacity: 0.9;
+  transition: 0.2s ease;
 }
+
+.create-property-button:hover {
+  opacity: 0.9;
+}
+
 
 
 .create-property-field.error .create-property-input-wrapper {
@@ -238,14 +299,33 @@
   }
 }
 
+
+
+
+@media (max-width: 1024px) {
+  .create-property-image {
+    flex: 1 1 35%;
+  }
+
+  .create-property-form {
+    flex: 1 1 65%;
+  }
+}
+
 @media (max-width: 768px) {
   .create-property-container {
     flex-direction: column;
   }
 
   .create-property-image {
+
     display: none;
+  
+   
+    height: 250px;
   }
+}
+
 
   .create-property-form {
     padding: 40px 20px;
@@ -259,7 +339,7 @@
   .create-property-field.half {
     width: 100%;
   }
-}
+
 
 @media (max-width: 480px) {
   .create-property-form {
@@ -268,6 +348,7 @@
 
   .create-property-title {
     font-size: 22px;
+
 
   }
 }
@@ -282,6 +363,7 @@
   }
 
   .create-property-form {
+
     padding: 40px 20px;
   }
 
