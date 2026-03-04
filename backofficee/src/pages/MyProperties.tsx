@@ -154,6 +154,22 @@ export default function MyProperties() {
     propertyId: null,
     propertyTitle: "",
   });
+  
+  // Advanced search filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    searchText: "",
+    type: "",
+    status: "",
+    listingType: "",
+    city: "",
+    minPrice: "",
+    maxPrice: "",
+    minSurface: "",
+    maxSurface: "",
+    minRooms: "",
+    maxRooms: "",
+  });
 
   const formattedPrice = (price: number | undefined | null) => {
     if (price == null) return "—";
@@ -476,6 +492,88 @@ export default function MyProperties() {
     }
   };
 
+  // Apply advanced filters to properties list
+  const filteredProperties = myProperties.filter((property) => {
+    // Text search (title, address, city)
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      const matchesText = 
+        property.title?.toLowerCase().includes(searchLower) ||
+        property.address?.toLowerCase().includes(searchLower) ||
+        property.city?.toLowerCase().includes(searchLower);
+      if (!matchesText) return false;
+    }
+
+    // Type filter
+    if (filters.type && property.type !== filters.type) {
+      return false;
+    }
+
+    // Status filter
+    if (filters.status && property.status !== filters.status) {
+      return false;
+    }
+
+    // Listing type filter
+    if (filters.listingType && property.listingType !== filters.listingType) {
+      return false;
+    }
+
+    // City filter
+    if (filters.city && property.city !== filters.city) {
+      return false;
+    }
+
+    // Price range
+    if (filters.minPrice && property.price < parseFloat(filters.minPrice)) {
+      return false;
+    }
+    if (filters.maxPrice && property.price > parseFloat(filters.maxPrice)) {
+      return false;
+    }
+
+    // Surface range
+    if (filters.minSurface && property.surface && property.surface < parseFloat(filters.minSurface)) {
+      return false;
+    }
+    if (filters.maxSurface && property.surface && property.surface > parseFloat(filters.maxSurface)) {
+      return false;
+    }
+
+    // Rooms range
+    if (filters.minRooms && property.rooms && property.rooms < parseInt(filters.minRooms)) {
+      return false;
+    }
+    if (filters.maxRooms && property.rooms && property.rooms > parseInt(filters.maxRooms)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Get unique cities for filter dropdown
+  const uniqueCities = Array.from(new Set(myProperties.map(p => p.city).filter(Boolean)));
+
+  // Reset filters function
+  const resetFilters = () => {
+    setFilters({
+      searchText: "",
+      type: "",
+      status: "",
+      listingType: "",
+      city: "",
+      minPrice: "",
+      maxPrice: "",
+      minSurface: "",
+      maxSurface: "",
+      minRooms: "",
+      maxRooms: "",
+    });
+  };
+
+  // Check if any filter is active
+  const hasActiveFilters = Object.values(filters).some(value => value !== "");
+
   return (
     <>
       <PageMeta
@@ -492,14 +590,33 @@ export default function MyProperties() {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Showing{" "}
               <span className="font-semibold">
+                {filteredProperties.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold">
                 {myProperties.length}
               </span>{" "}
               properties from your portfolio.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="hidden px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl shadow-sm bg-white hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 sm:inline-flex">
-              Filters
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-xl shadow-sm transition-colors ${
+                hasActiveFilters
+                  ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800"
+                  : "text-gray-600 border-gray-200 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Advanced Filters
+              {hasActiveFilters && (
+                <span className="px-1.5 py-0.5 text-xs font-bold text-white bg-indigo-600 rounded-full">
+                  {Object.values(filters).filter(v => v !== "").length}
+                </span>
+              )}
             </button>
             <button
               className="px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm bg-brand-500 hover:bg-brand-600"
@@ -546,13 +663,257 @@ export default function MyProperties() {
           </div>
         </div>
 
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800">
+            <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                    Advanced Search Filters
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Refine your property search with multiple criteria
+                  </p>
+                </div>
+                <button
+                  onClick={resetFilters}
+                  disabled={!hasActiveFilters}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset All
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {/* Text Search */}
+                <div className="lg:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Search
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={filters.searchText}
+                      onChange={(e) => setFilters({...filters, searchText: e.target.value})}
+                      placeholder="Search by title, address or city..."
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
+                    />
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Property Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Property Type
+                  </label>
+                  <select
+                    value={filters.type}
+                    onChange={(e) => setFilters({...filters, type: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  >
+                    <option value="">All Types</option>
+                    <option value="APARTMENT">Apartment</option>
+                    <option value="HOUSE">House</option>
+                    <option value="VILLA">Villa</option>
+                    <option value="STUDIO">Studio</option>
+                    <option value="LAND">Land</option>
+                    <option value="COMMERCIAL">Commercial</option>
+                    <option value="OFFICE">Office</option>
+                  </select>
+                </div>
+
+                {/* Listing Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Listing Type
+                  </label>
+                  <select
+                    value={filters.listingType}
+                    onChange={(e) => setFilters({...filters, listingType: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  >
+                    <option value="">All Listings</option>
+                    <option value="FOR_SALE">For Sale</option>
+                    <option value="FOR_RENT">For Rent</option>
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  >
+                    <option value="">All Status</option>
+                    <option value="AVAILABLE">Available</option>
+                    <option value="SOLD">Sold</option>
+                    <option value="RENTED">Rented</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="ARCHIVED">Archived</option>
+                  </select>
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    City
+                  </label>
+                  <select
+                    value={filters.city}
+                    onChange={(e) => setFilters({...filters, city: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  >
+                    <option value="">All Cities</option>
+                    {uniqueCities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Price Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Min Price (TND)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.minPrice}
+                    onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
+                    placeholder="Min"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Max Price (TND)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+                    placeholder="Max"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+
+                {/* Surface Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Min Surface (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.minSurface}
+                    onChange={(e) => setFilters({...filters, minSurface: e.target.value})}
+                    placeholder="Min"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Max Surface (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.maxSurface}
+                    onChange={(e) => setFilters({...filters, maxSurface: e.target.value})}
+                    placeholder="Max"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+
+                {/* Rooms Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Min Rooms
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.minRooms}
+                    onChange={(e) => setFilters({...filters, minRooms: e.target.value})}
+                    placeholder="Min"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Max Rooms
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.maxRooms}
+                    onChange={(e) => setFilters({...filters, maxRooms: e.target.value})}
+                    placeholder="Max"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Active Filters Summary */}
+              {hasActiveFilters && (
+                <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active filters:</span>
+                    {Object.entries(filters).map(([key, value]) => {
+                      if (!value) return null;
+                      const labels: Record<string, string> = {
+                        searchText: 'Search',
+                        type: 'Type',
+                        status: 'Status',
+                        listingType: 'Listing',
+                        city: 'City',
+                        minPrice: 'Min Price',
+                        maxPrice: 'Max Price',
+                        minSurface: 'Min Surface',
+                        maxSurface: 'Max Surface',
+                        minRooms: 'Min Rooms',
+                        maxRooms: 'Max Rooms',
+                      };
+                      return (
+                        <span
+                          key={key}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full dark:bg-indigo-900/30 dark:text-indigo-300"
+                        >
+                          <span>{labels[key]}:</span>
+                          <span className="font-semibold">{value}</span>
+                          <button
+                            onClick={() => setFilters({...filters, [key]: ""})}
+                            className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Toolbar / summary */}
         <div className="flex flex-col gap-3 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {isLoadingProperties
               ? "Loading your properties..."
-              : myProperties.length > 0
-              ? `Showing ${myProperties.length} property(ies)`
+              : filteredProperties.length > 0
+              ? `Showing ${filteredProperties.length} property(ies)${hasActiveFilters ? ` (filtered from ${myProperties.length})` : ''}`
+              : hasActiveFilters
+              ? "No properties match your filters."
               : "No properties created yet."}
           </p>
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -576,7 +937,7 @@ export default function MyProperties() {
         {/* Properties grid or list */}
         {viewMode === "grid" ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {myProperties.map((property) => (
+            {filteredProperties.map((property) => (
               <article
                 key={property._id}
                 className="flex flex-col overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-gray-900 dark:border-gray-800"
@@ -674,7 +1035,7 @@ export default function MyProperties() {
           </div>
         ) : (
           <div className="space-y-4">
-            {myProperties.map((property) => (
+            {filteredProperties.map((property) => (
               <article
                 key={property._id}
                 className="flex flex-col overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-gray-900 dark:border-gray-800 md:flex-row"
