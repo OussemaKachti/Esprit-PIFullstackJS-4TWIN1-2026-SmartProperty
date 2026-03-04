@@ -1,118 +1,173 @@
-﻿import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import toast from '../utils/toast';
+import '../styles/login.css';
+
+const API_BASE = 'http://localhost:5000';
 
 const ResetPassword = () => {
-  useEffect(() => {
-    // Force enable scrolling
-    const enableScrolling = () => {
-      document.body.style.overflow = 'auto';
-      document.body.style.height = 'auto';
-      document.body.style.position = 'static';
-      document.documentElement.style.overflow = 'auto';
-      document.documentElement.style.height = 'auto';
-      document.body.classList.remove('no-scroll', 'modal-open', 'overflow-hidden');
-      document.documentElement.classList.remove('no-scroll', 'modal-open', 'overflow-hidden');
-    };
-    enableScrolling();
+  const navigate = useNavigate();
+  const { token } = useParams();
 
-    // Initialize plugins
-    const initializePlugins = () => {
-      enableScrolling();
-      if (window.AOS) {
-        window.AOS.refresh();
-        window.AOS.init({ duration: 1200, once: true });
-      }
-      if (window.jQuery && window.jQuery.fn.select2) {
-        window.jQuery('.select2').select2({ minimumResultsForSearch: -1 });
-      }
-      if (window.jQuery) {
-        window.jQuery('#mobile_btn').off('click').on('click', function() {
-          window.jQuery('.main-menu-wrapper').addClass('open');
+  const [status, setStatus] = useState('verifying'); // verifying | valid | invalid
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setStatus('invalid');
+      return;
+    }
+    const verify = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/users/verify-reset-token/${token}`, {
+          method: 'POST',
         });
-        window.jQuery('#menu_close').off('click').on('click', function() {
-          window.jQuery('.main-menu-wrapper').removeClass('open');
-        });
-        window.jQuery('.has-submenu > a').off('click').on('click', function(e) {
-          if (window.jQuery(window).width() < 992) {
-            e.preventDefault();
-            window.jQuery(this).parent().toggleClass('open');
-            window.jQuery(this).parent().find('.submenu').first().slideToggle();
-          }
-        });
+        const data = await res.json();
+        setStatus(data.success ? 'valid' : 'invalid');
+      } catch {
+        setStatus('invalid');
       }
     };
-    const timer = setTimeout(initializePlugins, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    verify();
+  }, [token]);
+
+  const handleReset = async () => {
+    let hasError = false;
+    if (!password) { setPasswordError('Please enter a new password'); hasError = true; }
+    else if (password.length < 6) { setPasswordError('Minimum 6 characters'); hasError = true; }
+    else setPasswordError('');
+
+    if (!confirm) { setConfirmError('Please confirm your password'); hasError = true; }
+    else if (password !== confirm) { setConfirmError('Passwords do not match'); hasError = true; }
+    else setConfirmError('');
+
+    if (hasError) return;
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/users/reset-password/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.message || 'Reset failed');
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Password reset successfully!');
+      navigate('/login');
+    } catch {
+      toast.error('Network error. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      overflow: 'visible',
-      position: 'relative',
-      width: '100%'
-    }}>
+    <div className="main-container">
+      <div className="image-container">
+        <img
+          src="https://images.pexels.com/photos/7614534/pexels-photo-7614534.jpeg"
+          alt="bg"
+        />
+      </div>
 
+      <div className="form-container">
+        {status === 'verifying' && (
+          <>
+            <h1 className="heading-title">Verifying link...</h1>
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <div className="loader" style={{ margin: 'auto' }}></div>
+            </div>
+          </>
+        )}
 
-    
-	<div className="main-wrapper auth-cover">
+        {status === 'invalid' && (
+          <>
+            <h1 className="heading-title">Link expired</h1>
+            <p className="text" style={{ color: '#e53e3e', marginBottom: '24px' }}>
+              This reset link is invalid or has expired (10 min).
+            </p>
+            <button className="continue-button" onClick={() => navigate('/forgot-password')}>
+              <span className="continue-text">Request a new link</span>
+            </button>
+          </>
+        )}
 
-		
-		<div className="container-fuild position-relative z-1">
-			<div className="w-100 overflow-hidden position-relative flex-wrap d-block vh-100 sign-">
-				
-				<div className="row justify-content-center align-items-center vh-100 overflow-auto flex-wrap py-3">
-					<div className="col-md-8 col-lg-6 col-xl-4 mx-auto">
-						<div className="d-flex flex-column justify-content-lg-center p-4 p-lg-0 pb-0 flex-fill">
-							<div className=" mx-auto mb-4 text-center">
-								<img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
-							</div>
-							<div>
-								<div className="login-item-01">
-									<h4>Reset Password</h4>
-									<div className="mb-3">
-										<label className="form-label">Password<span className="text-danger ms-1">*</span></label>
-										<div className="position-relative form-cover password">
-											<input type="password" className="pass-input form-control" />
-											<i className="material-icons-outlined">lock</i>
-											<span className="fas toggle-password fa-eye-slash"></span>
-										</div>
-									</div>
-									<div className="mb-3">
-										<label className="form-label">Confirm Password<span className="text-danger ms-1">*</span></label>
-										<div className="position-relative form-cover password">
-											<input type="password" className="pass-inputs form-control" />
-											<i className="material-icons-outlined">lock</i>
-											<span className="fas toggle-passwords fa-eye-slash"></span>
-										</div>
-									</div>
-									<div className="d-flex align-items-center mb-4">
-										<div className="d-flex align-items-center">
-											<div className="form-check form-check-md mb-0">
-												<input className="form-check-input" id="remember_me" type="checkbox" />
-												<label htmlFor="remember_me" className="mt-0">Remember Me</label>
-											</div>
-										</div>
-									</div>
-									<div className="mb-3">
-										<Link to="/login" className="btn btn-lg bg-primary text-white w-100">Reset Password</Link>
-									</div>
-									<div className="text-center">
-										<h6 className="fw-normal fs-14 text-dark mb-0">Return to
-											<Link to="/login" className="register-btn">Sign In</Link>
-										</h6>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				
-			</div>
-		</div>
-		
+        {status === 'valid' && (
+          <>
+            <h1 className="heading-title">Reset Password</h1>
+            <p className="text" style={{ marginBottom: '24px' }}>
+              Enter your new password below
+            </p>
 
-    </div>
+            <div className="password-container">
+              New Password
+              <div className={`password-input ${passwordError ? 'error' : ''}`} style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  placeholder="Enter new password"
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }}
+                  disabled={isLoading}
+                />
+                <span
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '18px', color: '#94a3b8' }}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </span>
+              </div>
+              {passwordError && <span className="input-error-text">{passwordError}</span>}
+            </div>
+
+            <div className="password-container" style={{ marginTop: '16px' }}>
+              Confirm Password
+              <div className={`password-input ${confirmError ? 'error' : ''}`} style={{ position: 'relative' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirm}
+                  placeholder="Confirm new password"
+                  onChange={(e) => { setConfirm(e.target.value); setConfirmError(''); }}
+                  disabled={isLoading}
+                />
+                <span
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', fontSize: '18px', color: '#94a3b8' }}
+                >
+                  {showConfirm ? '🙈' : '👁'}
+                </span>
+              </div>
+              {confirmError && <span className="input-error-text">{confirmError}</span>}
+            </div>
+
+            <button
+              type="button"
+              className="continue-button"
+              onClick={handleReset}
+              disabled={isLoading}
+              style={{ marginTop: '24px' }}
+            >
+              {isLoading ? <div className="loader"></div> : <span className="continue-text">Reset Password</span>}
+            </button>
+          </>
+        )}
+
+        <span className="signin-redirect" style={{ marginTop: '20px' }}>
+          <span className="signin-link" onClick={() => navigate('/login')}>
+            ← Back to Sign In
+          </span>
+        </span>
+      </div>
     </div>
   );
 };

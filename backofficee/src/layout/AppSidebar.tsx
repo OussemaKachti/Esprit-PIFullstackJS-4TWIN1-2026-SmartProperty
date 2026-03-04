@@ -19,6 +19,14 @@ import { useSidebar } from "../context/SidebarContext";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const FRONTEND_SIGNIN_URL =
   import.meta.env.VITE_FRONTEND_URL || "http://localhost:3000";
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || "http://localhost:3000";
+
+// Globe/Browser Icon component
+const GlobeIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 type NavItem = {
   name: string;
@@ -134,6 +142,37 @@ const AppSidebar: React.FC = () => {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = `${FRONTEND_SIGNIN_URL}/login`;
+    }
+  }, []);
+
+  const handleGoToFrontend = useCallback(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    
+    if (token && user) {
+      // Store token and user in sessionStorage for the frontend to read
+      // Open frontend in new tab
+      const frontendWindow = window.open(FRONTEND_URL, '_blank');
+      
+      // Try to pass data via postMessage once the window loads
+      if (frontendWindow) {
+        const checkWindow = setInterval(() => {
+          try {
+            frontendWindow.postMessage(
+              { type: 'AUTH_FROM_BACKOFFICE', token, user }, 
+              FRONTEND_URL
+            );
+            clearInterval(checkWindow);
+          } catch (e) {
+            // Window not ready yet
+          }
+        }, 500);
+        
+        // Clear interval after 5 seconds
+        setTimeout(() => clearInterval(checkWindow), 5000);
+      }
+    } else {
+      window.open(FRONTEND_URL, '_blank');
     }
   }, []);
 
@@ -330,35 +369,17 @@ const AppSidebar: React.FC = () => {
         }`}
       >
         <Link to={userRole === "ADMIN" ? "/admin" : "/"} className="block w-full">
-          {userRole === "ADMIN" ? (
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-2xl shadow-lg flex-shrink-0">
-                A
-              </div>
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    Admin Panel
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    Smart Property
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <img
-              src="/images/logo/Smart.png"
-              alt="Smart Property"
-              className={`object-contain object-left ${
-                isExpanded || isHovered || isMobileOpen
-                  ? "w-full max-w-[250px] h-auto"
-                  : "mx-auto w-[72px] h-auto max-h-12"
-              }`}
-              width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
-              height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
-            />
-          )}
+          <img
+            src="/images/logo/Smart.png"
+            alt="Smart Property"
+            className={`object-contain object-left ${
+              isExpanded || isHovered || isMobileOpen
+                ? "w-full max-w-[250px] h-auto"
+                : "mx-auto w-[72px] h-auto max-h-12"
+            }`}
+            width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
+            height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
+          />
         </Link>
       </div>
       <div className="flex flex-col flex-1 min-h-0">
@@ -403,6 +424,16 @@ const AppSidebar: React.FC = () => {
         {/* Bottom: user profile + logout — toujours en bas */}
         {(isExpanded || isHovered || isMobileOpen) && (
           <div className="flex-shrink-0 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+            <button
+              type="button"
+              onClick={handleGoToFrontend}
+              className="w-full text-left menu-item group menu-item-inactive"
+            >
+              <span className="menu-item-icon-size menu-item-icon-inactive">
+                <GlobeIcon />
+              </span>
+              <span className="menu-item-text">Visit Frontend</span>
+            </button>
             <Link
               to="/profile"
               className={`menu-item group ${

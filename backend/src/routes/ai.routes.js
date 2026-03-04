@@ -18,4 +18,12 @@ router.post(
   aiController.generateDescriptionPreview
 );
 
+// Alias for frontend compatibility
+router.post(
+  '/generate-description-draft',
+  auth.protect,
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
+  aiController.generateDescriptionPreview
+);
+
 module.exports = router;

@@ -182,7 +182,12 @@ export const localizeRoute = (path, targetLang) => {
 export const isAuthRoute = (pathname) => {
   // Remove language prefix for checking
   const cleanPath = pathname.replace(/^\/([a-z]{2})(\/|$)/, '/');
-  return AUTH_ROUTES.includes(cleanPath);
+  // Check static list
+  if (AUTH_ROUTES.includes(cleanPath)) return true;
+  // Check dynamic routes (reset-password avec token)
+  if (cleanPath.startsWith('/reset-password/')) return true;
+  if (cleanPath === '/setup-2fa') return true;
+  return false;
 };
 
 /**

@@ -3,6 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import UserMetaCard from "../components/UserProfile/UserMetaCard";
 import UserInfoCard from "../components/UserProfile/UserInfoCard";
 import UserAddressCard from "../components/UserProfile/UserAddressCard";
+import TwoFactorAuth from "../components/UserProfile/TwoFactorAuth";
 import PageMeta from "../components/common/PageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -91,6 +92,10 @@ export default function UserProfiles() {
           <div className="space-y-6">
             <UserMetaCard user={user} />
             <UserInfoCard user={user} onProfileUpdated={fetchProfile} />
+            <TwoFactorAuth 
+              twoFactorEnabled={user.twoFactorEnabled || false} 
+              onUpdate={fetchProfile}
+            />
             <UserAddressCard />
           </div>
         )}

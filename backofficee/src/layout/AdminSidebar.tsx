@@ -114,17 +114,19 @@ const AdminSidebar: React.FC = () => {
           }`}
         >
           <Link to="/admin" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg shadow-lg">
-              A
-            </div>
-            {(isExpanded || isHovered) && (
-              <div className="flex flex-col">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">
-                  Admin Panel
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Smart Property
-                </span>
+            {(isExpanded || isHovered) ? (
+              <img 
+                src="/images/logo/Smart.png" 
+                alt="SmartProperty" 
+                className="h-10 w-auto object-contain"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                <img 
+                  src="/images/logo/Smart.png" 
+                  alt="SmartProperty" 
+                  className="h-full w-full object-cover"
+                />
               </div>
             )}
           </Link>
