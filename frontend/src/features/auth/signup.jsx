@@ -46,47 +46,58 @@ export default function Signup() {
     return !errors.login && !errors.email && !errors.password && !errors.phone;
   };
 
-  const handleContinue = async () => {
-    if (!validateRequired()) return;
+const handleContinue = async () => {
+  if (!validateRequired()) return;
 
-    setIsLoading(true);
-    setFieldErrors({ login: "", email: "", password: "", phone: "" });
+  setIsLoading(true);
 
-    try {
-      const payload = {
-        login: login.trim(),
-        email: email.trim(),
-        password,
-        firstName: firstname,
-        lastName: lastName,
-        phone: phone.trim() || undefined,
-        role,
-      };
+  try {
+    const payload = {
+      login: login.trim(),
+      email: email.trim(),
+      password,
+      firstName: firstname,
+      lastName: lastName,
+      phone: phone.trim() || undefined,
+      role,
+    };
 
-      const response = await fetch("http://localhost:5000/api/users/register", {
+    const response = await fetch(
+      "http://localhost:5000/api/users/register",
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      setIsLoading(false);
-
-      if (response.ok) {
-        if (role === "AGENCY") {
-          navigate("/agencydoc");
-        } else {
-          navigate("/cinform");
-        }
-      } else {
-        const msg = data.message || "Registration failed.";
-        setFieldErrors((prev) => ({ ...prev, login: msg }));
       }
-    } catch (err) {
-      setIsLoading(false);
-      setFieldErrors({ login: "", email: "Network error. Please try again.", password: "", phone: "" });
+    );
+
+    const data = await response.json();
+    setIsLoading(false);
+
+    if (response.ok) {
+
+      if (role === "AGENCY") {
+            navigate("/form?step=1");      
+      } 
+      else {
+        navigate("/"); 
+      }
+
+    } else {
+      setFieldErrors((prev) => ({
+        ...prev,
+        login: data.message || "Registration failed.",
+      }));
     }
-  };
+
+  } catch (err) {
+    setIsLoading(false);
+    setFieldErrors((prev) => ({
+      ...prev,
+      email: "Network error. Please try again.",
+    }));
+  }
+};
 
   return (
     <div className="main-container">
