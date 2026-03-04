@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -9,6 +9,38 @@ const Header = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Re-read auth state whenever the route changes
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user'));
+      setCurrentUser(u || null);
+    } catch {
+      setCurrentUser(null);
+    }
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setCurrentUser(null);
+    navigate('/');
+  };
+
+  const getUserInitials = (user) => {
+    if (!user) return '?';
+    const first = user.firstName?.[0] || '';
+    const last = user.lastName?.[0] || '';
+    return (first + last).toUpperCase() || user.email?.[0]?.toUpperCase() || '?';
+  };
+
+  const getUserDisplayName = (user) => {
+    if (!user) return '';
+    if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return user.email || '';
+  };
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
@@ -106,8 +138,33 @@ const Header = () => {
               </div>
 
               <div className="menu-login">
-                <LocalizedLink to="/login" className="btn btn-primary w-100 mb-2">{t('common.signIn')}</LocalizedLink>
-                <LocalizedLink to="/signup" className="btn btn-secondary w-100">{t('common.register')}</LocalizedLink>
+                {currentUser ? (
+                  <>
+                    <div className="d-flex align-items-center mb-3 p-1">
+                      <div
+                        className="text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ background: 'var(--bs-primary, #0d6efd)', width: '40px', height: '40px', borderRadius: '50%', fontWeight: 700, fontSize: '14px' }}
+                      >
+                        {getUserInitials(currentUser)}
+                      </div>
+                      <div className="ms-2">
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: '#1a1a2e' }}>{getUserDisplayName(currentUser)}</div>
+                        <div style={{ fontSize: '12px', color: '#888' }}>{currentUser.role || 'Member'}</div>
+                      </div>
+                    </div>
+                    <LocalizedLink to="/form?step=1" className="btn btn-outline-primary w-100 mb-2 d-inline-flex align-items-center justify-content-center">
+                      <i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>person_outline</i>Profile Settings
+                    </LocalizedLink>
+                    <button className="btn btn-danger w-100 d-inline-flex align-items-center justify-content-center" onClick={handleLogout}>
+                      <i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>logout</i>Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <LocalizedLink to="/login" className="btn btn-primary w-100 mb-2">{t('common.signIn')}</LocalizedLink>
+                    <LocalizedLink to="/signup" className="btn btn-secondary w-100">{t('common.register')}</LocalizedLink>
+                  </>
+                )}
               </div>
             </div>
 
@@ -174,13 +231,48 @@ const Header = () => {
 
             
 
-              <LocalizedLink to="/login" className="btn btn-lg btn-primary d-inline-flex align-items-center">
-                <i className="material-icons-outlined me-1">lock</i>{t('common.signIn')}
-              </LocalizedLink>
-
-              <LocalizedLink to="/signup" className="btn btn-lg btn-dark d-inline-flex align-items-center">
-                <i className="material-icons-outlined me-1">perm_identity</i>{t('common.register')}
-              </LocalizedLink>
+              {currentUser ? (
+                <div className="dropdown topbar-profile d-flex">
+                  <a href="#" className="avatar" data-bs-toggle="dropdown" onClick={(e) => e.preventDefault()}>
+                    <div
+                      className="avatar-md avatar-rounded text-white d-flex align-items-center justify-content-center"
+                      style={{ background: 'var(--bs-primary, #0d6efd)', width: '40px', height: '40px', borderRadius: '50%', fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px' }}
+                    >
+                      {getUserInitials(currentUser)}
+                    </div>
+                  </a>
+                  <div className="dropdown-menu dropdown-menu-end">
+                    <div className="d-flex align-items-center user-profile">
+                      <div
+                        className="avatar-md avatar-rounded text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ background: 'var(--bs-primary, #0d6efd)', width: '42px', height: '42px', borderRadius: '50%', fontWeight: 700, fontSize: '15px' }}
+                      >
+                        {getUserInitials(currentUser)}
+                      </div>
+                      <div className="ms-2">
+                        <h6 className="mb-1">{getUserDisplayName(currentUser)}</h6>
+                        <span className="d-block">{currentUser.role || 'Member'}</span>
+                      </div>
+                    </div>
+                    <LocalizedLink to="/form?step=1" className="dropdown-item d-inline-flex align-items-center">
+                      <i className="material-icons-outlined me-2">person_outline</i>Profile Settings
+                    </LocalizedLink>
+                    <hr className="dropdown-divider" />
+                    <button className="dropdown-item d-inline-flex align-items-center link-danger w-100 text-start" style={{ background: 'none', border: 'none' }} onClick={handleLogout}>
+                      <i className="material-icons-outlined me-2">logout</i>Sign Out
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <LocalizedLink to="/login" className="btn btn-lg btn-primary d-inline-flex align-items-center">
+                    <i className="material-icons-outlined me-1">lock</i>{t('common.signIn')}
+                  </LocalizedLink>
+                  <LocalizedLink to="/signup" className="btn btn-lg btn-dark d-inline-flex align-items-center">
+                    <i className="material-icons-outlined me-1">perm_identity</i>{t('common.register')}
+                  </LocalizedLink>
+                </>
+              )}
             </div>
           </nav>
         </div>

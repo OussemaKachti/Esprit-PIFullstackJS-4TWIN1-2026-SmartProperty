@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
+const emailService = require('../services/email.service');
 
 // Login user
 exports.login = async (req, res) => {
@@ -152,23 +153,40 @@ exports.forgotPassword = async (req, res) => {
     }
     
     const user = await User.findOne({ email });
-    
+
+    // Sécurité : ne pas divulguer si l'email existe ou non
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Aucun utilisateur trouvé avec cet email'
+      return res.status(200).json({
+        success: true,
+        message: 'Si cet email est enregistré, un lien de réinitialisation vous a été envoyé.'
       });
     }
     
     // Générer le reset token
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
+
+    // Construire le lien de reset
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+
+    // Envoyer l'email
+    try {
+      await emailService.sendPasswordResetEmail(user.email, resetUrl);
+    } catch (emailError) {
+      // Si l'envoi échoue, annuler le token pour éviter un token mort en base
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      return res.status(500).json({
+        success: false,
+        message: "L'envoi de l'email a échoué. Vérifiez la configuration SMTP.",
+        error: emailError.message
+      });
+    }
     
     res.status(200).json({
       success: true,
-      message: 'Token de réinitialisation généré',
-      resetToken,
-      resetUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`
+      message: 'Si cet email est enregistré, un lien de réinitialisation vous a été envoyé.'
     });
     
   } catch (error) {
@@ -269,7 +287,7 @@ exports.verifyResetToken = async (req, res) => {
 // Setup 2FA - Génère le secret et le QR code
 exports.setup2FA = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('+twoFactorSecret');
+    const user = await User.findById(req.user._id).select('+twoFactorSecret');
     
     if (!user) {
       return res.status(404).json({
@@ -327,7 +345,7 @@ exports.verify2FA = async (req, res) => {
       });
     }
     
-    const user = await User.findById(req.user.userId).select('+twoFactorSecret +twoFactorBackupCodes');
+    const user = await User.findById(req.user._id).select('+twoFactorSecret +twoFactorBackupCodes');
     
     if (!user || !user.twoFactorSecret) {
       return res.status(400).json({
@@ -390,7 +408,7 @@ exports.disable2FA = async (req, res) => {
       });
     }
     
-    const user = await User.findById(req.user.userId).select('+password +twoFactorSecret +twoFactorBackupCodes');
+    const user = await User.findById(req.user._id).select('+password +twoFactorSecret +twoFactorBackupCodes');
     
     if (!user) {
       return res.status(404).json({
