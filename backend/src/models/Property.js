@@ -101,7 +101,25 @@ const propertySchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        isEligibleForStaging: {
+          type: Boolean,
+          default: false,
+        },
+        classification: {
+          type: String,
+          enum: ['empty_room', 'furnished', 'exterior', 'placeholder', 'other'],
+          default: 'other',
+        },
       },
+    ],
+    virtualStaging: [
+      {
+        originalImageId: { type: mongoose.Schema.Types.ObjectId },
+        stagedImageUrl: { type: String, required: true },
+        roomType: { type: String, enum: ['living_room', 'bedroom', 'kitchen', 'bathroom', 'other'], default: 'other' },
+        style: { type: String },
+        createdAt: { type: Date, default: Date.now }
+      }
     ],
     location: {
       type: {

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
+const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
 
 // @desc    Get all properties
 // @route   GET /api/properties
@@ -442,6 +443,102 @@ exports.deletePropertyImage = async (req, res, next) => {
 
     res.status(200).json(
       apiResponse(true, 'Image deleted successfully', property)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Analyze property images for virtual staging eligibility
+// @route   POST /api/properties/:id/analyze-images
+// @access  Private (Admin/Agent/Owner)
+exports.analyzePropertyImages = async (req, res, next) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    // Real Image Classification via HuggingFace (Free Vision AI)
+    let analyzedCount = 0;
+    
+    // Process sequentially to avoid rate-limiting
+    for (const img of property.images) {
+      if (!img.classification || img.classification === 'other') {
+        const { isEligible, classification } = await analyzeImageWithAI(img.url);
+        img.classification = classification;
+        img.isEligibleForStaging = isEligible;
+        analyzedCount++;
+      }
+    }
+
+    if (analyzedCount > 0) {
+      await property.save();
+    }
+
+    res.status(200).json(
+      apiResponse(true, `Analyzed ${analyzedCount} images successfully`, property)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate virtual staging for a specific property image
+// @route   POST /api/properties/:id/virtual-staging
+// @access  Private (Admin/Agent/Owner)
+exports.generateVirtualStaging = async (req, res, next) => {
+  try {
+    const { imageId, style, roomType } = req.body;
+
+    if (!imageId || !style) {
+      return res.status(400).json(
+        apiResponse(false, 'Please provide imageId and style')
+      );
+    }
+
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    const image = property.images.id(imageId);
+
+    if (!image) {
+      return res.status(404).json(
+        apiResponse(false, 'Image not found in this property')
+      );
+    }
+
+    if (!image.isEligibleForStaging) {
+      return res.status(400).json(
+        apiResponse(false, 'This image is not eligible for virtual staging. It must be classified as an empty room.')
+      );
+    }
+
+    // Call Real Hugging Face API (Instruct-Pix2Pix - Free Image editing)
+    const prompt = `Virtually staged ${roomType}, ${style} style interior design, highly detailed, realistic`;
+    const stagedImageUrl = await generateHuggingFaceStaging(image.url, prompt);
+
+    // Push the result to the virtualStaging array
+    property.virtualStaging.push({
+      originalImageId: image._id,
+      stagedImageUrl,
+      roomType: roomType || 'other',
+      style,
+      createdAt: new Date()
+    });
+
+    await property.save();
+
+    res.status(200).json(
+      apiResponse(true, 'Virtual staging generated successfully', property.virtualStaging[property.virtualStaging.length - 1])
     );
   } catch (error) {
     next(error);

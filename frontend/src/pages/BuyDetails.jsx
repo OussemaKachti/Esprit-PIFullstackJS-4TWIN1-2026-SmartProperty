@@ -1,12 +1,72 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getImageUrl, getPropertyById } from '../services/propertyService';
+import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
+import { getImageUrl, getPropertyById, API_BASE_URL } from '../services/propertyService';
 
 const BuyDetails = () => {
   const { id } = useParams();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState(null);
+
+  // Virtual Staging states
+  const [showStagingModal, setShowStagingModal] = useState(false);
+  const [isStagingLoading, setIsStagingLoading] = useState(false);
+  const [stagedResultUrl, setStagedResultUrl] = useState(null);
+  const [selectedStyle, setSelectedStyle] = useState('modern');
+
+  const handleStagingSubmit = async () => {
+    setIsStagingLoading(true);
+    try {
+      // Step 1: Trigger the backend analysis to check if any image is an empty room
+      // In a real application, you might want the user to select *which* image to stage first.
+      // Here, we'll run the analysis on all of the property's images.
+      const analysisResponse = await axios.post(`${API_BASE_URL}/api/properties/${id}/analyze-images`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      // After analysis, fetch the updated property data from the response to check eligibility
+      const updatedProperty = analysisResponse.data?.data;
+      const eligibleImage = updatedProperty?.images?.find(img => img.isEligibleForStaging);
+      
+      if (!eligibleImage) {
+        toast.error("Vision Analysis failed to verify this room. Please upload a clear photo of an empty interior.", { duration: 5000 });
+        setIsStagingLoading(false);
+        return;
+      }
+
+      // Step 2: Proceed with Virtual Staging API call since we found an eligible image
+      const stageResponse = await axios.post(`${API_BASE_URL}/api/properties/${id}/virtual-staging`, {
+        imageId: eligibleImage._id,
+        style: selectedStyle,
+        roomType: 'living_room' 
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (stageResponse.data?.success && stageResponse.data?.data?.stagedImageUrl) {
+          const rawUrl = stageResponse.data.data.stagedImageUrl;
+          const finalUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}/${rawUrl}`;
+          setStagedResultUrl(finalUrl);
+          toast.success("✨ Room staged successfully!", { duration: 3000 });
+      } else {
+          toast.error("Failed to generate staging.");
+      }
+
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "AI Analysis or Staging failed due to an error.", { duration: 5000 });
+    } finally {
+      setIsStagingLoading(false);
+    }
+  };
+
+  const closeStagingModal = () => {
+    setShowStagingModal(false);
+    setStagedResultUrl(null);
+    setIsStagingLoading(false);
+  };
 
   const listingLabel = useMemo(() => {
     if (!property?.listingType) return 'For Sale';
@@ -39,6 +99,8 @@ const BuyDetails = () => {
       .map((img) => getImageUrl(img))
       .filter(Boolean);
   }, [property?.images]);
+
+  // Image check removed; button will always show now.
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +180,7 @@ const BuyDetails = () => {
 
     
 	<div className="main-wrapper">
-
+        <Toaster position="top-right" />
 		
 		<div className="page-wrapper">
 
@@ -194,6 +256,14 @@ const BuyDetails = () => {
                                 <div className="d-inline-flex align-center gap-2">
                                     <span className="badge bg-danger d-flex align-items-center"> <i className="material-icons-outlined fs-14 me-1">generating_tokens</i> Trending </span>
                                     <span className="badge bg-orange d-flex align-items-center"> <i className="material-icons-outlined  fs-14 me-1">loyalty</i> Featured </span>
+                                    <button 
+                                        className="btn btn-sm btn-primary d-flex align-items-center text-white border-0 shadow-sm px-3" 
+                                        onClick={() => setShowStagingModal(true)}
+                                        style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)' }}
+                                        title="Use AI to virtually stage eligible empty rooms"
+                                    >
+                                        <i className="material-icons-outlined fs-14 me-1">auto_awesome</i> Magic Staging
+                                    </button>
                                 </div>
                                 <p className="mb-0 text-dark">
                                     Total No of Visits : 45
@@ -816,7 +886,7 @@ const BuyDetails = () => {
 											</Link>
 										</li>
 										<li className="nav-item w-100" role="presentation">
-											<Link className="nav-link fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-2" aria-selected="false" tabindex="-1">
+											<Link className="nav-link fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
 												<i className="material-icons-outlined fs-14 me-1">videocam</i>Schedule a Visit
 											</Link>
 										</li>
@@ -1031,7 +1101,7 @@ const BuyDetails = () => {
 							<div className="card mb-0">
 								<div className="card-body">
 									<div className="custom-map position-relative rounded overflow-hidden">
-										<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d9582106.12236644!2d-15.012343587457918!3d54.10244278649341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x25a3b1142c791a9%3A0xc4f8a0433288257a!2sUnited%20Kingdom!5e0!3m2!1sen!2sin!4v1747587865989!5m2!1sen!2sin" width="100" height="100" style={{ border: '0;' }} allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" className="rounded"></iframe>
+										<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d9582106.12236644!2d-15.012343587457918!3d54.10244278649341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x25a3b1142c791a9%3A0xc4f8a0433288257a!2sUnited%20Kingdom!5e0!3m2!1sen!2sin!4v1747587865989!5m2!1sen!2sin" width="100" height="100" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="rounded"></iframe>
 									</div>
 									<h6 className="mb-3 fs-16"> Nearby Landmarks & Visits </h6> 
 									<p className="mb-2 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i>  Near By Statue of Liberty </p>
@@ -1399,7 +1469,7 @@ const BuyDetails = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">
@@ -1429,6 +1499,84 @@ const BuyDetails = () => {
 			</div>
 		</div>
 		
+        {/* Magic Staging Modal */}
+        {showStagingModal && (
+          <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header border-0 pb-0">
+                  <h5 className="modal-title d-flex align-items-center gap-2 fw-semibold">
+                    <span style={{ fontSize: '1.5rem' }}>✨</span> AI Virtual Staging
+                  </h5>
+                  <button type="button" className="btn-close" onClick={closeStagingModal}></button>
+                </div>
+                <div className="modal-body p-4">
+                  <p className="text-muted mb-4">Transform this empty room into a beautifully furnished space using AI.</p>
+                  
+                  <div className="row">
+                    <div className="col-md-8">
+                        <div className="position-relative bg-light rounded d-flex align-items-center justify-content-center overflow-hidden shadow-sm" style={{ minHeight: '350px'}}>
+                            {isStagingLoading ? (
+                                <div className="text-center p-4">
+                                    <div className="spinner-border text-primary mb-3" style={{width: '3rem', height: '3rem'}} role="status"></div>
+                                    <h6 className="mb-1 text-primary fw-bold">Analyzing Room Depth...</h6>
+                                    <p className="text-muted fs-14">Applying {selectedStyle} aesthetics</p>
+                                </div>
+                            ) : stagedResultUrl ? (
+                                <img src={stagedResultUrl} alt="Staged Room" className="img-fluid w-100 h-100 object-fit-cover" />
+                            ) : (
+                                <img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt="Original Room" className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
+                            )}
+                            
+                            {stagedResultUrl && !isStagingLoading && (
+                                <div className="position-absolute top-0 start-0 m-3">
+                                    <span className="badge bg-success shadow-sm px-3 py-2 fs-13">VIRTUAL STAGING</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="col-md-4 mt-4 mt-md-0 d-flex flex-column">
+                        <h6 className="fw-bold mb-3">Select Style</h6>
+                        <div className="d-flex flex-column gap-3 mb-4">
+                            {['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
+                                <label key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <input 
+                                            type="radio" 
+                                            name="stagingStyle" 
+                                            className="form-check-input mt-0" 
+                                            checked={selectedStyle === style} 
+                                            onChange={() => setSelectedStyle(style)} 
+                                        />
+                                        <span className="text-capitalize fw-semibold text-dark fs-15">{style}</span>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        
+                        <div className="mt-auto">
+                            <button 
+                                className="btn btn-primary w-100 btn-lg d-flex align-items-center justify-content-center gap-2 fw-bold text-white shadow-sm" 
+                                onClick={handleStagingSubmit}
+                                disabled={isStagingLoading}
+                                style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', border: 'none' }}
+                            >
+                                {isStagingLoading ? (
+                                    <>Generating...</>
+                                ) : stagedResultUrl ? (
+                                    <><i className="material-icons-outlined">refresh</i> Regenerate</>
+                                ) : (
+                                    <><span>✨</span> Apply Magic Staging</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
     </div>
     </div>
