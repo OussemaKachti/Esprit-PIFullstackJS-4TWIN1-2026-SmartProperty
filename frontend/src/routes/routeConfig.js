@@ -50,6 +50,7 @@ export const ROUTES = [
   { path: '/buy-property-list-sidebar', component: 'BuyPropertyListSidebar' },
   { path: '/buy-grid-map', component: 'BuyGridMap' },
   { path: '/buy-list-map', component: 'BuyListMap' },
+  { path: '/buy-details/:id', component: 'BuyDetails' },
   { path: '/buy-details', component: 'BuyDetails' },
   { path: '/add-property-buy', component: 'AddPropertyBuy' },
 

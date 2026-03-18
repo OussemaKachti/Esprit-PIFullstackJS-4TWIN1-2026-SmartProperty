@@ -1,7 +1,69 @@
-﻿import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { getImageUrl, getPropertyById } from '../services/propertyService';
 
 const BuyDetails = () => {
+  const { id } = useParams();
+  const [property, setProperty] = useState(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState(null);
+
+  const listingLabel = useMemo(() => {
+    if (!property?.listingType) return 'For Sale';
+    return property.listingType === 'FOR_RENT' ? 'For Rent' : 'For Sale';
+  }, [property?.listingType]);
+
+  const addressLabel = useMemo(() => {
+    if (!property) return '';
+    if (property.address) return property.address;
+    const parts = [property.city, property.region, property.country].filter(Boolean);
+    return parts.join(', ');
+  }, [property]);
+
+  const formattedUpdatedAt = useMemo(() => {
+    if (!property?.updatedAt && !property?.createdAt) return '';
+    const d = new Date(property.updatedAt || property.createdAt);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  }, [property?.updatedAt, property?.createdAt]);
+
+  const formattedPrice = useMemo(() => {
+    const price = property?.price;
+    if (price === undefined || price === null || Number.isNaN(Number(price))) return 'N/A';
+    return `$${Number(price).toLocaleString()}`;
+  }, [property?.price]);
+
+  const propertyImages = useMemo(() => {
+    if (!property?.images?.length) return [];
+    return property.images
+      .map((img) => getImageUrl(img))
+      .filter(Boolean);
+  }, [property?.images]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getPropertyById(id);
+        if (!cancelled) setProperty(data);
+      } catch (e) {
+        if (!cancelled) setError('Failed to load property. Please try again.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   useEffect(() => {
     // Force enable scrolling
     const enableScrolling = () => {
@@ -71,10 +133,10 @@ const BuyDetails = () => {
 						<div className="row align-items-center text-center position-relative z-1">
 							<div className="col-xl-8">
 								<div className="d-flex align-center gap-2 mb-2">
-									<span className="badge bg-primary">Condo</span>
-									<span className="badge bg-secondary">For Rent</span>
+									<span className="badge bg-primary">{property?.type || 'Property'}</span>
+									<span className="badge bg-secondary">{listingLabel}</span>
 								</div>
-								<h1 className="breadcrumb-title text-start ">Beautiful Condo Room</h1>
+								<h1 className="breadcrumb-title text-start ">{property?.title || 'Property'}</h1>
 								<div className="d-flex align-items-center gap-2 flex-wrap gap-1 mb-xl-0 mb-4">
 									<div className="d-flex align-items-center justify-content-center">
 										<i className="material-icons-outlined text-warning">star</i>
@@ -85,9 +147,9 @@ const BuyDetails = () => {
 										<span className="text-white ms-1"> 5.0 </span>
 									</div>
 									<i className="fa-solid fa-circle text-body"></i>
-									<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item"><i className="material-icons-outlined text-white me-1">location_on</i>318-330 S Oakley Blvd, Chicago, IL 60612, USA <Link to="/buy-grid-map" className="text-primary fs-14 text-decoration-underline ms-1"> View Location</Link></div>
+									<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item"><i className="material-icons-outlined text-white me-1">location_on</i>{addressLabel || '—'} <Link to="/buy-grid-map" className="text-primary fs-14 text-decoration-underline ms-1"> View Location</Link></div>
 									<i className="fa-solid fa-circle text-body"></i>
-									<p className="fs-14 mb-0 text-white">Last Updated on : 24 Feb 2025</p>
+									<p className="fs-14 mb-0 text-white">Last Updated on : {formattedUpdatedAt || '—'}</p>
 								</div>
 							</div>
 							<div className="col-xl-4 d-flex d-xl-block align-items-center flex-wrap gap-3">
@@ -96,7 +158,7 @@ const BuyDetails = () => {
 									<a href="#" className=""><i className="material-icons-outlined rounded">bookmark_add</i></a>
 									<a href="#" className=""><i className="material-icons-outlined rounded">compare_arrows</i></a>
 								</div>
-								<h4 className="mb-0 text-primary text-xl-end text-start"> $400 </h4>
+								<h4 className="mb-0 text-primary text-xl-end text-start"> {formattedPrice} </h4>
 							</div>
 						</div>
 					</div>
@@ -108,8 +170,23 @@ const BuyDetails = () => {
 			
             <div className="content">
                 <div className="container">
+					{loading && (
+						<div className="text-center py-5">
+							<div className="spinner-border text-primary" role="status">
+								<span className="visually-hidden">Loading...</span>
+							</div>
+							<p className="mt-3">Loading property...</p>
+						</div>
+					)}
+					{!loading && error && (
+						<div className="alert alert-danger" role="alert">
+							<i className="material-icons-outlined me-2">error</i>
+							{error}
+						</div>
+					)}
 
-                    
+                    {!loading && !error && (
+                    <>
                     <div className="row">
                         <div className="col-xl-8">
 
@@ -125,40 +202,63 @@ const BuyDetails = () => {
 
 							
 							<div className="slider-card service-slider-card mb-4">
-								<div className="slide-part mb-4">
-									<div className="slider service-slider">
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-1.jpg" className="img-fluid" alt="Slider Img" />
+								{propertyImages.length > 0 ? (
+									<>
+										<div className="slide-part mb-4">
+											<div className="slider service-slider">
+												{propertyImages.map((src) => (
+													<div key={src} className="service-img-wrap">
+														<img src={src} className="img-fluid" alt="Slider Img" />
+													</div>
+												))}
+											</div>
 										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
+										<div className="slider slider-nav-thumbnails">
+											{propertyImages.map((src) => (
+												<div key={src} className="slide-img">
+													<img src={src} className="img-fluid" alt="Slider Img" />
+												</div>
+											))}
 										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-3.jpg" className="img-fluid" alt="Slider Img" />
+									</>
+								) : (
+									<>
+										<div className="slide-part mb-4">
+											<div className="slider service-slider">
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-1.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-3.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-4.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-5.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-6.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+												<div className="service-img-wrap">
+													<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
+												</div>
+											</div>
 										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-4.jpg" className="img-fluid" alt="Slider Img" />
+										<div className="slider slider-nav-thumbnails">
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-1.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-3.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-4.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-5.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-6.jpg" className="img-fluid" alt="Slider Img" /></div>
+											<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
 										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-5.jpg" className="img-fluid" alt="Slider Img" />
-										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-6.jpg" className="img-fluid" alt="Slider Img" />
-										</div>
-										<div className="service-img-wrap">
-											<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
-										</div>
-									</div>
-								</div>
-								<div className="slider slider-nav-thumbnails">
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-1.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-3.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-4.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-5.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-6.jpg" className="img-fluid" alt="Slider Img" /></div>
-									<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-								</div>
+									</>
+								)}
 							</div>
 							
 
@@ -174,9 +274,9 @@ const BuyDetails = () => {
 									</div>
 									<div id="accordion-1" className="accordion-collapse collapse show">
 										<div className="accordion-body">
-											<p>This property is mostly wooded and sits high on a hilltop overlooking the Mohawk River Valley.Located right in the heart of Upstate NYs Amish farm Country, this land is certified organic makingit extremely rare! Good road frontage on a paved county road with utilities make it an amazingsetting for your dream country getaway! If you like views, you must see this property!This propertyis mostly wooded and sits high on a hilltop overlooking the Mohawk River Valley.</p>
+											<p>{property?.description || '—'}</p>
 											<div className="more-menu">
-												<p> Located right inthe heart of Upstate NYs Amish farm Country, this land is certified organic making it extremelyrare! Good road frontage on a paved county road with utilities make it an amazing setting for yourdream country getaway! If you like views, you must see this property!</p>
+												<p>{property?.description || '—'}</p>
 											</div>
 											<div className="view-all d-inline-flex align-items-center">
 												<a href="#" className="viewall-button fs-14">Read More </a>
@@ -199,14 +299,14 @@ const BuyDetails = () => {
 											<div className="row row-gap-4">
 												<div className="col-lg-3 col-md-6">
 													<div className="buy-property-items">
-														<p> <i className="material-icons-outlined">bed</i>  Bedrooms: 3</p>
+														<p> <i className="material-icons-outlined">bed</i>  Bedrooms: {property?.rooms ?? 0}</p>
 														<p> <i className="material-icons-outlined">door_sliding</i> Floor: 5th of 12 </p>
-														<p> <i className="material-icons-outlined">microwave</i>  Microwave : 2  </p>
+														<p> <i className="material-icons-outlined">straighten</i>  Area : {property?.surface ?? 'N/A'} Sq Ft</p>
 													</div>
 												</div> 
 												<div className="col-lg-3 col-md-6">
 													<div className="buy-property-items">
-														<p> <i className="material-icons-outlined">bathtub</i>  Bathrooms: 2</p>
+														<p> <i className="material-icons-outlined">bathtub</i>  Bathrooms: {property?.bathrooms ?? 0}</p>
 														<p> <i className="material-icons-outlined">bento</i>  Wardrobe :1 </p>
 														<p className="mb-lg-0"> <i className="material-icons-outlined">ac_unit</i> AC : 4 </p>
 													</div>
@@ -1229,6 +1329,8 @@ const BuyDetails = () => {
                         </div> 
 						
 					</div>
+                    </>
+                    )}
 					
 
                 </div>

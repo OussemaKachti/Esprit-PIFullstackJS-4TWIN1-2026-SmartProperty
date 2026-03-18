@@ -104,11 +104,18 @@ const Header = () => {
                 <li className="active">
                   <LocalizedLink to="/">{t('navigation.home')}</LocalizedLink>
                 </li>
-               <li>
+               {/* <li>
   <LocalizedLink to="/buy-property-grid">
     {t('navigation.buyProperty')}
   </LocalizedLink>
-</li>
+</li> */}
+<li className="has-submenu">
+                      <a href="#">{t('navigation.buyProperty')}</a>
+                      <ul className="submenu">
+                        <li><LocalizedLink to="/buy-property-grid">{t('navigation.buyProperty')}</LocalizedLink></li>
+                        <li><LocalizedLink to="/buy-property-grid-sidebar">{t('navigation.buyGridSidebar')}</LocalizedLink></li>
+                      </ul>
+                    </li>
 
 <li>
   <LocalizedLink to="/rent-property-grid">
