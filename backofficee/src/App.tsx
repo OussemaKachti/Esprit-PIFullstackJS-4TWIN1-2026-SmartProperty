@@ -20,6 +20,7 @@ import MyProperties from "./pages/MyProperties";
 import PropertyDetailsPage from "./pages/PropertyDetails";
 import Performance from "./pages/Performance";
 import Documents from "./pages/Documents";
+import Enquiries from "./pages/Enquiries";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -93,6 +94,7 @@ export default function App() {
             <Route path="/my-properties/:id" element={<PropertyDetailsPage />} />
             <Route path="/performance" element={<Performance />} />
             <Route path="/documents" element={<Documents />} />
+            <Route path="/enquiries" element={<Enquiries />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
 

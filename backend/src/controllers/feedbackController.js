@@ -54,6 +54,7 @@ exports.getAllFeedbacks = async (req, res, next) => {
   }
 };
 
+
 // @desc    Get single feedback by ID
 // @route   GET /api/feedbacks/:id
 // @access  Public
@@ -84,9 +85,10 @@ exports.getFeedbackById = async (req, res, next) => {
 exports.createFeedback = async (req, res, next) => {
   try {
     const { propertyId, agentId, authorId, rating, comment, complaintCategory } = req.body;
+    const authorToSave = req.user?._id || authorId;
 
     // Validate required fields
-    if (!propertyId || !authorId || !rating) {
+    if (!propertyId || !authorToSave || !rating) {
       return res.status(400).json(
         apiResponse(false, 'Please provide all required fields: propertyId, authorId, rating')
       );
@@ -102,7 +104,7 @@ exports.createFeedback = async (req, res, next) => {
     const feedback = await Feedback.create({
       propertyId,
       agentId,
-      authorId,
+      authorId: authorToSave,
       rating,
       comment,
       complaintCategory,

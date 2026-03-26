@@ -15,6 +15,56 @@ const BuyDetails = () => {
   const [isStagingLoading, setIsStagingLoading] = useState(false);
   const [stagedResultUrl, setStagedResultUrl] = useState(null);
   const [selectedStyle, setSelectedStyle] = useState('modern');
+	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
+	const [enquiryForm, setEnquiryForm] = useState({
+		name: '',
+		email: '',
+		phone: '',
+		description: '',
+	});
+
+	const handleEnquiryFieldChange = (field) => (event) => {
+		setEnquiryForm((prev) => ({
+			...prev,
+			[field]: event.target.value,
+		}));
+	};
+
+	const handleEnquirySubmit = async () => {
+		if (!property?._id) {
+			toast.error('Property not ready yet. Please wait a moment.');
+			return;
+		}
+
+		if (!enquiryForm.name.trim() || !enquiryForm.email.trim() || !enquiryForm.description.trim()) {
+			toast.error('Please fill Name, Email, and Description.');
+			return;
+		}
+
+		setIsEnquirySubmitting(true);
+		try {
+			await axios.post(`${API_BASE_URL}/api/notifications/enquiry`, {
+				propertyId: property._id,
+				senderName: enquiryForm.name.trim(),
+				senderEmail: enquiryForm.email.trim(),
+				senderPhone: enquiryForm.phone.trim(),
+				message: enquiryForm.description.trim(),
+				type: property?.listingType === 'FOR_RENT' ? 'RENT_REQUEST' : 'ENQUIRY',
+			});
+
+			toast.success('Your request was sent to the property owner.');
+			setEnquiryForm({
+				name: '',
+				email: '',
+				phone: '',
+				description: '',
+			});
+		} catch (submitError) {
+			toast.error(submitError?.response?.data?.message || 'Failed to send request.');
+		} finally {
+			setIsEnquirySubmitting(false);
+		}
+	};
 
   const handleStagingSubmit = async () => {
     setIsStagingLoading(true);
@@ -911,22 +961,52 @@ const BuyDetails = () => {
 
 											<div className="mb-3">
 												<label className="form-label fw-semibold"> Name </label>
-												<input type="text" className="form-control" placeholder="Your Name" />
+												<input
+													type="text"
+													className="form-control"
+													placeholder="Your Name"
+													value={enquiryForm.name}
+													onChange={handleEnquiryFieldChange('name')}
+												/>
 											</div>
 											<div className="mb-3">
 												<label className="form-label fw-semibold"> Email </label>
-												<input type="text" className="form-control" placeholder="Your Email" />
+												<input
+													type="email"
+													className="form-control"
+													placeholder="Your Email"
+													value={enquiryForm.email}
+													onChange={handleEnquiryFieldChange('email')}
+												/>
 											</div>
 											<div className="mb-3">
 												<label className="form-label fw-semibold"> Phone </label>
-												<input type="text" className="form-control" placeholder="Your Phone Number" />
+												<input
+													type="text"
+													className="form-control"
+													placeholder="Your Phone Number"
+													value={enquiryForm.phone}
+													onChange={handleEnquiryFieldChange('phone')}
+												/>
 											</div>
 											<div className="mb-4">
 												<label className="form-label fw-semibold"> Description </label>
-												<textarea className="form-control" rows="3"></textarea>
+												<textarea
+													className="form-control"
+													rows="3"
+													value={enquiryForm.description}
+													onChange={handleEnquiryFieldChange('description')}
+												></textarea>
 											</div>
 											<div>
-												<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">Submit</Link>
+												<button
+													type="button"
+													className="btn btn-dark w-100 py-2 fs-14"
+													onClick={handleEnquirySubmit}
+													disabled={isEnquirySubmitting}
+												>
+													{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
+												</button>
 											</div>
 										</div>
 										<div className="tab-pane fade" id="listing-2" role="tabpanel">

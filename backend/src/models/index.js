@@ -4,6 +4,7 @@ const { Lease, LeaseStatus } = require('./Lease');
 const { RentPayment, PaymentStatus } = require('./RentPayment');
 const { Feedback, ComplaintCategory } = require('./FeedBack');
 const { Sale, SaleStatus } = require('./Sale');
+const { Notification, NotificationType } = require('./Notification');
 
 module.exports = {
   Property,
@@ -20,4 +21,6 @@ module.exports = {
   ComplaintCategory,
   Sale,
   SaleStatus,
+  Notification,
+  NotificationType,
 };
