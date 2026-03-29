@@ -99,6 +99,7 @@ export const ROUTES = [
   { path: '/testimonial', component: 'Testimonial' },
   { path: '/privacy-policy', component: 'PrivacyPolicy' },
   { path: '/terms-condition', component: 'TermsCondition' },
+  { path: '/rental-match', component: 'RentalMatch' },
 
   // E-commerce Routes
   { path: '/wishlist', component: 'Wishlist' },

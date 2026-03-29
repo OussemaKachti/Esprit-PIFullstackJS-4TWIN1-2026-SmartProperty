@@ -7,6 +7,7 @@ export async function generateDescription(propertyId, options = {}) {
     `/api/ai/generate-description/${propertyId}`,
     {
       method: 'POST',
+      base: 'backend',
       body: JSON.stringify({
         tone: tone.toLowerCase(),
         length,
@@ -22,6 +23,7 @@ export async function generateDescriptionFromDraft(draft, options = {}) {
 
   const data = await apiRequest('/api/ai/generate-description-draft', {
     method: 'POST',
+    base: 'backend',
     body: JSON.stringify({
       property: {
         type: draft.type || draft.propertyType || 'apartment',

@@ -82,6 +82,7 @@ import FormContainer from "./features/multi-step-form/FormContainer";
 import AgencyDoc from "./features/auth/AgencyDocsForm";
 import CINForm from "./features/auth/CINForm";
 import TwoFactorSetup from "./features/auth/TwoFactorSetup";
+import RentalMatch from "./pages/RentalMatch.jsx";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -100,7 +101,8 @@ const COMPONENT_MAP = {
   ForgotPassword, ResetPassword,
   Wishlist, Cart, Checkout, InvoiceDetails,
   Notifications, Maintenance, ComingSoon,
-  Signin, Index2, Index3, FirstStepForm, FormContainer, AgencyDoc, CINForm
+  Signin, Index2, Index3, FirstStepForm, FormContainer, AgencyDoc, CINForm,
+  RentalMatch,
 }
 
 const LanguageDetector = () => {
