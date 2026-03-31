@@ -39,6 +39,10 @@ const leaseSchema = new mongoose.Schema(
       enum: Object.values(LeaseStatus),
       default: LeaseStatus.PENDING,
     },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction',
+    },
   },
   { timestamps: true }
 );

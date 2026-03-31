@@ -31,6 +31,10 @@ const saleSchema = new mongoose.Schema(
       enum: Object.values(SaleStatus),
       default: SaleStatus.PENDING,
     },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction',
+    },
   },
   { timestamps: true }
 );

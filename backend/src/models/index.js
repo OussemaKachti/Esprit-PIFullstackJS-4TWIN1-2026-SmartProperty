@@ -4,6 +4,7 @@ const { Lease, LeaseStatus } = require('./Lease');
 const { RentPayment, PaymentStatus } = require('./RentPayment');
 const { Feedback, ComplaintCategory } = require('./FeedBack');
 const { Sale, SaleStatus } = require('./Sale');
+const { Transaction, TransactionStatus, TransactionType } = require('./Transaction');
 const { Notification, NotificationType } = require('./Notification');
 
 module.exports = {
@@ -21,6 +22,9 @@ module.exports = {
   ComplaintCategory,
   Sale,
   SaleStatus,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
   Notification,
   NotificationType,
 };

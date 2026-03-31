@@ -48,6 +48,11 @@ const regularNavItems: NavItem[] = [
     path: "/my-properties",
   },
   {
+    icon: <TableIcon />,
+    name: "Transactions",
+    path: "/transactions",
+  },
+  {
     icon: <PieChartIcon />,
     name: "Performance",
     path: "/performance",
@@ -95,6 +100,11 @@ const adminNavItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Users",
     path: "/admin/users",
+  },
+  {
+    icon: <TableIcon />,
+    name: "Transactions",
+    path: "/transactions",
   },
 ];
 

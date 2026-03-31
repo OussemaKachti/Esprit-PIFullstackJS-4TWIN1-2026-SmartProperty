@@ -61,6 +61,7 @@ export const ROUTES = [
   { path: '/rent-property-list-sidebar', component: 'RentPropertyListSidebar' },
   { path: '/rent-grid-map', component: 'RentGridMap' },
   { path: '/rent-list-map', component: 'RentListMap' },
+  { path: '/rent-details/:id', component: 'RentDetails' },
   { path: '/rent-details', component: 'RentDetails' },
   { path: '/add-property-rent', component: 'AddPropertyRent' },
 

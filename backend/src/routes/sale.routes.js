@@ -16,6 +16,11 @@ router.put(
   auth.protect,
   saleController.updateSale
 );
+router.patch(
+  '/:id/confirm',
+  auth.protect,
+  saleController.confirmSale
+);
 router.delete(
   '/:id',
   auth.protect,

@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const NotificationType = {
   ENQUIRY: 'ENQUIRY',
   RENT_REQUEST: 'RENT_REQUEST',
+  LEASE_CREATED: 'LEASE_CREATED',
+  SALE_CREATED: 'SALE_CREATED',
 };
 
 const notificationSchema = new mongoose.Schema(

@@ -4,11 +4,14 @@ import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { getImageUrl, getPropertyById, API_BASE_URL } from '../services/propertyService';
+import { apiRequest } from '../api/client';
+import { getUserData } from '../utils/auth';
 import { normalizePanoramas } from '../utils/panoramaUtils';
 import PanoViewer from '../components/PanoViewer';
 
 const BuyDetails = () => {
 	const { id } = useParams();
+	const [currentUser] = useState(() => getUserData());
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
@@ -22,10 +25,8 @@ const BuyDetails = () => {
   const [selectedStyle, setSelectedStyle] = useState('modern');
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
 	const [enquiryForm, setEnquiryForm] = useState({
-		name: '',
-		email: '',
-		phone: '',
-		description: '',
+		offerPrice: '',
+		note: 'I would like to proceed with a purchase request.',
 	});
 
 	const handleEnquiryFieldChange = (field) => (event) => {
@@ -41,28 +42,34 @@ const BuyDetails = () => {
 			return;
 		}
 
-		if (!enquiryForm.name.trim() || !enquiryForm.email.trim() || !enquiryForm.description.trim()) {
-			toast.error('Please fill Name, Email, and Description.');
+		const buyerId = currentUser?._id || currentUser?.id;
+		if (!buyerId) {
+			toast.error('Please sign in to submit an offer.');
+			return;
+		}
+
+		if (!enquiryForm.offerPrice || Number.isNaN(Number(enquiryForm.offerPrice))) {
+			toast.error('Please enter your offer price.');
 			return;
 		}
 
 		setIsEnquirySubmitting(true);
 		try {
-			await axios.post(`${API_BASE_URL}/api/notifications/enquiry`, {
-				propertyId: property._id,
-				senderName: enquiryForm.name.trim(),
-				senderEmail: enquiryForm.email.trim(),
-				senderPhone: enquiryForm.phone.trim(),
-				message: enquiryForm.description.trim(),
-				type: property?.listingType === 'FOR_RENT' ? 'RENT_REQUEST' : 'ENQUIRY',
+			// Create a sale record to trigger backend email + notification to owner
+			await apiRequest('/api/sales', {
+				method: 'POST',
+				body: JSON.stringify({
+					propertyId: property._id,
+					buyerId,
+					price: Number(enquiryForm.offerPrice),
+					status: 'PENDING',
+				}),
 			});
 
-			toast.success('Your request was sent to the property owner.');
+		toast.success('Your purchase request was sent to the property owner.');
 			setEnquiryForm({
-				name: '',
-				email: '',
-				phone: '',
-				description: '',
+			offerPrice: '',
+			note: 'I would like to proceed with a purchase request.',
 			});
 		} catch (submitError) {
 			toast.error(submitError?.response?.data?.message || 'Failed to send request.');
@@ -70,6 +77,12 @@ const BuyDetails = () => {
 			setIsEnquirySubmitting(false);
 		}
 	};
+
+	useEffect(() => {
+		if (property?.price && !enquiryForm.offerPrice) {
+			setEnquiryForm((prev) => ({ ...prev, offerPrice: property.price }));
+		}
+	}, [property?.price, enquiryForm.offerPrice]);
 
 	const handleStagingSubmit = async () => {
 		setIsStagingLoading(true);
@@ -1033,25 +1046,35 @@ const BuyDetails = () => {
 																</div>
 															</div>
 
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> Name </label>
-																<input type="text" className="form-control" placeholder="Your Name" />
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> Email </label>
-																<input type="text" className="form-control" placeholder="Your Email" />
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> Phone </label>
-																<input type="text" className="form-control" placeholder="Your Phone Number" />
-															</div>
-															<div className="mb-4">
-																<label className="form-label fw-semibold"> Description </label>
-																<textarea className="form-control" rows="3"></textarea>
-															</div>
-															<div>
-																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">Submit</Link>
-															</div>
+																				<div className="mb-3">
+																					<label className="form-label fw-semibold"> Offer Price </label>
+																					<input
+																						type="number"
+																						className="form-control"
+																						placeholder="Your offer"
+																						value={enquiryForm.offerPrice}
+																						onChange={handleEnquiryFieldChange('offerPrice')}
+																					/>
+																				</div>
+																				<div className="mb-4">
+																					<label className="form-label fw-semibold"> Note to Owner (optional) </label>
+																					<textarea
+																						className="form-control"
+																						rows="3"
+																						value={enquiryForm.note}
+																						onChange={handleEnquiryFieldChange('note')}
+																					></textarea>
+																				</div>
+																				<div>
+																					<button
+																						type="button"
+																						className="btn btn-dark w-100 py-2 fs-14"
+																						onClick={handleEnquirySubmit}
+																						disabled={isEnquirySubmitting}
+																					>
+																						{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
+																					</button>
+																				</div>
 														</div>
 														<div className="tab-pane fade" id="listing-2" role="tabpanel">
 															<div className="card bg-light border-0 rounded shadow-none custom-btn">

@@ -15,7 +15,9 @@ const PropertyType = {
 
 const PropertyStatus = {
   AVAILABLE: 'AVAILABLE',
+  PENDING: 'PENDING',
   RENTED: 'RENTED',
+  SOLD: 'SOLD',
   ARCHIVED: 'ARCHIVED',
 };
 

@@ -1,5 +1,241 @@
-const { Sale } = require('../models');
+const { Sale, SaleStatus, Property, User, Notification, NotificationType, Transaction, TransactionStatus, TransactionType } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
+const emailService = require('../services/email.service');
+const { triggerOwnerNotification } = require('../services/pusher.service');
+const { addTimelineEntry, recalcPropertyStatus } = require('../services/transaction.service');
+
+const formatAmount = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/A';
+  return `${Number(value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} TND`;
+};
+
+const formatDate = (value) => {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleDateString('en-GB');
+};
+
+const getDisplayName = (user) => {
+  if (!user) return 'Unknown user';
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  return fullName || user.login || user.email || 'User';
+};
+
+const buildPropertyLabel = (property) => {
+  if (!property) return 'property';
+  return property.title || property.reference || 'property';
+};
+
+const logSideEffectError = (context, error) => {
+  console.error(`[sale:${context}]`, error?.message || error);
+};
+
+const mapSaleStatusToTransactionStatus = (status) => {
+  switch (status) {
+    case 'COMPLETED':
+      return TransactionStatus.COMPLETED;
+    case 'CANCELLED':
+      return TransactionStatus.CANCELLED;
+    default:
+      return TransactionStatus.PENDING;
+  }
+};
+
+const createSaleTransaction = async ({ sale, property, buyerId, actorId, note }) => {
+  const transaction = new Transaction({
+    propertyId: property._id,
+    ownerId: property.createdBy || null,
+    partyId: buyerId,
+    type: TransactionType.SALE,
+    amount: sale.salePrice,
+    currency: 'TND',
+    status: mapSaleStatusToTransactionStatus(sale.status),
+    note,
+    timeline: [],
+  });
+
+  addTimelineEntry(transaction, transaction.status, actorId, note || 'Sale recorded');
+  await transaction.save();
+  return transaction;
+};
+
+const syncSaleTransactionStatus = async ({ sale, actorId, note }) => {
+  if (!sale.transactionId) return null;
+  const transaction = await Transaction.findById(sale.transactionId);
+  if (!transaction) return null;
+
+  const nextStatus = mapSaleStatusToTransactionStatus(sale.status);
+  transaction.status = nextStatus;
+  addTimelineEntry(transaction, nextStatus, actorId, note || `Sale set to ${nextStatus}`);
+  await transaction.save();
+  await recalcPropertyStatus(transaction.propertyId);
+  return transaction;
+};
+
+// @desc    Confirm sale (owner/admin)
+// @route   PATCH /api/sales/:id/confirm
+// @access  Private
+exports.confirmSale = async (req, res, next) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json(apiResponse(false, 'Sale not found'));
+    }
+
+    const property = await Property.findById(sale.propertyId);
+    const isOwner = property && property.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = ['ADMIN', 'AGENCY'].includes(req.user.role);
+    if (!isOwner && !adminish) {
+      return res.status(403).json(apiResponse(false, 'Only owner or admin/agency can confirm')); 
+    }
+
+    sale.status = SaleStatus.COMPLETED;
+    await sale.save();
+    await syncSaleTransactionStatus({ sale, actorId: req.user._id, note: 'Sale confirmed' });
+    if (property) {
+      await recalcPropertyStatus(property._id);
+    }
+
+    const populatedSale = await Sale.findById(sale._id)
+      .populate('propertyId', 'reference title city type price status')
+      .populate('buyerId', 'login email firstName lastName phone')
+      .populate('transactionId');
+
+    return res.status(200).json(apiResponse(true, 'Sale confirmed', populatedSale));
+  } catch (error) {
+    next(error);
+  }
+};
+
+async function dispatchSaleSideEffects({ sale, property, buyer, owner, note }) {
+  const propertyLabel = buildPropertyLabel(property);
+  const priceLabel = formatAmount(sale.salePrice);
+  const dateLabel = formatDate(sale.saleDate);
+  const buyerName = getDisplayName(buyer);
+  const ownerName = owner ? getDisplayName(owner) : null;
+  const actionUrl = process.env.FRONTEND_URL
+    ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/buy-details/${property._id}`
+    : undefined;
+
+  const payloadBase = {
+    id: String(sale._id),
+    type: NotificationType.SALE_CREATED,
+    propertyId: String(property._id),
+    propertyTitle: propertyLabel,
+    salePrice: sale.salePrice,
+    saleDate: sale.saleDate,
+    status: sale.status,
+    createdAt: sale.createdAt || new Date(),
+  };
+
+  const asyncTasks = [];
+
+  if (owner) {
+    asyncTasks.push(
+      Notification.create({
+        type: NotificationType.SALE_CREATED,
+        recipientId: owner._id,
+        propertyId: property._id,
+        senderUserId: buyer?._id,
+        senderName: buyerName,
+        senderEmail: buyer?.email || process.env.EMAIL_FROM || 'noreply@smartproperty.local',
+        senderPhone: buyer?.phone || '',
+        message: `${buyerName} created a sale for ${propertyLabel} (${priceLabel}).`,
+      }).catch((error) => logSideEffectError('owner-notification', error))
+    );
+
+    asyncTasks.push(
+      triggerOwnerNotification(String(owner._id), {
+        ...payloadBase,
+        authorName: buyerName,
+        authorEmail: buyer?.email,
+        message: `${buyerName} created a sale for ${propertyLabel}.`,
+      }).catch((error) => logSideEffectError('owner-pusher', error))
+    );
+
+    if (owner.email) {
+      asyncTasks.push(
+        emailService
+          .sendPropertyTransactionEmail({
+            to: owner.email,
+            subject: `New sale for ${propertyLabel}`,
+            title: 'New property sale',
+            introLines: [
+              `${buyerName} created a sale for ${propertyLabel}.`,
+              `Offered price: ${priceLabel}.`,
+              note ? `Note: ${note}` : null,
+            ],
+            details: [
+              { label: 'Property', value: propertyLabel },
+              { label: 'Reference', value: property.reference || '' },
+              { label: 'Buyer', value: `${buyerName}${buyer?.email ? ` (${buyer.email})` : ''}` },
+              { label: 'Sale price', value: priceLabel },
+              { label: 'Sale date', value: dateLabel },
+              { label: 'Status', value: sale.status },
+              note ? { label: 'Note', value: note } : null,
+            ],
+            actionUrl,
+            actionLabel: 'Open sale',
+            footerNote: 'Sign in to SmartProperty to review this sale.',
+          })
+          .catch((error) => logSideEffectError('owner-email', error))
+      );
+    }
+  }
+
+  if (buyer) {
+    asyncTasks.push(
+      Notification.create({
+        type: NotificationType.SALE_CREATED,
+        recipientId: buyer._id,
+        propertyId: property._id,
+        senderUserId: owner?._id,
+        senderName: ownerName || 'SmartProperty',
+        senderEmail: owner?.email || process.env.EMAIL_FROM || 'noreply@smartproperty.local',
+        senderPhone: owner?.phone || '',
+        message: `Your sale for ${propertyLabel} has been created.`,
+      }).catch((error) => logSideEffectError('buyer-notification', error))
+    );
+
+    asyncTasks.push(
+      triggerOwnerNotification(String(buyer._id), {
+        ...payloadBase,
+        authorName: ownerName || 'SmartProperty',
+        authorEmail: owner?.email,
+        message: `Your sale for ${propertyLabel} is recorded.`,
+      }).catch((error) => logSideEffectError('buyer-pusher', error))
+    );
+
+    if (buyer.email) {
+      asyncTasks.push(
+        emailService
+          .sendPropertyTransactionEmail({
+            to: buyer.email,
+            subject: `Sale recorded for ${propertyLabel}`,
+            title: 'Sale Request',
+            introLines: [
+              `Your sale for ${propertyLabel} has been recorded.`,
+              `Price: ${priceLabel}.`,
+              note ? `Note: ${note}` : null,
+            ],
+            details: [
+              { label: 'Property', value: propertyLabel },
+              { label: 'Reference', value: property.reference || '' },
+              { label: 'Sale price', value: priceLabel },
+              { label: 'Sale date', value: dateLabel },
+              { label: 'Status', value: sale.status },
+              note ? { label: 'Note', value: note } : null,
+            ],
+            actionUrl,
+            actionLabel: 'View request',
+            footerNote: 'We will notify you when the owner responds.',
+          })
+          .catch((error) => logSideEffectError('buyer-email', error))
+      );
+    }
+  }
+
+  await Promise.allSettled(asyncTasks);
+}
 
 // @desc    Get all sales
 // @route   GET /api/sales
@@ -86,12 +322,16 @@ exports.getSaleById = async (req, res, next) => {
 // @access  Private
 exports.createSale = async (req, res, next) => {
   try {
-    const { propertyId, buyerId, salePrice, saleDate, status } = req.body;
+    const { propertyId, buyerId, salePrice, saleDate, status, price, note } = req.body;
+
+    // Normalize inputs: accept "price" as alias, and default saleDate to now if missing
+    const normalizedSalePrice = salePrice ?? price;
+    const normalizedSaleDate = saleDate || new Date();
 
     // Validate required fields
-    if (!propertyId || !buyerId || !salePrice || !saleDate) {
+    if (!propertyId || !buyerId || normalizedSalePrice === undefined || normalizedSalePrice === null) {
       return res.status(400).json(
-        apiResponse(false, 'Please provide all required fields: propertyId, buyerId, salePrice, saleDate')
+        apiResponse(false, 'Please provide propertyId, buyerId, and salePrice')
       );
     }
 
@@ -103,7 +343,6 @@ exports.createSale = async (req, res, next) => {
     }
 
     // Verify property exists
-    const { Property } = require('../models');
     const property = await Property.findById(propertyId);
     if (!property) {
       return res.status(404).json(
@@ -112,7 +351,6 @@ exports.createSale = async (req, res, next) => {
     }
 
     // Verify buyer (user) exists
-    const { User } = require('../models');
     const buyer = await User.findById(buyerId);
     if (!buyer) {
       return res.status(404).json(
@@ -120,17 +358,41 @@ exports.createSale = async (req, res, next) => {
       );
     }
 
+    const owner = property.createdBy ? await User.findById(property.createdBy) : null;
+
     const sale = await Sale.create({
       propertyId,
       buyerId,
-      salePrice,
-      saleDate,
+      salePrice: normalizedSalePrice,
+      saleDate: normalizedSaleDate,
       status,
     });
 
+    const transaction = await createSaleTransaction({
+      sale,
+      property,
+      buyerId,
+      actorId: req.user._id,
+      note,
+    });
+
+    sale.transactionId = transaction._id;
+    await sale.save();
+
     const populatedSale = await Sale.findById(sale._id)
-      .populate('propertyId', 'reference title city type price')
-      .populate('buyerId', 'login email firstName lastName phone');
+      .populate('propertyId', 'reference title city type price status')
+      .populate('buyerId', 'login email firstName lastName phone')
+      .populate('transactionId');
+
+    await recalcPropertyStatus(property._id);
+
+    await dispatchSaleSideEffects({
+      sale: populatedSale,
+      property,
+      buyer,
+      owner,
+      note,
+    });
 
     res.status(201).json(
       apiResponse(true, 'Sale created successfully', populatedSale)
@@ -145,7 +407,7 @@ exports.createSale = async (req, res, next) => {
 // @access  Private
 exports.updateSale = async (req, res, next) => {
   try {
-    const { propertyId, buyerId, salePrice, saleDate, status } = req.body;
+    const { propertyId, buyerId, salePrice, saleDate, status, note } = req.body;
 
     let sale = await Sale.findById(req.params.id);
 
@@ -172,9 +434,12 @@ exports.updateSale = async (req, res, next) => {
 
     await sale.save();
 
+    await syncSaleTransactionStatus({ sale, actorId: req.user._id, note });
+
     const populatedSale = await Sale.findById(sale._id)
-      .populate('propertyId', 'reference title city type price')
-      .populate('buyerId', 'login email firstName lastName phone');
+      .populate('propertyId', 'reference title city type price status')
+      .populate('buyerId', 'login email firstName lastName phone')
+      .populate('transactionId');
 
     res.status(200).json(
       apiResponse(true, 'Sale updated successfully', populatedSale)
@@ -203,6 +468,16 @@ exports.deleteSale = async (req, res, next) => {
       return res.status(403).json(
         apiResponse(false, 'You can only delete your own sale')
       );
+    }
+
+    if (sale.transactionId) {
+      const transaction = await Transaction.findById(sale.transactionId);
+      if (transaction) {
+        transaction.status = TransactionStatus.CANCELLED;
+        addTimelineEntry(transaction, TransactionStatus.CANCELLED, req.user._id, 'Sale deleted');
+        await transaction.save();
+        await recalcPropertyStatus(transaction.propertyId);
+      }
     }
 
     await sale.deleteOne();

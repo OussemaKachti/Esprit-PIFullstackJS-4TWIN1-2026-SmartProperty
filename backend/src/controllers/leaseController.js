@@ -1,5 +1,253 @@
-const { Lease } = require('../models');
+const { Lease, LeaseStatus, Property, User, Notification, NotificationType, Transaction, TransactionStatus, TransactionType } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
+const emailService = require('../services/email.service');
+const { triggerOwnerNotification } = require('../services/pusher.service');
+const { addTimelineEntry, recalcPropertyStatus, hasOverlappingConfirmedRent } = require('../services/transaction.service');
+
+const formatAmount = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/A';
+  return `${Number(value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} TND`;
+};
+
+const formatDate = (value) => {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleDateString('en-GB');
+};
+
+const getDisplayName = (user) => {
+  if (!user) return 'Unknown user';
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  return fullName || user.login || user.email || 'User';
+};
+
+const buildPropertyLabel = (property) => {
+  if (!property) return 'property';
+  return property.title || property.reference || 'property';
+};
+
+const logSideEffectError = (context, error) => {
+  console.error(`[lease:${context}]`, error?.message || error);
+};
+
+const mapLeaseStatusToTransactionStatus = (status) => {
+  switch (status) {
+    case 'ACTIVE':
+      return TransactionStatus.CONFIRMED;
+    case 'TERMINATED':
+      return TransactionStatus.CANCELLED;
+    default:
+      return TransactionStatus.PENDING;
+  }
+};
+
+const createLeaseTransaction = async ({ lease, property, tenantId, actorId }) => {
+  const transaction = new Transaction({
+    propertyId: property._id,
+    ownerId: property.createdBy || null,
+    partyId: tenantId,
+    type: TransactionType.RENT,
+    amount: lease.rentAmount,
+    currency: 'TND',
+    startDate: lease.startDate,
+    endDate: lease.endDate,
+    status: mapLeaseStatusToTransactionStatus(lease.status),
+    timeline: [],
+  });
+
+  addTimelineEntry(transaction, transaction.status, actorId, 'Lease created');
+  await transaction.save();
+  return transaction;
+};
+
+const syncLeaseTransactionStatus = async ({ lease, actorId, note }) => {
+  if (!lease.transactionId) return null;
+  const transaction = await Transaction.findById(lease.transactionId);
+  if (!transaction) return null;
+
+  const nextStatus = mapLeaseStatusToTransactionStatus(lease.status);
+  transaction.status = nextStatus;
+  addTimelineEntry(transaction, nextStatus, actorId, note || `Lease set to ${nextStatus}`);
+
+  if (transaction.type === TransactionType.RENT && nextStatus === TransactionStatus.CONFIRMED) {
+    const overlap = await hasOverlappingConfirmedRent(transaction);
+    if (overlap) {
+      throw new Error('This rental period overlaps an existing confirmed rental');
+    }
+  }
+
+  await transaction.save();
+  await recalcPropertyStatus(transaction.propertyId);
+  return transaction;
+};
+
+// @desc    Confirm lease (owner/admin)
+// @route   PATCH /api/leases/:id/confirm
+// @access  Private
+exports.confirmLease = async (req, res, next) => {
+  try {
+    const lease = await Lease.findById(req.params.id);
+    if (!lease) {
+      return res.status(404).json(apiResponse(false, 'Lease not found'));
+    }
+
+    const property = await Property.findById(lease.propertyId);
+    const isOwner = property && property.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = ['ADMIN', 'AGENCY'].includes(req.user.role);
+    if (!isOwner && !adminish) {
+      return res.status(403).json(apiResponse(false, 'Only owner or admin/agency can confirm'));
+    }
+
+    lease.status = LeaseStatus.ACTIVE;
+    await lease.save();
+
+    try {
+      await syncLeaseTransactionStatus({ lease, actorId: req.user._id, note: 'Lease confirmed' });
+    } catch (err) {
+      return res.status(400).json(apiResponse(false, err.message || 'Unable to confirm lease'));
+    }
+
+    if (property) {
+      await recalcPropertyStatus(property._id);
+    }
+
+    const populatedLease = await Lease.findById(lease._id)
+      .populate('propertyId', 'reference title city type price status')
+      .populate('tenantId', 'login email firstName lastName phone')
+      .populate('transactionId');
+
+    return res.status(200).json(apiResponse(true, 'Lease confirmed', populatedLease));
+  } catch (error) {
+    next(error);
+  }
+};
+
+async function dispatchLeaseSideEffects({ lease, property, tenant, owner }) {
+  const propertyLabel = buildPropertyLabel(property);
+  const rentLabel = formatAmount(lease.rentAmount);
+  const chargesLabel = lease.charges ? formatAmount(lease.charges) : '0 TND';
+  const startLabel = formatDate(lease.startDate);
+  const endLabel = formatDate(lease.endDate);
+  const tenantName = getDisplayName(tenant);
+  const ownerName = owner ? getDisplayName(owner) : null;
+
+  const payloadBase = {
+    id: String(lease._id),
+    type: NotificationType.LEASE_CREATED,
+    propertyId: String(property._id),
+    propertyTitle: propertyLabel,
+    rentAmount: lease.rentAmount,
+    charges: lease.charges,
+    startDate: lease.startDate,
+    endDate: lease.endDate,
+    status: lease.status,
+    createdAt: lease.createdAt || new Date(),
+  };
+
+  const asyncTasks = [];
+
+  if (owner) {
+    asyncTasks.push(
+      Notification.create({
+        type: NotificationType.LEASE_CREATED,
+        recipientId: owner._id,
+        propertyId: property._id,
+        senderUserId: tenant?._id,
+        senderName: tenantName,
+        senderEmail: tenant?.email || process.env.EMAIL_FROM || 'noreply@smartproperty.local',
+        senderPhone: tenant?.phone || '',
+        message: `${tenantName} booked ${propertyLabel} from ${startLabel} to ${endLabel}.`,
+      }).catch((error) => logSideEffectError('owner-notification', error))
+    );
+
+    asyncTasks.push(
+      triggerOwnerNotification(String(owner._id), {
+        ...payloadBase,
+        authorName: tenantName,
+        authorEmail: tenant?.email,
+        message: `${tenantName} booked ${propertyLabel}.`,
+      }).catch((error) => logSideEffectError('owner-pusher', error))
+    );
+
+    if (owner.email) {
+      asyncTasks.push(
+        emailService
+          .sendPropertyTransactionEmail({
+            to: owner.email,
+            subject: `New booking for ${propertyLabel}`,
+            title: 'New property booking',
+            introLines: [
+              `${tenantName} booked ${propertyLabel}.`,
+              `Rent: ${rentLabel} (charges: ${chargesLabel}).`,
+            ],
+            details: [
+              { label: 'Property', value: propertyLabel },
+              { label: 'Reference', value: property.reference || '' },
+              { label: 'Tenant', value: `${tenantName}${tenant?.email ? ` (${tenant.email})` : ''}` },
+              { label: 'Rent', value: rentLabel },
+              { label: 'Charges', value: chargesLabel },
+              { label: 'Start date', value: startLabel },
+              { label: 'End date', value: endLabel },
+              { label: 'Status', value: lease.status },
+            ],
+            footerNote: 'Sign in to SmartProperty to confirm or reject this booking.',
+          })
+          .catch((error) => logSideEffectError('owner-email', error))
+      );
+    }
+  }
+
+  if (tenant) {
+    asyncTasks.push(
+      Notification.create({
+        type: NotificationType.LEASE_CREATED,
+        recipientId: tenant._id,
+        propertyId: property._id,
+        senderUserId: owner?._id,
+        senderName: ownerName || 'SmartProperty',
+        senderEmail: owner?.email || process.env.EMAIL_FROM || 'noreply@smartproperty.local',
+        senderPhone: owner?.phone || '',
+        message: `Your booking for ${propertyLabel} is recorded from ${startLabel} to ${endLabel}.`,
+      }).catch((error) => logSideEffectError('tenant-notification', error))
+    );
+
+    asyncTasks.push(
+      triggerOwnerNotification(String(tenant._id), {
+        ...payloadBase,
+        authorName: ownerName || 'SmartProperty',
+        authorEmail: owner?.email,
+        message: `Your booking for ${propertyLabel} is recorded.`,
+      }).catch((error) => logSideEffectError('tenant-pusher', error))
+    );
+
+    if (tenant.email) {
+      asyncTasks.push(
+        emailService
+          .sendPropertyTransactionEmail({
+            to: tenant.email,
+            subject: `Booking Requested for ${propertyLabel}`,
+            title: 'Booking Requested',
+            introLines: [
+              `Your booking for ${propertyLabel} has been recorded.`,
+              `Period: ${startLabel} to ${endLabel}.`,
+            ],
+            details: [
+              { label: 'Property', value: propertyLabel },
+              { label: 'Reference', value: property.reference || '' },
+              { label: 'Rent', value: rentLabel },
+              { label: 'Charges', value: chargesLabel },
+              { label: 'Start date', value: startLabel },
+              { label: 'End date', value: endLabel },
+              { label: 'Status', value: lease.status },
+            ],
+            footerNote: 'We will notify you when the owner responds.',
+          })
+          .catch((error) => logSideEffectError('tenant-email', error))
+      );
+    }
+  }
+
+  await Promise.allSettled(asyncTasks);
+}
 
 // @desc    Get all leases
 // @route   GET /api/leases
@@ -72,7 +320,7 @@ exports.getLeaseById = async (req, res, next) => {
 // @access  Private
 exports.createLease = async (req, res, next) => {
   try {
-    const { propertyId, tenantId, startDate, endDate, rentAmount, charges, status } = req.body;
+    const { propertyId, tenantId, startDate, endDate, rentAmount, charges, status, note } = req.body;
 
     // Validate required fields
     if (!propertyId || !tenantId || !startDate || !endDate || !rentAmount) {
@@ -89,7 +337,6 @@ exports.createLease = async (req, res, next) => {
     }
 
     // Verify property exists
-    const { Property } = require('../models');
     const property = await Property.findById(propertyId);
     if (!property) {
       return res.status(404).json(
@@ -98,13 +345,14 @@ exports.createLease = async (req, res, next) => {
     }
 
     // Verify tenant (user) exists
-    const { User } = require('../models');
     const tenant = await User.findById(tenantId);
     if (!tenant) {
       return res.status(404).json(
         apiResponse(false, 'Tenant (User) not found')
       );
     }
+
+    const owner = property.createdBy ? await User.findById(property.createdBy) : null;
 
     const lease = await Lease.create({
       propertyId,
@@ -116,9 +364,29 @@ exports.createLease = async (req, res, next) => {
       status,
     });
 
+    const transaction = await createLeaseTransaction({
+      lease,
+      property,
+      tenantId,
+      actorId: req.user._id,
+    });
+
+    lease.transactionId = transaction._id;
+    await lease.save();
+
     const populatedLease = await Lease.findById(lease._id)
-      .populate('propertyId', 'reference title city type price')
-      .populate('tenantId', 'login email firstName lastName phone');
+      .populate('propertyId', 'reference title city type price status')
+      .populate('tenantId', 'login email firstName lastName phone')
+      .populate('transactionId');
+
+    await recalcPropertyStatus(property._id);
+
+    await dispatchLeaseSideEffects({
+      lease: populatedLease,
+      property,
+      tenant,
+      owner,
+    });
 
     res.status(201).json(
       apiResponse(true, 'Lease created successfully', populatedLease)
@@ -133,7 +401,7 @@ exports.createLease = async (req, res, next) => {
 // @access  Private
 exports.updateLease = async (req, res, next) => {
   try {
-    const { propertyId, tenantId, startDate, endDate, rentAmount, charges, status } = req.body;
+    const { propertyId, tenantId, startDate, endDate, rentAmount, charges, status, note } = req.body;
 
     let lease = await Lease.findById(req.params.id);
 
@@ -154,9 +422,16 @@ exports.updateLease = async (req, res, next) => {
 
     await lease.save();
 
+    try {
+      await syncLeaseTransactionStatus({ lease, actorId: req.user._id, note });
+    } catch (err) {
+      return res.status(400).json(apiResponse(false, err.message || 'Unable to update transaction status'));
+    }
+
     const populatedLease = await Lease.findById(lease._id)
-      .populate('propertyId', 'reference title city type price')
-      .populate('tenantId', 'login email firstName lastName phone');
+      .populate('propertyId', 'reference title city type price status')
+      .populate('tenantId', 'login email firstName lastName phone')
+      .populate('transactionId');
 
     res.status(200).json(
       apiResponse(true, 'Lease updated successfully', populatedLease)
@@ -185,6 +460,16 @@ exports.deleteLease = async (req, res, next) => {
       return res.status(403).json(
         apiResponse(false, 'You can only delete your own lease')
       );
+    }
+
+    if (lease.transactionId) {
+      const transaction = await Transaction.findById(lease.transactionId);
+      if (transaction) {
+        transaction.status = TransactionStatus.CANCELLED;
+        addTimelineEntry(transaction, TransactionStatus.CANCELLED, req.user._id, 'Lease deleted');
+        await transaction.save();
+        await recalcPropertyStatus(transaction.propertyId);
+      }
     }
 
     await lease.deleteOne();
