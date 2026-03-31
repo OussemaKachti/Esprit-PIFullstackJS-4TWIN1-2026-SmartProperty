@@ -1,4 +1,6 @@
 const { Sale, SaleStatus, Property, User, Notification, NotificationType, Transaction, TransactionStatus, TransactionType } = require('../models');
+const isAdminish = (role) => ['ADMIN', 'AGENCY'].includes(role);
+
 const { apiResponse } = require('../utils/apiResponse');
 const emailService = require('../services/email.service');
 const { triggerOwnerNotification } = require('../services/pusher.service');
@@ -31,6 +33,8 @@ const logSideEffectError = (context, error) => {
 
 const mapSaleStatusToTransactionStatus = (status) => {
   switch (status) {
+    case 'CONFIRMED':
+      return TransactionStatus.CONFIRMED;
     case 'COMPLETED':
       return TransactionStatus.COMPLETED;
     case 'CANCELLED':
@@ -327,6 +331,7 @@ exports.createSale = async (req, res, next) => {
     // Normalize inputs: accept "price" as alias, and default saleDate to now if missing
     const normalizedSalePrice = salePrice ?? price;
     const normalizedSaleDate = saleDate || new Date();
+    const adminish = isAdminish(req.user.role);
 
     // Validate required fields
     if (!propertyId || !buyerId || normalizedSalePrice === undefined || normalizedSalePrice === null) {
@@ -336,7 +341,7 @@ exports.createSale = async (req, res, next) => {
     }
 
     // Only allow buyer to create sale for themselves (unless admin/agency)
-    if (!['ADMIN', 'AGENCY'].includes(req.user.role) && buyerId !== req.user._id.toString()) {
+    if (!adminish && buyerId !== req.user._id.toString()) {
       return res.status(403).json(
         apiResponse(false, 'You can only create a sale for yourself')
       );
@@ -360,12 +365,16 @@ exports.createSale = async (req, res, next) => {
 
     const owner = property.createdBy ? await User.findById(property.createdBy) : null;
 
+    const initialStatus = adminish && status && Object.values(SaleStatus).includes(status)
+      ? status
+      : SaleStatus.PENDING;
+
     const sale = await Sale.create({
       propertyId,
       buyerId,
       salePrice: normalizedSalePrice,
       saleDate: normalizedSaleDate,
-      status,
+      status: initialStatus,
     });
 
     const transaction = await createSaleTransaction({
@@ -417,12 +426,13 @@ exports.updateSale = async (req, res, next) => {
       );
     }
 
-    // Check if user is buyer or admin/agency
+    const property = await Property.findById(sale.propertyId);
     const isBuyer = sale.buyerId.equals(req.user._id);
-    if (!['ADMIN', 'AGENCY'].includes(req.user.role) && !isBuyer) {
-      return res.status(403).json(
-        apiResponse(false, 'You can only update your own sale')
-      );
+    const isOwner = property?.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = isAdminish(req.user.role);
+
+    if (!adminish && !isBuyer && !isOwner) {
+      return res.status(403).json(apiResponse(false, 'You can only update your own sale'));
     }
 
     // Update fields
@@ -430,7 +440,23 @@ exports.updateSale = async (req, res, next) => {
     if (buyerId !== undefined) sale.buyerId = buyerId;
     if (salePrice !== undefined) sale.salePrice = salePrice;
     if (saleDate !== undefined) sale.saleDate = saleDate;
-    if (status !== undefined) sale.status = status;
+    if (status !== undefined) {
+      if (!Object.values(SaleStatus).includes(status)) {
+        return res.status(400).json(apiResponse(false, 'Invalid sale status'));
+      }
+
+      const wantsOwnerOnly = [SaleStatus.CONFIRMED, SaleStatus.COMPLETED].includes(status);
+      const wantsCancel = status === SaleStatus.CANCELLED;
+
+      if (wantsOwnerOnly && !(adminish || isOwner)) {
+        return res.status(403).json(apiResponse(false, 'Only owner or admin can confirm/complete'));
+      }
+      if (wantsCancel && !(adminish || isOwner || isBuyer)) {
+        return res.status(403).json(apiResponse(false, 'Only participants or admin can cancel'));
+      }
+
+      sale.status = status;
+    }
 
     await sale.save();
 
@@ -462,12 +488,13 @@ exports.deleteSale = async (req, res, next) => {
       );
     }
 
-    // Check if user is buyer or admin
+    const property = await Property.findById(sale.propertyId);
     const isBuyer = sale.buyerId.equals(req.user._id);
-    if (req.user.role !== 'ADMIN' && !isBuyer) {
-      return res.status(403).json(
-        apiResponse(false, 'You can only delete your own sale')
-      );
+    const isOwner = property?.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = isAdminish(req.user.role);
+
+    if (!adminish && !isBuyer && !isOwner) {
+      return res.status(403).json(apiResponse(false, 'You can only delete your own sale'));
     }
 
     if (sale.transactionId) {

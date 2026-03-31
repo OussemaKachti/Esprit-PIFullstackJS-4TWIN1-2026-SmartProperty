@@ -47,6 +47,7 @@ export const getProperties = async (filters = {}) => {
     if (filters.type) params.append('type', filters.type);
     if (filters.city) params.append('city', filters.city);
     if (filters.listingType) params.append('listingType', filters.listingType);
+    if (filters.status) params.append('status', filters.status);
     if (filters.minPrice) params.append('minPrice', filters.minPrice);
     if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
     if (filters.rooms) params.append('rooms', filters.rooms);

@@ -9,6 +9,12 @@ const RentPropertyGrid = () => {
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
 
+    const formatDate = (value) => {
+        if (!value) return null;
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString();
+    };
+
   // Fetch properties based on URL parameters
   useEffect(() => {
     const fetchProperties = async () => {
@@ -19,10 +25,10 @@ const RentPropertyGrid = () => {
         // Parse URL search parameters
         const searchParams = new URLSearchParams(location.search);
         
-        // Build filters object - ALWAYS use FOR_RENT for this page
-        const filters = {
-          listingType: 'FOR_RENT'
-        };
+                // Build filters object - ALWAYS use FOR_RENT for this page
+                const filters = {
+                    listingType: 'FOR_RENT',
+                };
 
         // Add optional filters from URL (ignore listingType from URL)
         if (searchParams.get('type')) filters.type = searchParams.get('type');
@@ -34,16 +40,29 @@ const RentPropertyGrid = () => {
         if (searchParams.get('minSurface')) filters.minSurface = searchParams.get('minSurface');
 
         console.log('🏠 RentPropertyGrid - Fetching with filters:', filters);
-        const data = await getProperties(filters);
-        console.log('✅ RentPropertyGrid - Received properties:', data.properties?.length, 'properties');
+                const data = await getProperties(filters);
+                console.log('✅ RentPropertyGrid - Received properties:', data.properties?.length, 'properties');
+
+
+                                // Use transaction status for rental logic
+                                const filteredProperties = (data.properties || []).filter((p) => {
+                                    const tx = p.latestRentTransaction;
+                                    if (!tx) return p.status === 'AVAILABLE'; // fallback
+                                    // Show if transaction is PENDING, CONFIRMED, or COMPLETED (if you want to show rental history)
+                                    return (
+                                        tx.status === 'PENDING' ||
+                                        tx.status === 'CONFIRMED' ||
+                                        tx.status === 'COMPLETED'
+                                    );
+                                });
+
+                // Log first property's image data for debugging
+                if (filteredProperties.length > 0) {
+                    console.log('📸 First property image data:', filteredProperties[0].images);
+                }
         
-        // Log first property's image data for debugging
-        if (data.properties?.length > 0) {
-          console.log('📸 First property image data:', data.properties[0].images);
-        }
-        
-        setProperties(data.properties || []);
-        setTotalResults(data.total || 0);
+                setProperties(filteredProperties);
+                setTotalResults(filteredProperties.length);
       } catch (err) {
         console.error('Error fetching properties:', err);
         setError('Failed to load properties. Please try again.');
@@ -228,6 +247,21 @@ const RentPropertyGrid = () => {
                                                         onError={(e) => { e.target.src = '/assets/img/buy/buy-grid-img-01.jpg'; }}
                                                     />
                                                 </Link>
+                                                {/* Transaction status banners */}
+                                                {property.latestRentTransaction && property.latestRentTransaction.status === 'CONFIRMED' && property.latestRentTransaction.endDate && (
+                                                    <div className="position-absolute top-0 start-0 m-3">
+                                                        <span className="badge bg-warning text-dark fw-semibold">
+                                                            Rented till {formatDate(property.latestRentTransaction.endDate)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {property.latestRentTransaction && property.latestRentTransaction.status === 'PENDING' && (
+                                                    <div className="position-absolute top-0 start-0 m-3">
+                                                        <span className="badge bg-info text-dark fw-semibold">
+                                                            Reserved / Pending
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
                                                     <h6 className="text-white mb-0">
                                                         ${property.price?.toLocaleString() || 'N/A'} 

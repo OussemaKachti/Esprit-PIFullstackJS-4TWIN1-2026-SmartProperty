@@ -113,11 +113,13 @@ const GridViewIcon = () => (
 type NewPropertyForm = {
   title: string;
   type: string;
+  listingType: "FOR_SALE" | "FOR_RENT" | "";
   address: string;
   city: string;
   country: string;
   surface: string;
   rooms: string;
+  bathrooms: string;
   price: string;
   description: string;
 };
@@ -132,11 +134,13 @@ export default function MyProperties() {
   const [form, setForm] = useState<NewPropertyForm>({
     title: "",
     type: "",
+    listingType: "FOR_SALE",
     address: "",
     city: "",
     country: "",
     surface: "",
     rooms: "",
+    bathrooms: "",
     price: "",
     description: "",
   });
@@ -294,11 +298,13 @@ export default function MyProperties() {
   const initialFormState: NewPropertyForm = {
     title: "",
     type: "",
+    listingType: "FOR_SALE",
     address: "",
     city: "",
     country: "",
     surface: "",
     rooms: "",
+    bathrooms: "",
     price: "",
     description: "",
   };
@@ -400,11 +406,13 @@ export default function MyProperties() {
       setForm({
         title: p.title ?? "",
         type: p.type ?? "",
+        listingType: p.listingType ?? "FOR_SALE",
         address: (p as { address?: string }).address ?? "",
         city: p.city ?? "",
         country: p.country ?? "",
         surface: p.surface != null ? String(p.surface) : "",
         rooms: p.rooms != null ? String(p.rooms) : "",
+        bathrooms: p.bathrooms != null ? String(p.bathrooms) : "",
         price: p.price != null ? String(p.price) : "",
         description: p.description ?? "",
       });
@@ -437,8 +445,39 @@ export default function MyProperties() {
     try {
       const token = localStorage.getItem("token");
 
-      if (!form.title || !form.type || !form.city || !form.price) {
-        toast.error("Please fill the required fields: Title, Type, City, and Price.");
+      const requiredText = [
+        { key: "title", label: "Title" },
+        { key: "type", label: "Type" },
+        { key: "city", label: "City" },
+        { key: "listingType", label: "Listing type" },
+      ];
+
+      for (const field of requiredText) {
+        if (!(form as any)[field.key]) {
+          toast.error(`Please provide ${field.label}.`);
+          return;
+        }
+      }
+
+      const priceNum = Number(form.price);
+      const surfaceNum = form.surface ? Number(form.surface) : null;
+      const roomsNum = form.rooms ? Number(form.rooms) : null;
+      const bathroomsNum = form.bathrooms ? Number(form.bathrooms) : null;
+
+      if (!Number.isFinite(priceNum) || priceNum <= 0) {
+        toast.error("Price must be a positive number.");
+        return;
+      }
+      if (surfaceNum !== null && (surfaceNum <= 0 || Number.isNaN(surfaceNum))) {
+        toast.error("Surface must be a positive number when provided.");
+        return;
+      }
+      if (roomsNum !== null && (roomsNum < 0 || Number.isNaN(roomsNum))) {
+        toast.error("Rooms must be zero or a positive number.");
+        return;
+      }
+      if (bathroomsNum !== null && (bathroomsNum < 0 || Number.isNaN(bathroomsNum))) {
+        toast.error("Bathrooms must be zero or a positive number.");
         return;
       }
 
@@ -446,6 +485,7 @@ export default function MyProperties() {
       // Required / core fields
       formData.append("title", form.title);
       formData.append("type", form.type);
+      formData.append("listingType", form.listingType);
       formData.append("city", form.city);
       formData.append("price", form.price);
 
@@ -454,6 +494,7 @@ export default function MyProperties() {
       if (form.country) formData.append("country", form.country);
       if (form.surface) formData.append("surface", form.surface);
       if (form.rooms) formData.append("rooms", form.rooms);
+      if (form.bathrooms) formData.append("bathrooms", form.bathrooms);
       if (form.description) formData.append("description", form.description);
 
       // Tone & AI flag (optional, backend accepte les champs inconnus)
@@ -1271,6 +1312,22 @@ export default function MyProperties() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                          Listing Type
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          value={form.listingType}
+                          onChange={(e) =>
+                            handleFieldChange("listingType", e.target.value as "FOR_SALE" | "FOR_RENT" | "")
+                          }
+                        >
+                          <option value="">Select listing type</option>
+                          <option value="FOR_SALE">For Sale</option>
+                          <option value="FOR_RENT">For Rent</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                           Price
                         </label>
                         <input
@@ -1350,6 +1407,20 @@ export default function MyProperties() {
                           value={form.rooms}
                           onChange={(e) =>
                             handleFieldChange("rooms", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                          Bathrooms
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          placeholder="e.g. 2"
+                          value={form.bathrooms}
+                          onChange={(e) =>
+                            handleFieldChange("bathrooms", e.target.value)
                           }
                         />
                       </div>

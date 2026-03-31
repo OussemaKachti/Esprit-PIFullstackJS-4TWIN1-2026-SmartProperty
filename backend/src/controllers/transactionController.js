@@ -158,21 +158,31 @@ exports.updateTransactionStatus = async (req, res, next) => {
 
     const { admin, isOwner, isParty } = ensureAccess(transaction, req.user, property);
 
-    if ([TransactionStatus.CONFIRMED, TransactionStatus.COMPLETED].includes(status)) {
+    const targetStatus =
+      transaction.type === TransactionType.SALE && status === TransactionStatus.CONFIRMED
+        ? TransactionStatus.COMPLETED
+        : status;
+
+    if ([TransactionStatus.CONFIRMED, TransactionStatus.COMPLETED].includes(targetStatus)) {
       if (!admin && !isOwner) {
         return res.status(403).json(apiResponse(false, 'Only owner or admin can confirm/complete'));
       }
-    } else if (status === TransactionStatus.CANCELLED) {
+    } else if (targetStatus === TransactionStatus.CANCELLED) {
       if (!admin && !isOwner && !isParty) {
         return res.status(403).json(apiResponse(false, 'Only participants or admin can cancel'));
       }
     }
 
     const previousStatus = transaction.status;
-    transaction.status = status;
-    addTimelineEntry(transaction, status, req.user._id, note);
+    transaction.status = targetStatus;
+    const effectiveNote =
+      note ||
+      (transaction.type === TransactionType.SALE && status === TransactionStatus.CONFIRMED
+        ? 'Sale confirmed → auto-completed'
+        : undefined);
+    addTimelineEntry(transaction, targetStatus, req.user._id, effectiveNote);
 
-    if (transaction.type === TransactionType.RENT && status === TransactionStatus.CONFIRMED) {
+    if (transaction.type === TransactionType.RENT && targetStatus === TransactionStatus.CONFIRMED) {
       const overlap = await hasOverlappingConfirmedRent(transaction);
       if (overlap) {
         return res.status(400).json(apiResponse(false, 'This rental period overlaps an existing confirmed rental'));

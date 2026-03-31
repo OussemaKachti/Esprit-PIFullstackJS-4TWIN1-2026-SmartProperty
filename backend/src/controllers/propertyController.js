@@ -54,11 +54,32 @@ exports.getAllProperties = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
-    const properties = await Property.find(filter)
+    // Fetch properties
+    let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName'); // Peupler les infos user
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const count = await Property.countDocuments(filter);
 
@@ -86,17 +107,30 @@ exports.getMyProperties = async (req, res, next) => {
       limit = 10,
       type,
       status,
+      listingType,
       city,
       minPrice,
       maxPrice,
     } = req.query;
+    const validListingTypes = ['FOR_SALE', 'FOR_RENT'];
+    if (listingType && !validListingTypes.includes(listingType)) {
+      return res.status(400).json(
+        apiResponse(false, `Invalid listingType. Must be one of: ${validListingTypes.join(', ')}`)
+      );
+    }
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
 
     const filter = { createdBy: userId };
     if (type) filter.type = type;
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      // Hide sold properties from the default "my listings" view; they drop off once a sale is confirmed/completed
+      filter.status = { $ne: 'SOLD' };
+    }
+    if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -106,11 +140,31 @@ exports.getMyProperties = async (req, res, next) => {
 
     const skip = (pageNum - 1) * limitNum;
 
-    const properties = await Property.find(filter)
+    let properties = await Property.find(filter)
       .limit(limitNum)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const total = await Property.countDocuments(filter);
 
@@ -138,14 +192,27 @@ exports.getPropertiesByUser = async (req, res, next) => {
       limit = 10,
       type,
       status,
+      listingType,
       city,
       minPrice,
       maxPrice,
     } = req.query;
 
+    const validListingTypes = ['FOR_SALE', 'FOR_RENT'];
+    if (listingType && !validListingTypes.includes(listingType)) {
+      return res.status(400).json(
+        apiResponse(false, `Invalid listingType. Must be one of: ${validListingTypes.join(', ')}`)
+      );
+    }
+
     const filter = { createdBy: userId };
     if (type) filter.type = type;
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'SOLD' };
+    }
+    if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -155,115 +222,33 @@ exports.getPropertiesByUser = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
-    const properties = await Property.find(filter)
+    let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const total = await Property.countDocuments(filter);
-
-    res.status(200).json(
-      apiResponse(true, 'Properties by user retrieved successfully', {
-        properties,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page,
-        total,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get properties of the connected user (my properties)
-// @route   GET /api/properties/my
-// @access  Private
-exports.getMyProperties = async (req, res, next) => {
-  try {
-    const userId = req.user._id.toString();
-    const {
-      page = 1,
-      limit = 10,
-      type,
-      status,
-      city,
-      minPrice,
-      maxPrice,
-    } = req.query;
-
-    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
-
-    const filter = { createdBy: userId };
-    if (type) filter.type = type;
-    if (status) filter.status = status;
-    if (city) filter.city = new RegExp(city, 'i');
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    const skip = (pageNum - 1) * limitNum;
-
-    const properties = await Property.find(filter)
-      .limit(limitNum)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
-
-    const total = await Property.countDocuments(filter);
-
-    res.status(200).json(
-      apiResponse(true, 'My properties retrieved successfully', {
-        properties,
-        totalPages: Math.ceil(total / limitNum),
-        currentPage: pageNum,
-        total,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get properties by user (createdBy)
-// @route   GET /api/properties/user/:userId
-// @access  Public
-exports.getPropertiesByUser = async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-    const {
-      page = 1,
-      limit = 10,
-      type,
-      status,
-      city,
-      minPrice,
-      maxPrice,
-    } = req.query;
-
-    const filter = { createdBy: userId };
-    if (type) filter.type = type;
-    if (status) filter.status = status;
-    if (city) filter.city = new RegExp(city, 'i');
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    const skip = (page - 1) * limit;
-
-    const properties = await Property.find(filter)
-      .limit(limit * 1)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
-
-    const total = await Property.countDocuments(filter);
-
     res.status(200).json(
       apiResponse(true, 'Properties by user retrieved successfully', {
         properties,

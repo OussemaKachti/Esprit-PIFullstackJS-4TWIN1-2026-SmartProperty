@@ -16,6 +16,17 @@ const recalcPropertyStatus = async (propertyId) => {
   const now = new Date();
   let nextStatus = PropertyStatus.AVAILABLE;
 
+  // Auto-complete finished rentals so history stays clean
+  await Transaction.updateMany(
+    {
+      propertyId,
+      type: TransactionType.RENT,
+      status: TransactionStatus.CONFIRMED,
+      endDate: { $lt: now },
+    },
+    { status: TransactionStatus.COMPLETED }
+  );
+
   const hasConfirmedSale = await Transaction.exists({
     propertyId,
     type: TransactionType.SALE,
@@ -29,6 +40,7 @@ const recalcPropertyStatus = async (propertyId) => {
       propertyId,
       type: TransactionType.RENT,
       status: TransactionStatus.CONFIRMED,
+      startDate: { $lte: now },
       endDate: { $gte: now },
     });
 

@@ -323,17 +323,29 @@ export default function AdminDashboard() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {property.price.toLocaleString()} TND
                           </p>
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                              property.status === "available"
+                          {(() => {
+                            const statusLower = (property.status || "").toLowerCase();
+                            const badgeClass =
+                              statusLower === "available"
                                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                : property.status === "rented"
+                                : statusLower === "pending"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                : statusLower === "rented"
                                 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            }`}
-                          >
-                            {property.status}
-                          </span>
+                                : statusLower === "sold"
+                                ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                                : "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
+
+                            const label = statusLower
+                              ? statusLower.charAt(0).toUpperCase() + statusLower.slice(1)
+                              : "Unknown";
+
+                            return (
+                              <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${badgeClass}`}>
+                                {label}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))

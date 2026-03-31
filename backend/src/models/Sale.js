@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
 const SaleStatus = {
-  COMPLETED: 'COMPLETED',
   PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 };
 

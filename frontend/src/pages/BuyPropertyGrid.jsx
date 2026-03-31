@@ -21,7 +21,8 @@ const BuyPropertyGrid = () => {
         
         // Build filters object - ALWAYS use FOR_SALE for this page
         const filters = {
-          listingType: 'FOR_SALE'
+                    listingType: 'FOR_SALE',
+                    status: 'AVAILABLE'
         };
 
         // Add optional filters from URL (ignore listingType from URL)

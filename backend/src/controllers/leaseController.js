@@ -4,6 +4,8 @@ const emailService = require('../services/email.service');
 const { triggerOwnerNotification } = require('../services/pusher.service');
 const { addTimelineEntry, recalcPropertyStatus, hasOverlappingConfirmedRent } = require('../services/transaction.service');
 
+const isAdminish = (role) => ['ADMIN', 'AGENCY'].includes(role);
+
 const formatAmount = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/A';
   return `${Number(value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} TND`;
@@ -31,9 +33,11 @@ const logSideEffectError = (context, error) => {
 
 const mapLeaseStatusToTransactionStatus = (status) => {
   switch (status) {
-    case 'ACTIVE':
+    case 'CONFIRMED':
       return TransactionStatus.CONFIRMED;
-    case 'TERMINATED':
+    case 'COMPLETED':
+      return TransactionStatus.COMPLETED;
+    case 'CANCELLED':
       return TransactionStatus.CANCELLED;
     default:
       return TransactionStatus.PENDING;
@@ -65,6 +69,16 @@ const syncLeaseTransactionStatus = async ({ lease, actorId, note }) => {
   if (!transaction) return null;
 
   const nextStatus = mapLeaseStatusToTransactionStatus(lease.status);
+
+  // Prevent premature completion: only allow COMPLETED once the rental period has ended
+  if (
+    nextStatus === TransactionStatus.COMPLETED &&
+    lease.endDate &&
+    new Date(lease.endDate) > new Date()
+  ) {
+    throw new Error('Lease cannot be completed before the end date');
+  }
+
   transaction.status = nextStatus;
   addTimelineEntry(transaction, nextStatus, actorId, note || `Lease set to ${nextStatus}`);
 
@@ -97,7 +111,7 @@ exports.confirmLease = async (req, res, next) => {
       return res.status(403).json(apiResponse(false, 'Only owner or admin/agency can confirm'));
     }
 
-    lease.status = LeaseStatus.ACTIVE;
+    lease.status = LeaseStatus.CONFIRMED;
     await lease.save();
 
     try {
@@ -329,11 +343,11 @@ exports.createLease = async (req, res, next) => {
       );
     }
 
-    // Only allow tenant to create lease for themselves (unless admin)
-    if (req.user.role !== 'ADMIN' && tenantId !== req.user._id.toString()) {
-      return res.status(403).json(
-        apiResponse(false, 'You can only create a lease for yourself')
-      );
+    const adminish = isAdminish(req.user.role);
+
+    // Only allow tenant to create lease for themselves (unless admin/agency)
+    if (!adminish && tenantId !== req.user._id.toString()) {
+      return res.status(403).json(apiResponse(false, 'You can only create a lease for yourself'));
     }
 
     // Verify property exists
@@ -354,6 +368,10 @@ exports.createLease = async (req, res, next) => {
 
     const owner = property.createdBy ? await User.findById(property.createdBy) : null;
 
+    const initialStatus = adminish && status && Object.values(LeaseStatus).includes(status)
+      ? status
+      : LeaseStatus.PENDING;
+
     const lease = await Lease.create({
       propertyId,
       tenantId,
@@ -361,7 +379,7 @@ exports.createLease = async (req, res, next) => {
       endDate,
       rentAmount,
       charges,
-      status,
+      status: initialStatus,
     });
 
     const transaction = await createLeaseTransaction({
@@ -411,6 +429,15 @@ exports.updateLease = async (req, res, next) => {
       );
     }
 
+    const property = await Property.findById(lease.propertyId);
+    const isTenant = lease.tenantId.equals(req.user._id);
+    const isOwner = property?.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = isAdminish(req.user.role);
+
+    if (!adminish && !isTenant && !isOwner) {
+      return res.status(403).json(apiResponse(false, 'You can only update your own lease'));
+    }
+
     // Update fields
     if (propertyId !== undefined) lease.propertyId = propertyId;
     if (tenantId !== undefined) lease.tenantId = tenantId;
@@ -418,7 +445,23 @@ exports.updateLease = async (req, res, next) => {
     if (endDate !== undefined) lease.endDate = endDate;
     if (rentAmount !== undefined) lease.rentAmount = rentAmount;
     if (charges !== undefined) lease.charges = charges;
-    if (status !== undefined) lease.status = status;
+    if (status !== undefined) {
+      if (!Object.values(LeaseStatus).includes(status)) {
+        return res.status(400).json(apiResponse(false, 'Invalid lease status'));
+      }
+
+      const wantsOwnerOnly = [LeaseStatus.CONFIRMED, LeaseStatus.COMPLETED].includes(status);
+      const wantsCancel = status === LeaseStatus.CANCELLED;
+
+      if (wantsOwnerOnly && !(adminish || isOwner)) {
+        return res.status(403).json(apiResponse(false, 'Only owner or admin can confirm/complete'));
+      }
+      if (wantsCancel && !(adminish || isOwner || isTenant)) {
+        return res.status(403).json(apiResponse(false, 'Only participants or admin can cancel'));
+      }
+
+      lease.status = status;
+    }
 
     await lease.save();
 
@@ -454,12 +497,13 @@ exports.deleteLease = async (req, res, next) => {
       );
     }
 
-    // Check if user is the tenant or admin
+    const property = await Property.findById(lease.propertyId);
     const isTenant = lease.tenantId.equals(req.user._id);
-    if (req.user.role !== 'ADMIN' && !isTenant) {
-      return res.status(403).json(
-        apiResponse(false, 'You can only delete your own lease')
-      );
+    const isOwner = property?.createdBy && property.createdBy.equals(req.user._id);
+    const adminish = isAdminish(req.user.role);
+
+    if (!adminish && !isTenant && !isOwner) {
+      return res.status(403).json(apiResponse(false, 'You can only delete your own lease'));
     }
 
     if (lease.transactionId) {

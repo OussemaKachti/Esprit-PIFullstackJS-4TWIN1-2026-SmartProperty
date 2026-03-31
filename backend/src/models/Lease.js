@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 
 const LeaseStatus = {
-  ACTIVE: 'ACTIVE',
   PENDING: 'PENDING',
-  TERMINATED: 'TERMINATED',
+  CONFIRMED: 'CONFIRMED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
 };
 
 const leaseSchema = new mongoose.Schema(
