@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchMatches, fetchCreditScore } from '../api/matching';
 import { getCurrentUser } from '../api/user';
 import '../styles/rentalMatch.css';
@@ -202,245 +203,244 @@ export default function RentalMatch() {
   return (
     <div className="main-wrapper">
       <div className="page-wrapper">
-        <div className="content">
-          <section className="section pb-0">
-            <div className="container">
-              <div className="card gradient-hero shadow">
-                <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-                  <div>
-                    <p className="text-uppercase text-light mb-1 small fw-semibold">Assistant immobilier</p>
-                    <h3 className="text-white mb-2">Trouvez le bien qui vous correspond</h3>
-                    <p className="text-light mb-0">Algorithme de matching + évaluation crédit en quelques secondes.</p>
+        <div className="breadcrumb-bar">
+          <img src="/assets/img/bg/breadcrumb-bg-01.png" alt="" className="breadcrumb-bg-01 d-none d-lg-block" />
+          <img src="/assets/img/bg/breadcrumb-bg-02.png" alt="" className="breadcrumb-bg-02 d-none d-lg-block" />
+          <img src="/assets/img/bg/breadcrumb-bg-03.png" alt="" className="breadcrumb-bg-03" />
+          <div className="row align-items-center text-center position-relative z-1">
+            <div className="col-md-12 col-12 breadcrumb-arrow">
+              <h1 className="breadcrumb-title">Rental Match</h1>
+              <nav aria-label="breadcrumb" className="page-breadcrumb">
+                <ol className="breadcrumb">
+                  <li className="breadcrumb-item"><Link to="/"><span><i className="material-icons-outlined me-1">home</i></span>Home</Link></li>
+                  <li className="breadcrumb-item active" aria-current="page">Rental Match</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+        </div>
+
+        <div className="content overflow-hidden">
+          <div className="container">
+
+            <form onSubmit={handleSubmit} className="row g-4">
+              <div className="col-xl-5">
+                <div className="card shadow-sm h-100">
+                  <div className="card-header bg-white d-flex align-items-center justify-content-between">
+                    <div>
+                      <p className="text-muted mb-1 small">Profil candidat</p>
+                      <h5 className="mb-0">Vos critères</h5>
+                    </div>
+                    <span className="badge bg-primary-subtle text-primary">Step 1</span>
                   </div>
-                  <span className="badge bg-white text-primary px-3 py-2 rounded-pill fw-semibold">AI helper (local)</span>
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-md-12">
+                        <label className="form-label">Nom complet</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={candidate.name || ''}
+                          onChange={(e) => handleCandidateChange('name', e.target.value)}
+                          placeholder="Ahmed Ben Ali"
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Budget max (TND / mois)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={candidate.budget_max || ''}
+                          onChange={(e) => handleCandidateChange('budget_max', Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Ville</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={candidate.city || ''}
+                          onChange={(e) => handleCandidateChange('city', e.target.value)}
+                          placeholder="Tunis"
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Chambres min</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={candidate.min_rooms || ''}
+                          onChange={(e) => handleCandidateChange('min_rooms', Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Taille min (m²)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={candidate.min_size || ''}
+                          onChange={(e) => handleCandidateChange('min_size', Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <p className="text-muted mb-2">Types de biens préférés</p>
+                      <div className="d-flex flex-wrap gap-2">
+                        {PROPERTY_TYPES.map((type) => {
+                          const active = candidate.preferred_categories?.includes(type);
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              className={`btn btn-sm rounded-pill ${active ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => toggleCategory(type)}
+                            >
+                              {type}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
 
-          <section className="section">
-            <div className="container">
-              <form onSubmit={handleSubmit} className="row g-3">
-                <div className="col-xl-5">
-                  <div className="card shadow-sm h-100">
-                    <div className="card-header bg-white d-flex align-items-center justify-content-between">
-                      <div>
-                        <p className="text-muted mb-1 small">Profil candidat</p>
-                        <h5 className="mb-0">Vos critères</h5>
-                      </div>
-                      <span className="badge bg-primary-subtle text-primary">Step 1</span>
+              <div className="col-xl-4">
+                <div className="card shadow-sm h-100">
+                  <div className="card-header bg-white d-flex align-items-center justify-content-between">
+                    <div>
+                      <p className="text-muted mb-1 small">Évaluation crédit</p>
+                      <h5 className="mb-0">Stabilité financière</h5>
                     </div>
-                    <div className="card-body">
-                      <div className="row g-3">
-                        <div className="col-md-12">
-                          <label className="form-label">Nom complet</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={candidate.name || ''}
-                            onChange={(e) => handleCandidateChange('name', e.target.value)}
-                            placeholder="Ahmed Ben Ali"
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Budget max (TND / mois)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={candidate.budget_max || ''}
-                            onChange={(e) => handleCandidateChange('budget_max', Number(e.target.value))}
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Ville</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={candidate.city || ''}
-                            onChange={(e) => handleCandidateChange('city', e.target.value)}
-                            placeholder="Tunis"
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Chambres min</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={candidate.min_rooms || ''}
-                            onChange={(e) => handleCandidateChange('min_rooms', Number(e.target.value))}
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Taille min (m²)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={candidate.min_size || ''}
-                            onChange={(e) => handleCandidateChange('min_size', Number(e.target.value))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <p className="text-muted mb-2">Types de biens préférés</p>
-                        <div className="d-flex flex-wrap gap-2">
-                          {PROPERTY_TYPES.map((type) => {
-                            const active = candidate.preferred_categories?.includes(type);
-                            return (
-                              <button
-                                key={type}
-                                type="button"
-                                className={`btn btn-sm rounded-pill ${active ? 'btn-primary' : 'btn-outline-secondary'}`}
-                                onClick={() => toggleCategory(type)}
-                              >
-                                {type}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
+                    <span className="badge bg-success-subtle text-success">Step 2</span>
                   </div>
-                </div>
-
-                <div className="col-xl-4">
-                  <div className="card shadow-sm h-100">
-                    <div className="card-header bg-white d-flex align-items-center justify-content-between">
-                      <div>
-                        <p className="text-muted mb-1 small">Évaluation crédit</p>
-                        <h5 className="mb-0">Stabilité financière</h5>
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label">Revenu mensuel net (TND)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={credit.monthly_income}
+                          onChange={(e) => setCredit((p) => ({ ...p, monthly_income: Number(e.target.value) }))}
+                        />
                       </div>
-                      <span className="badge bg-success-subtle text-success">Step 2</span>
+                      <div className="col-md-6">
+                        <label className="form-label">Loyer envisagé (TND)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={credit.rent_asked}
+                          onChange={(e) => setCredit((p) => ({ ...p, rent_asked: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Dettes mensuelles (TND)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={credit.total_monthly_debts}
+                          onChange={(e) => setCredit((p) => ({ ...p, total_monthly_debts: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Type d'emploi</label>
+                        <select
+                          className="form-select"
+                          value={credit.employment_type}
+                          onChange={(e) => setCredit((p) => ({ ...p, employment_type: e.target.value }))}
+                        >
+                          {EMPLOYMENT_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-12">
+                        <label className="form-label">Ancienneté (mois)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={credit.months_employed}
+                          onChange={(e) => setCredit((p) => ({ ...p, months_employed: Number(e.target.value) }))}
+                        />
+                      </div>
                     </div>
-                    <div className="card-body">
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <label className="form-label">Revenu mensuel net (TND)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={credit.monthly_income}
-                            onChange={(e) => setCredit((p) => ({ ...p, monthly_income: Number(e.target.value) }))}
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Loyer envisagé (TND)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={credit.rent_asked}
-                            onChange={(e) => setCredit((p) => ({ ...p, rent_asked: Number(e.target.value) }))}
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Dettes mensuelles (TND)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={credit.total_monthly_debts}
-                            onChange={(e) => setCredit((p) => ({ ...p, total_monthly_debts: Number(e.target.value) }))}
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Type d'emploi</label>
-                          <select
-                            className="form-select"
-                            value={credit.employment_type}
-                            onChange={(e) => setCredit((p) => ({ ...p, employment_type: e.target.value }))}
-                          >
-                            {EMPLOYMENT_TYPES.map((t) => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-12">
-                          <label className="form-label">Ancienneté (mois)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control"
-                            value={credit.months_employed}
-                            onChange={(e) => setCredit((p) => ({ ...p, months_employed: Number(e.target.value) }))}
-                          />
-                        </div>
-                      </div>
 
-                      <div className="row g-2 mt-3">
-                        {Object.keys(credit.documents).map((docKey) => (
-                          <div className="col-md-6" key={docKey}>
-                            <div className="form-check form-switch bg-light p-2 rounded-3">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={credit.documents[docKey]}
-                                onChange={() => handleDocumentToggle(docKey)}
-                                id={`doc-${docKey}`}
-                              />
-                              <label className="form-check-label ms-1" htmlFor={`doc-${docKey}`}>
-                                {docKey.replace(/_/g, ' ')}
-                              </label>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="col-md-12">
+                    <div className="row g-2 mt-3">
+                      {Object.keys(credit.documents).map((docKey) => (
+                        <div className="col-md-6" key={docKey}>
                           <div className="form-check form-switch bg-light p-2 rounded-3">
                             <input
                               className="form-check-input"
                               type="checkbox"
-                              checked={credit.has_guarantor}
-                              onChange={() => setCredit((p) => ({ ...p, has_guarantor: !p.has_guarantor }))}
-                              id="doc-guarantor"
+                              checked={credit.documents[docKey]}
+                              onChange={() => handleDocumentToggle(docKey)}
+                              id={`doc-${docKey}`}
                             />
-                            <label className="form-check-label ms-1" htmlFor="doc-guarantor">Garant disponible</label>
+                            <label className="form-check-label ms-1" htmlFor={`doc-${docKey}`}>
+                              {docKey.replace(/_/g, ' ')}
+                            </label>
                           </div>
+                        </div>
+                      ))}
+                      <div className="col-md-12">
+                        <div className="form-check form-switch bg-light p-2 rounded-3">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={credit.has_guarantor}
+                            onChange={() => setCredit((p) => ({ ...p, has_guarantor: !p.has_guarantor }))}
+                            id="doc-guarantor"
+                          />
+                          <label className="form-check-label ms-1" htmlFor="doc-guarantor">Garant disponible</label>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="col-xl-3">
-                  <div className="card h-100 shadow-sm ai-helper-card">
-                    <div className="card-header bg-white">
-                      <p className="text-muted mb-1 small">AI helper</p>
-                      <h5 className="mb-0">Conseils instantanés</h5>
+              <div className="col-xl-3">
+                <div className="card h-100 shadow-sm ai-helper-card">
+                  <div className="card-header bg-white">
+                    <p className="text-muted mb-1 small">AI helper</p>
+                    <h5 className="mb-0">Conseils instantanés</h5>
+                  </div>
+                  <div className="card-body d-flex flex-column gap-3">
+                    <div className="alert alert-primary-soft mb-0">
+                      <p className="fw-semibold mb-1">Conseil de saisie</p>
+                      <p className="mb-0 text-muted">{hint}</p>
                     </div>
-                    <div className="card-body d-flex flex-column gap-3">
-                      <div className="alert alert-primary-soft mb-0">
-                        <p className="fw-semibold mb-1">Conseil de saisie</p>
-                        <p className="mb-0 text-muted">{hint}</p>
-                      </div>
-                      <div className="alert alert-info-soft mb-0">
-                        <p className="fw-semibold mb-1">Résumé matching</p>
-                        <p className="mb-0 text-muted">{matchSummary}</p>
-                      </div>
-                      <div className="alert alert-success-soft mb-0">
-                        <p className="fw-semibold mb-1">Résumé crédit</p>
-                        <p className="mb-0 text-muted">{creditSummary}</p>
-                      </div>
+                    <div className="alert alert-info-soft mb-0">
+                      <p className="fw-semibold mb-1">Résumé matching</p>
+                      <p className="mb-0 text-muted">{matchSummary}</p>
+                    </div>
+                    <div className="alert alert-success-soft mb-0">
+                      <p className="fw-semibold mb-1">Résumé crédit</p>
+                      <p className="mb-0 text-muted">{creditSummary}</p>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="col-12 d-flex align-items-center gap-3 mt-2">
-                  <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-                    {loading ? 'Calcul en cours...' : 'Obtenir mes 3 meilleures offres'}
-                  </button>
-                  {error && <span className="text-danger fw-semibold">{error}</span>}
-                  <span className="text-muted small">Les résumés AI sont générés localement (sans LLM externe).</span>
-                </div>
-              </form>
-            </div>
-          </section>
+              <div className="col-12 d-flex align-items-center gap-3 mt-2">
+                <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                  {loading ? 'Calcul en cours...' : 'Obtenir mes 3 meilleures offres'}
+                </button>
+                {error && <span className="text-danger fw-semibold">{error}</span>}
+                <span className="text-muted small">Les résumés AI sont générés localement (sans LLM externe).</span>
+              </div>
+            </form>
 
-          <section className="section pt-0">
-            <div className="container">
+            <div className="section pt-0">
               <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                 <div>
                   <p className="text-muted mb-1 small">Résultats</p>
@@ -486,10 +486,8 @@ export default function RentalMatch() {
                 )}
               </div>
             </div>
-          </section>
 
-          <section className="section pt-0 pb-5">
-            <div className="container">
+            <div className="section pt-0 pb-5">
               <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                 <div>
                   <p className="text-muted mb-1 small">Crédit</p>
@@ -526,7 +524,7 @@ export default function RentalMatch() {
                 <div className="alert alert-secondary">Remplissez le formulaire pour obtenir le verdict crédit.</div>
               )}
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
