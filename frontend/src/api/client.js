@@ -1,6 +1,6 @@
 // Two bases: backend (Express) and FastAPI (matching/credit).
 const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-const FASTAPI_BASE = process.env.REACT_APP_FASTAPI_URL || process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+const FASTAPI_BASE = 'http://127.0.0.1:8000';
 
 function resolveBase(path, base) {
   if (base === 'backend') return BACKEND_BASE;

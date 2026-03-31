@@ -8,8 +8,6 @@ const PROPERTY_TYPES = [
   'Appartements',
   'Maisons et Villas',
   'Locations de vacances',
-  'Bureaux',
-  'Commerces',
 ];
 
 const EMPLOYMENT_TYPES = ['CDI', 'CDD', 'freelance', 'retired', 'unemployed'];
