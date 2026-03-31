@@ -1,0 +1,311 @@
+/* CRA has no Tailwind — explicit sizes so Marzipano always gets a non-zero container */
+
+.panorama-container {
+  height: 500px;
+  width: 100%;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e7eb;
+}
+
+.pano-default-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.link-hotspot {
+  width: 60px;
+  height: 60px;
+  margin-left: -30px;
+  margin-top: -30px;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+
+.link-hotspot:hover {
+  opacity: 1;
+}
+
+.link-hotspot-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.link-hotspot-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 14px;
+  margin-left: 3px;
+  font-size: 14px;
+  max-width: 300px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: transform 0.3s, opacity 0.3s;
+  pointer-events: none;
+}
+
+.link-hotspot:hover .link-hotspot-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.pano-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 100;
+}
+
+.pano-control-group {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.pano-control-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.pano-control-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.pano-control-btn img {
+  width: 20px;
+  height: 20px;
+  filter: invert(1);
+}
+
+.pano-move-row {
+  display: flex;
+}
+
+.pano-autorotate-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pano-autorotate-btn.enabled {
+  background: var(--primary-color, #1363df);
+  border-color: transparent;
+}
+
+.pano-autorotate-btn img {
+  width: 24px;
+  height: 24px;
+  filter: invert(1);
+}
+
+.pano-scene-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Immersive / public tour — same chrome as backoffice viewer (view only, no edit) */
+.pano-immersive-root {
+  -webkit-user-select: none;
+  user-select: none;
+  background: #000;
+}
+
+/* Embedded in accordion: fixed height so absolute children get a box (no Tailwind) */
+.pano-immersive-root--embedded {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  height: 560px;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* Full-screen modal: stretch via parent flex + absolute fill */
+.pano-immersive-root--fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.pano-public-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  z-index: 90;
+  display: flex;
+  align-items: stretch;
+  text-align: center;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.pano-public-thumb-wrap {
+  position: absolute;
+  top: 0;
+  left: 40px;
+  width: 60px;
+  height: 40px;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 20, 20, 0.9);
+}
+
+.pano-public-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pano-public-scene-name {
+  width: 100%;
+  height: 100%;
+  line-height: 40px;
+  padding: 0 120px 0 108px;
+  box-sizing: border-box;
+  background-color: rgba(30, 35, 45, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: #fff;
+  font-size: 15px;
+}
+
+.pano-public-autorotate {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  background-color: rgba(45, 55, 70, 0.95);
+  cursor: pointer;
+}
+
+.pano-public-autorotate .icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+}
+
+.pano-public-autorotate .icon.on {
+  display: none;
+}
+
+.pano-public-autorotate .icon.off {
+  display: block;
+}
+
+.pano-public-autorotate.enabled .icon.on {
+  display: block;
+}
+
+.pano-public-autorotate.enabled .icon.off {
+  display: none;
+}
+
+.pano-public-fullscreen {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(45, 55, 70, 0.95);
+  cursor: pointer;
+}
+
+.pano-public-fullscreen img {
+  width: 26px;
+  height: 26px;
+}
+
+.pano-immersive-canvas-wrap {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.pano-immersive-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
