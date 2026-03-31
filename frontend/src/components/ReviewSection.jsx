@@ -76,15 +76,21 @@ const ReviewSection = ({ propertyId, currentUser }) => {
         }
     };
 
-    const renderStars = (count, isFilled = true) => {
+    const renderStars = (count) => {
+        const ratingValue = Math.max(0, Math.min(5, Number(count) || 0));
         return [...Array(5)].map((_, i) => (
-            <i
+            <span
                 key={i}
-                className={`material-icons${i < count ? '' : '-outlined'} ${isFilled ? 'text-warning' : 'text-light'}`}
-                style={{ fontSize: '18px' }}
+                style={{
+                    fontSize: '18px',
+                    lineHeight: 1,
+                    color: i < ratingValue ? '#ffc107' : '#d1d5db',
+                    marginRight: 1,
+                }}
+                aria-hidden="true"
             >
-                star
-            </i>
+                ★
+            </span>
         ));
     };
 
