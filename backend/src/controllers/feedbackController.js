@@ -54,6 +54,59 @@ exports.getAllFeedbacks = async (req, res, next) => {
   }
 };
 
+// @desc    Get rating summary by property
+// @route   GET /api/feedbacks/summary
+// @access  Public
+exports.getFeedbackSummary = async (req, res, next) => {
+  try {
+    const { propertyId, propertyIds } = req.query;
+
+    let ids = [];
+    if (propertyId) ids.push(propertyId);
+    if (propertyIds) {
+      ids = ids.concat(
+        String(propertyIds)
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
+      );
+    }
+    ids = [...new Set(ids)];
+
+    const match = {};
+    if (ids.length > 0) {
+      match.propertyId = { $in: ids };
+    }
+
+    const summary = await Feedback.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$propertyId',
+          totalReviews: { $sum: 1 },
+          averageRating: { $avg: '$rating' },
+        },
+      },
+    ]);
+
+    const byProperty = {};
+    summary.forEach((item) => {
+      byProperty[String(item._id)] = {
+        totalReviews: item.totalReviews || 0,
+        averageRating: Number(item.averageRating || 0).toFixed(1),
+      };
+    });
+
+    res.status(200).json(
+      apiResponse(true, 'Feedback summary retrieved successfully', {
+        byProperty,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 // @desc    Get single feedback by ID
 // @route   GET /api/feedbacks/:id

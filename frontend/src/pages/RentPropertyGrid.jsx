@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getProperties, getImageUrl } from '../services/propertyService';
+import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 
 const RentPropertyGrid = () => {
   const location = useLocation();
@@ -8,6 +8,7 @@ const RentPropertyGrid = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [ratingMap, setRatingMap] = useState({});
 
     const formatDate = (value) => {
         if (!value) return null;
@@ -60,9 +61,12 @@ const RentPropertyGrid = () => {
                 if (filteredProperties.length > 0) {
                     console.log('📸 First property image data:', filteredProperties[0].images);
                 }
-        
-                setProperties(filteredProperties);
-                setTotalResults(filteredProperties.length);
+
+                const nextProperties = filteredProperties;
+                setProperties(nextProperties);
+                setTotalResults(data.total || nextProperties.length);
+                const summary = await getFeedbackSummaryByPropertyIds(nextProperties.map((p) => p._id));
+                setRatingMap(summary);
       } catch (err) {
         console.error('Error fetching properties:', err);
         setError('Failed to load properties. Please try again.');
@@ -275,10 +279,19 @@ const RentPropertyGrid = () => {
                                             <div className="buy-grid-content">
                                                 <div className="d-flex align-items-center justify-content-between mb-3">
                                                     <div className="d-flex align-items-center justify-content-center">
-                                                        {[...Array(5)].map((_, i) => (
-                                                            <i key={i} className="material-icons-outlined text-warning">star</i>
-                                                        ))}
-                                                        <span className="ms-1 fs-14">Excellent</span>
+                                                        {[...Array(5)].map((_, i) => {
+                                                            const avg = Number(ratingMap?.[property._id]?.averageRating || 0);
+                                                            const filled = i < Math.round(avg);
+                                                            return (
+                                                                <i key={i} className={`material-icons${filled ? '' : '-outlined'} text-warning`}>star</i>
+                                                            );
+                                                        })}
+                                                        <span className="ms-1 fs-14">
+                                                            {ratingMap?.[property._id]?.averageRating || 'New'}
+                                                            {ratingMap?.[property._id]?.totalReviews
+                                                                ? ` (${ratingMap[property._id].totalReviews})`
+                                                                : ''}
+                                                        </span>
                                                     </div>
                                                     <span className="badge bg-secondary">{property.type || 'Property'}</span>
                                                 </div>

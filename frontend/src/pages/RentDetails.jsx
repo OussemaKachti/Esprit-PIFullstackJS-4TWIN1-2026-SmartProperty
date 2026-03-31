@@ -1,7 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import { getUserData } from '../utils/auth';
+import ReviewSection from '../components/ReviewSection';
 
 const RentDetails = () => {
 	const location = useLocation();
@@ -499,6 +500,8 @@ const RentDetails = () => {
 									</div>
 									<div id="accordion-9" className="accordion-collapse collapse show">
 										<div className="accordion-body">
+											<ReviewSection propertyId={propertyId} currentUser={currentUser} />
+											{false && (<div style={{ display: 'none' }}>
 											<div className="sub-head d-flex align-items-center justify-content-between mb-4">
 												<h6 className="fs-16 fw-semibold"> Reviews (45) </h6>
 												<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
@@ -718,6 +721,7 @@ const RentDetails = () => {
 											<div className="text-center">
 												<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
 											</div>
+											</div>)}
 
 										</div>
 									</div>
@@ -1204,58 +1208,6 @@ const RentDetails = () => {
 			
 
 		
-		<div id="add_review" className="modal fade">
-			<div className="modal-dialog modal-dialog-centered">
-				<div className="modal-content">
-					<form action="rent-details.html">
-						<div className="modal-header">
-							<h4 className="text-dark modal-title fw-bold">Write a Review</h4>
-							<button type="button" className="btn-close btn-close-modal custom-btn-close" data-bs-dismiss="modal" aria-label="Close"><i className="material-icons-outlined">close</i></button>
-						</div>
-						<div className="modal-body">
-							<div className="mb-3">
-								<label className="form-label">Ratings</label>
-								<div className="selection-wrap">
-                                	<div className="d-inline-block">
-                                    	<div className="rating-selction">
-                                        	<input type="radio" name="rating" value="5" id="rating5" />
-                                            <label htmlFor="rating5"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="4" id="rating4" />
-                                            <label htmlFor="rating4"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="3" id="rating3" />
-                                            <label htmlFor="rating3"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="2" id="rating2" />
-                                            <label htmlFor="rating2"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="1" id="rating1" />
-                                            <label htmlFor="rating1"><i className="fa-solid fa-star"></i></label>
-                                        </div>
-                                    </div>
-                                </div>
-							</div>
-							<div className="mb-3">
-								<label className="form-label">Ratings</label>
-								<input type="text" className="form-control" />
-							</div>
-							<div className="mb-3">
-								<label className="form-label">Email</label>
-								<input type="email" className="form-control" />
-							</div>
-							<div className="mb-0">
-								<label className="form-label">Write your review</label>
-								<textarea className="form-control" rows="3"></textarea>
-							</div>
-						</div>
-						<div className="modal-footer">
-							<div className="d-flex align-items-center justify-content-end">
-								<button type="submit" className="btn btn-lg btn-primary">Submit Review</button>
-							</div>
-						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-		
-
     </div>
     </div>
   );

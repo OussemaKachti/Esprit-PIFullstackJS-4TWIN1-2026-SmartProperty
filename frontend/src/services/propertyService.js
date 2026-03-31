@@ -95,3 +95,26 @@ export const getPropertyById = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Fetch ratings summary keyed by property id
+ * @param {string[]} propertyIds
+ * @returns {Promise<Object>} map of propertyId => { averageRating, totalReviews }
+ */
+export const getFeedbackSummaryByPropertyIds = async (propertyIds = []) => {
+  const ids = Array.isArray(propertyIds) ? propertyIds.filter(Boolean) : [];
+  if (ids.length === 0) return {};
+  try {
+    const params = new URLSearchParams();
+    params.append('propertyIds', ids.join(','));
+    const response = await fetch(`${API_URL}/feedbacks/summary?${params.toString()}`);
+    const data = await response.json();
+    if (data.success) {
+      return data.data?.byProperty || {};
+    }
+    return {};
+  } catch (error) {
+    console.error('Error fetching feedback summary:', error);
+    return {};
+  }
+};

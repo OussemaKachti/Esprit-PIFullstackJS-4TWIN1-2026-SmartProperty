@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import { getImageUrl, getPropertyById, API_BASE_URL } from '../services/propertyService';
+import { getImageUrl, getPropertyById, API_BASE_URL, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import { apiRequest } from '../api/client';
 import { getUserData } from '../utils/auth';
 import { normalizePanoramas } from '../utils/panoramaUtils';
 import PanoViewer from '../components/PanoViewer';
+import ReviewSection from '../components/ReviewSection';
 
 const BuyDetails = () => {
 	const { id } = useParams();
@@ -15,6 +16,7 @@ const BuyDetails = () => {
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
+	const [ratingSummary, setRatingSummary] = useState({ averageRating: '0.0', totalReviews: 0 });
 
 	// Virtual Staging states
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
@@ -187,7 +189,11 @@ const BuyDetails = () => {
 			setError(null);
 			try {
 				const data = await getPropertyById(id);
-				if (!cancelled) setProperty(data);
+				if (!cancelled) {
+					setProperty(data);
+					const summary = await getFeedbackSummaryByPropertyIds([id]);
+					setRatingSummary(summary?.[id] || { averageRating: '0.0', totalReviews: 0 });
+				}
 			} catch (e) {
 				if (!cancelled) setError('Failed to load property. Please try again.');
 			} finally {
@@ -296,7 +302,7 @@ const BuyDetails = () => {
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
-												<span className="text-white ms-1"> 5.0 </span>
+												<span className="text-white ms-1"> {ratingSummary.averageRating || '0.0'} ({ratingSummary.totalReviews || 0}) </span>
 											</div>
 											<i className="fa-solid fa-circle text-body"></i>
 											<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item"><i className="material-icons-outlined text-white me-1">location_on</i>{addressLabel || '—'} <Link to="/buy-grid-map" className="text-primary fs-14 text-decoration-underline ms-1"> View Location</Link></div>
@@ -780,6 +786,8 @@ const BuyDetails = () => {
 													</div>
 													<div id="accordion-9" className="accordion-collapse collapse show">
 														<div className="accordion-body">
+															<ReviewSection propertyId={id} currentUser={currentUser} />
+															{false && (<>
 															<div className="sub-head d-flex align-items-center justify-content-between mb-4">
 																<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
 																<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
@@ -999,6 +1007,7 @@ const BuyDetails = () => {
 															<div className="text-center">
 																<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
 															</div>
+															</>)}
 
 														</div>
 													</div>
@@ -1617,58 +1626,6 @@ const BuyDetails = () => {
 						</div>
 					</div>
 
-
-
-					<div id="add_review" className="modal fade">
-						<div className="modal-dialog modal-dialog-centered">
-							<div className="modal-content">
-								<form action="buy-details.html">
-									<div className="modal-header">
-										<h4 className="text-dark modal-title fw-bold">Write a Review</h4>
-										<button type="button" className="btn-close btn-close-modal custom-btn-close" data-bs-dismiss="modal" aria-label="Close"><i className="material-icons-outlined">close</i></button>
-									</div>
-									<div className="modal-body">
-										<div className="mb-3">
-											<label className="form-label">Ratings</label>
-											<div className="selection-wrap">
-												<div className="d-inline-block">
-													<div className="rating-selction">
-														<input type="radio" name="rating" value="5" id="rating5" />
-														<label htmlFor="rating5"><i className="fa-solid fa-star"></i></label>
-														<input type="radio" name="rating" value="4" id="rating4" />
-														<label htmlFor="rating4"><i className="fa-solid fa-star"></i></label>
-														<input type="radio" name="rating" value="3" id="rating3" />
-														<label htmlFor="rating3"><i className="fa-solid fa-star"></i></label>
-														<input type="radio" name="rating" value="2" id="rating2" />
-														<label htmlFor="rating2"><i className="fa-solid fa-star"></i></label>
-														<input type="radio" name="rating" value="1" id="rating1" />
-														<label htmlFor="rating1"><i className="fa-solid fa-star"></i></label>
-													</div>
-												</div>
-											</div>
-										</div>
-										<div className="mb-3">
-											<label className="form-label">Ratings</label>
-											<input type="text" className="form-control" />
-										</div>
-										<div className="mb-3">
-											<label className="form-label">Email</label>
-											<input type="email" className="form-control" />
-										</div>
-										<div className="mb-0">
-											<label className="form-label">Write your review</label>
-											<textarea className="form-control" rows="3"></textarea>
-										</div>
-									</div>
-									<div className="modal-footer">
-										<div className="d-flex align-items-center justify-content-end">
-											<button type="submit" className="btn btn-lg btn-primary">Submit Review</button>
-										</div>
-									</div>
-								</form>
-							</div>
-						</div>
-					</div>
 
 
 				</div>
