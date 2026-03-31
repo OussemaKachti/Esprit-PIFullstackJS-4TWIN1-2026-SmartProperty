@@ -93,8 +93,9 @@ exports.getTransactions = async (req, res, next) => {
     if (status && Object.values(TransactionStatus).includes(status)) filter.status = status;
     if (propertyId) filter.propertyId = propertyId;
 
-    const admin = isAdminish(req.user.role);
-    if (!admin) {
+    const isAdmin = req.user.role === 'ADMIN';
+    if (!isAdmin) {
+      // For all non-admins, only show transactions where user is owner or party
       filter.$or = [{ ownerId: req.user._id }, { partyId: req.user._id }];
     } else if (role === 'owner') {
       filter.ownerId = req.user._id;

@@ -226,7 +226,7 @@ SEED_CANDIDATES = [
 
 # Routes ---------------------------------------------------------------------
 
-@app.post("/match")
+@app.post("/api/match")
 def match_properties(request: MatchRequest):
     """Return top matching properties for a candidate profile."""
     top_n = request.top_n or TOP_N_MATCHES
