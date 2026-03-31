@@ -77,9 +77,19 @@ const adminNavItems: NavItem[] = [
     subItems: [{ name: "Overview", path: "/admin", pro: false }],
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Candidates",
+    path: "/admin/candidates",
+  },
+  {
     icon: <ListIcon />,
-    name: "Properties",
-    path: "/admin/properties",
+    name: "Rentals",
+    path: "/admin/rentals",
+  },
+  {
+    icon: <CalenderIcon />,
+    name: "Notifications",
+    path: "/admin/notifications",
   },
   {
     icon: <UserCircleIcon />,

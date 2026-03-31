@@ -1,0 +1,42 @@
+.gradient-hero {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  border: none;
+  border-radius: 16px;
+  color: #fff;
+}
+
+.alert-primary-soft { background: #e0e7ff; border: 1px solid #c7d2fe; }
+.alert-info-soft { background: #dbeafe; border: 1px solid #bfdbfe; }
+.alert-success-soft { background: #dcfce7; border: 1px solid #bbf7d0; }
+
+.score-pill {
+  background: #0f172a;
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 700;
+  min-width: 64px;
+  justify-content: center;
+}
+
+.pill {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pill-accept { background: #c7f9cc; color: #065f46; }
+.pill-guarantee { background: #fef3c7; color: #92400e; }
+.pill-refuse { background: #fee2e2; color: #991b1b; }
+
+.bg-soft-primary { background: #eef2ff; }
+.credit-card .card-body { background: linear-gradient(135deg, #f8fafc, #eef2ff); }
+
+@media (max-width: 575px) {
+  .score-pill { min-width: 56px; }
+}

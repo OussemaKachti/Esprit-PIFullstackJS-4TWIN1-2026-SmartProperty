@@ -27,6 +27,9 @@ import Home from "./pages/Dashboard/Home";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import AdminProperties from "./pages/Admin/AdminProperties";
 import AdminUsers from "./pages/Admin/AdminUsers";
+import AdminCandidates from "./pages/Admin/AdminCandidates";
+import AdminRentals from "./pages/Admin/AdminRentals";
+import AdminNotifications from "./pages/Admin/AdminNotifications";
 
 export default function App() {
   return (
@@ -118,6 +121,9 @@ export default function App() {
 
             {/* Admin Routes - use same layout but sidebar will show different menu */}
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/candidates" element={<AdminCandidates />} />
+            <Route path="/admin/rentals" element={<AdminRentals />} />
+            <Route path="/admin/notifications" element={<AdminNotifications />} />
             <Route path="/admin/properties" element={<AdminProperties />} />
             <Route path="/admin/users" element={<AdminUsers />} />
           </Route>
