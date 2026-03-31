@@ -1,0 +1,484 @@
+/* Virtual tour editor UI — same layout as 360 feature, scoped so Tailwind app is unaffected */
+
+.panorama-editor-scope,
+.panorama-editor-scope * {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.panorama-editor-scope {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+.panorama-editor-scope input,
+.panorama-editor-scope textarea {
+  -moz-user-select: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.panorama-editor-scope #app-root {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  background-color: #000;
+  color: #fff;
+}
+
+.panorama-editor-scope #pano {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panorama-editor-scope #titleBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  text-align: center;
+  z-index: 90;
+}
+
+.panorama-editor-scope .multiple-scenes #titleBar {
+  left: 0;
+}
+
+.panorama-editor-scope .fullscreen-enabled #titleBar {
+  right: 0;
+}
+
+.panorama-editor-scope #titleBar .sceneName {
+  width: 100%;
+  height: 100%;
+  line-height: 40px;
+  padding: 0 120px;
+  background-color: rgba(30, 35, 45, 0.9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.panorama-editor-scope .scene-thumb-container {
+  position: absolute;
+  top: 0;
+  left: 40px;
+  width: 60px;
+  height: 40px;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panorama-editor-scope .current-scene-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.panorama-editor-scope .single-scene .scene-thumb-container {
+  left: 0;
+}
+
+.panorama-editor-scope #fullscreenToggle {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  background-color: rgba(45, 55, 70, 0.9);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.panorama-editor-scope .fullscreen-enabled #fullscreenToggle {
+  display: block;
+}
+
+.panorama-editor-scope #fullscreenToggle .icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+}
+
+.panorama-editor-scope #fullscreenToggle .icon.on {
+  display: none;
+}
+
+.panorama-editor-scope #fullscreenToggle .icon.off {
+  display: block;
+}
+
+.panorama-editor-scope #fullscreenToggle.enabled .icon.on {
+  display: block;
+}
+
+.panorama-editor-scope #fullscreenToggle.enabled .icon.off {
+  display: none;
+}
+
+.panorama-editor-scope #autorotateToggle {
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  background-color: rgba(45, 55, 70, 0.9);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.panorama-editor-scope .fullscreen-enabled #autorotateToggle {
+  right: 40px;
+}
+
+.panorama-editor-scope #autorotateToggle .icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+}
+
+.panorama-editor-scope #autorotateToggle .icon.on {
+  display: none;
+}
+
+.panorama-editor-scope #autorotateToggle .icon.off {
+  display: block;
+}
+
+.panorama-editor-scope #autorotateToggle.enabled .icon.on {
+  display: block;
+}
+
+.panorama-editor-scope #autorotateToggle.enabled .icon.off {
+  display: none;
+}
+
+.panorama-editor-scope .link-hotspot {
+  width: 60px;
+  height: 60px;
+  margin-left: -30px;
+  margin-top: -30px;
+  opacity: 0.9;
+  -webkit-transition: opacity 0.2s;
+  transition: opacity 0.2s;
+  position: relative;
+}
+
+.panorama-editor-scope .link-hotspot:hover {
+  opacity: 1;
+}
+
+.panorama-editor-scope .link-hotspot-icon {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.panorama-editor-scope .link-hotspot-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 14px;
+  margin-left: 3px;
+  font-size: 16px;
+  max-width: 300px;
+  padding: 8px 10px;
+  border-radius: 0;
+  background-color: rgba(58, 68, 84, 0.8);
+  color: #fff;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0;
+  -webkit-transform: translateX(-8px);
+  transform: translateX(-8px);
+  -webkit-transition: transform 0.3s, opacity 0.3s;
+  transition: transform 0.3s, opacity 0.3s;
+  pointer-events: none;
+}
+
+.panorama-editor-scope .link-hotspot:hover .link-hotspot-tooltip {
+  opacity: 1;
+  -webkit-transform: translateX(0);
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+.panorama-editor-scope .info-hotspot {
+  line-height: 1.2em;
+  opacity: 0.9;
+  -webkit-transition: opacity 0.2s 0.2s;
+  transition: opacity 0.2s 0.2s;
+  background-color: rgba(58, 68, 84, 0.8);
+  padding: 8px;
+  border-radius: 0;
+  max-width: 200px;
+}
+
+.panorama-editor-scope .info-hotspot:hover {
+  opacity: 1;
+}
+
+.panorama-editor-scope .viewControlButton {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  background-color: rgba(103, 115, 131, 0.8);
+}
+
+.panorama-editor-scope .view-control-buttons .viewControlButton {
+  display: block;
+}
+
+.panorama-editor-scope #projectPanelToggle {
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  z-index: 250;
+  background: rgba(30, 35, 45, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panorama-editor-scope #projectPanelToggle.open {
+  right: 320px;
+}
+
+.panorama-editor-scope #projectPanel {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 201;
+  background: rgba(20, 26, 38, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 0;
+}
+
+.panorama-editor-scope #projectPanel.open {
+  transform: translateX(0);
+}
+
+.panorama-editor-scope .panel-header {
+  padding: 16px 20px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.panorama-editor-scope .section-label {
+  padding: 12px 20px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+}
+
+.panorama-editor-scope .scenes-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panorama-editor-scope .scenes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.panorama-editor-scope .scenes-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panorama-editor-scope .scenes-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.panorama-editor-scope .scenes-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panorama-editor-scope .project-scene-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-height: 48px;
+}
+
+.panorama-editor-scope .project-scene-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.panorama-editor-scope .project-scene-item.active {
+  background: rgba(74, 144, 217, 0.1);
+  border-left: 2px solid #4a90d9;
+}
+
+.panorama-editor-scope .scene-name-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panorama-editor-scope .project-scene-item.active .scene-name-text {
+  color: #fff;
+}
+
+.panorama-editor-scope .scene-item-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.panorama-editor-scope .project-scene-item:hover .scene-item-actions {
+  opacity: 1;
+}
+
+.panorama-editor-scope .item-action-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s;
+}
+
+.panorama-editor-scope .item-action-btn:hover {
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.panorama-editor-scope .item-action-btn.delete:hover {
+  color: #ff4d4d;
+}
+
+.panorama-editor-scope .item-action-btn.link:hover {
+  color: #34c759;
+}
+
+.panorama-editor-scope .upload-section {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.panorama-editor-scope .upload-name-input,
+.panorama-editor-scope .edit-name-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  outline: none;
+  border-radius: 0;
+}
+
+.panorama-editor-scope .edit-name-input {
+  margin: 0;
+  border-color: #4a90d9;
+}
+
+.panorama-editor-scope .project-drop-zone {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.panorama-editor-scope .project-drop-zone:hover,
+.panorama-editor-scope .project-drop-zone.drag-over {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.panorama-editor-scope .project-drop-zone p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 8px;
+}
+
+.panorama-editor-scope #placing-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: rgba(220, 160, 40, 0.9);
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.panorama-editor-scope .placing-hotspot #pano {
+  cursor: crosshair;
+}

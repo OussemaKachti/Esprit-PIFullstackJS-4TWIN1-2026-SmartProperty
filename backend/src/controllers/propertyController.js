@@ -8,20 +8,20 @@ const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/
 // @access  Public
 exports.getAllProperties = async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      type, 
+    const {
+      page = 1,
+      limit = 10,
+      type,
       status,
       listingType,
       city,
       region,
-      minPrice, 
+      minPrice,
       maxPrice,
       rooms,
       bathrooms,
       minSurface,
-      search 
+      search
     } = req.query;
 
     // Validate listingType if provided
@@ -289,7 +289,8 @@ exports.getPropertyById = async (req, res, next) => {
       );
     }
     const property = await Property.findById(id)
-      .populate('createdBy', 'login email role firstName lastName'); // Peupler les infos user
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean(); // Plain JSON so panoramas (id, url, linkHotspots) match front + backoffice
 
     if (!property) {
       return res.status(404).json(
@@ -329,12 +330,12 @@ exports.createProperty = async (req, res, next) => {
         publicId: file.filename,
         fieldName: file.fieldname, // Store which field was used
       }));
-      
+
       console.log(`✅ Uploaded ${req.files.length} image(s)`);
     }
 
     const property = await Property.create(propertyData);
-    
+
     // Populate createdBy if it exists
     if (property.createdBy) {
       await property.populate('createdBy', 'login email role firstName lastName');
@@ -363,16 +364,38 @@ exports.updateProperty = async (req, res, next) => {
 
     // Handle new image uploads - accepts any field names
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(file => ({
-        url: file.path,
-        publicId: file.filename,
-        fieldName: file.fieldname,
-      }));
-      
-      // Merge existing images with new ones
-      req.body.images = [...property.images, ...newImages];
-      
-      console.log(`✅ Added ${req.files.length} new image(s). Total: ${req.body.images.length}`);
+      const newImages = [];
+      const newPanoramas = [];
+
+      req.files.forEach(file => {
+        const item = {
+          url: file.path,
+          publicId: file.filename,
+          fieldName: file.fieldname,
+        };
+
+        if (file.fieldname && file.fieldname.startsWith('pano')) {
+          // It's a panorama
+          newPanoramas.push({
+            ...item,
+            id: file.filename, // Use filename as unique ID for scene management
+            name: file.originalname.split('.')[0], // Default name from filename
+          });
+        } else {
+          // It's a regular image
+          newImages.push(item);
+        }
+      });
+
+      if (newImages.length > 0) {
+        req.body.images = [...property.images, ...newImages];
+        console.log(`✅ Added ${newImages.length} new image(s).`);
+      }
+
+      if (newPanoramas.length > 0) {
+        req.body.panoramas = [...(property.panoramas || []), ...newPanoramas];
+        console.log(`✅ Added ${newPanoramas.length} new panorama(s).`);
+      }
     }
 
     const updatedProperty = await Property.findByIdAndUpdate(
@@ -383,6 +406,39 @@ exports.updateProperty = async (req, res, next) => {
 
     res.status(200).json(
       apiResponse(true, 'Property updated successfully', updatedProperty)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update property panoramas (hotspots, names)
+// @route   PUT /api/properties/:id/panoramas
+// @access  Private (Admin/Agent)
+exports.updatePropertyPanoramas = async (req, res, next) => {
+  try {
+    const { panoramas } = req.body;
+
+    if (!panoramas || !Array.isArray(panoramas)) {
+      return res.status(400).json(
+        apiResponse(false, 'Please provide panoramas array')
+      );
+    }
+
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    // Update panoramas data (names, hotspots) while keeping URLs
+    property.panoramas = panoramas;
+    await property.save();
+
+    res.status(200).json(
+      apiResponse(true, 'Property panoramas updated successfully', property)
     );
   } catch (error) {
     next(error);
@@ -418,7 +474,7 @@ exports.deleteProperty = async (req, res, next) => {
 exports.deletePropertyImage = async (req, res, next) => {
   try {
     const { id, imageId } = req.params;
-    
+
     const property = await Property.findById(id);
 
     if (!property) {
@@ -464,7 +520,7 @@ exports.analyzePropertyImages = async (req, res, next) => {
 
     // Real Image Classification via HuggingFace (Free Vision AI)
     let analyzedCount = 0;
-    
+
     // Process sequentially to avoid rate-limiting
     for (const img of property.images) {
       if (!img.classification || img.classification === 'other') {

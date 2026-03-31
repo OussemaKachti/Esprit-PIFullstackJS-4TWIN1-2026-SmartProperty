@@ -128,7 +128,7 @@ const propertySchema = new mongoose.Schema(
         default: 'Point',
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
+        type: [Number],
         default: [0, 0],
       },
     },
@@ -140,6 +140,35 @@ const propertySchema = new mongoose.Schema(
       type: Map,
       of: mongoose.Schema.Types.Mixed,
     },
+    panoramas: [
+      {
+        id: { type: String, required: true },
+        name: { type: String, default: 'Room' },
+        url: { type: String, required: true },
+        linkHotspots: [
+          {
+            linkId: { type: String },
+            yaw: { type: Number, default: 0 },
+            pitch: { type: Number, default: 0 },
+            target: { type: String },
+            targetViewParameters: {
+              yaw: { type: Number },
+              pitch: { type: Number },
+              fov: { type: Number },
+            },
+          }
+        ],
+        initialViewParameters: {
+          yaw: { type: Number, default: 0 },
+          pitch: { type: Number, default: 0 },
+          fov: { type: Number, default: 1.5707963267948966 },
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }
+    ],
     // Utilisateur qui a créé la propriété
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

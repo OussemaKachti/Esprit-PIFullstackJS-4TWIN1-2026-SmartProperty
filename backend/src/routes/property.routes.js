@@ -40,5 +40,6 @@ router.delete('/:id/images/:imageId', auth.protect, auth.authorize('ADMIN', 'AGE
 // AI Virtual Staging & Analysis
 router.post('/:id/analyze-images', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.analyzePropertyImages);
 router.post('/:id/virtual-staging', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.generateVirtualStaging);
+router.put('/:id/panoramas', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.updatePropertyPanoramas);
 
 module.exports = router;

@@ -1,6 +1,9 @@
-// Property API Service
-const API_URL = 'http://localhost:5000/api';
-export const API_BASE_URL = 'http://localhost:5000';
+import { getApiBaseUrl } from '../utils/panoramaUtils';
+
+// Property API Service — REACT_APP_API_URL may be http://host:5000 or http://host:5000/api
+
+export const API_BASE_URL = getApiBaseUrl();
+export const API_URL = `${API_BASE_URL}/api`;
 
 /**
  * Get image URL from property image object
