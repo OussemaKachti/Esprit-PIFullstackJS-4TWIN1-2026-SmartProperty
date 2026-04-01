@@ -124,6 +124,8 @@ type NewPropertyForm = {
   description: string;
 };
 
+type FormFieldErrors = Partial<Record<keyof NewPropertyForm, string>>;
+
 export default function MyProperties() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -144,6 +146,8 @@ export default function MyProperties() {
     price: "",
     description: "",
   });
+  const [formErrors, setFormErrors] = useState<FormFieldErrors>({});
+  const [formAlert, setFormAlert] = useState<string>("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagesCount, setImagesCount] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -253,6 +257,68 @@ export default function MyProperties() {
     value: string
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setFormErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    if (formAlert) {
+      setFormAlert("");
+    }
+  };
+
+  const validateStepOne = () => {
+    const errors: FormFieldErrors = {};
+
+    const trimmedTitle = form.title.trim();
+    if (!trimmedTitle) {
+      errors.title = "Property title is required.";
+    } else if (trimmedTitle.length < 5 || trimmedTitle.length > 100) {
+      errors.title = "Title must contain between 5 and 100 characters.";
+    }
+
+    if (!form.type) errors.type = "Property type is required.";
+    if (!form.listingType) errors.listingType = "Listing type is required.";
+    if (!form.address.trim()) errors.address = "Property address is required.";
+    if (!form.city.trim()) errors.city = "City is required.";
+    if (!form.country.trim()) errors.country = "Country is required.";
+
+    const priceNum = Number(form.price);
+    if (!form.price.trim()) {
+      errors.price = "Price is required.";
+    } else if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      errors.price = "Price must be a positive number.";
+    }
+
+    const surfaceNum = Number(form.surface);
+    if (!form.surface.trim()) {
+      errors.surface = "Total area is required.";
+    } else if (!Number.isFinite(surfaceNum) || surfaceNum <= 0) {
+      errors.surface = "Total area must be a positive number.";
+    }
+
+    const hasErrors = Object.keys(errors).length > 0;
+    setFormErrors(errors);
+    setFormAlert(
+      hasErrors
+        ? "Please complete all required fields correctly before continuing."
+        : ""
+    );
+
+    return !hasErrors;
+  };
+
+  const handleContinueStep = () => {
+    if (activeStep === 1) {
+      const isValid = validateStepOne();
+      if (!isValid) {
+        toast.error("Please fix the highlighted fields to continue.");
+        return;
+      }
+    }
+
+    setActiveStep((s) => (s === 3 ? s : ((s + 1) as 1 | 2 | 3)));
   };
 
   const handleImagesChange = (files: FileList | null) => {
@@ -314,6 +380,8 @@ export default function MyProperties() {
     setActiveStep(1);
     setEditingPropertyId(null);
     setForm(initialFormState);
+    setFormErrors({});
+    setFormAlert("");
     setImageFiles([]);
     setImagesCount(0);
     setExistingPropertyImages([]);
@@ -423,6 +491,8 @@ export default function MyProperties() {
       setEditingPropertyId(property._id);
       setImageFiles([]);
       setImagesCount(0);
+      setFormErrors({});
+      setFormAlert("");
       setExistingPropertyImages(
         Array.isArray(p.images)
           ? p.images.map((img: { url: string; publicId?: string; _id?: unknown }) => ({
@@ -445,18 +515,11 @@ export default function MyProperties() {
     try {
       const token = localStorage.getItem("token");
 
-      const requiredText = [
-        { key: "title", label: "Title" },
-        { key: "type", label: "Type" },
-        { key: "city", label: "City" },
-        { key: "listingType", label: "Listing type" },
-      ];
-
-      for (const field of requiredText) {
-        if (!(form as any)[field.key]) {
-          toast.error(`Please provide ${field.label}.`);
-          return;
-        }
+      const isStepOneValid = validateStepOne();
+      if (!isStepOneValid) {
+        setActiveStep(1);
+        toast.error("Please fix required fields before submitting.");
+        return;
       }
 
       const priceNum = Number(form.price);
@@ -671,6 +734,8 @@ export default function MyProperties() {
                 setImageFiles([]);
                 setImagesCount(0);
                 setExistingPropertyImages([]);
+                setFormErrors({});
+                setFormAlert("");
                 setActiveStep(1);
                 setIsFormOpen(true);
               }}
@@ -1277,27 +1342,43 @@ export default function MyProperties() {
                         Start by entering the key details of your property.
                       </p>
                     </div>
+                    {formAlert && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/40 dark:bg-red-900/20">
+                        <div className="mt-0.5 text-red-600 dark:text-red-400">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M10.29 3.86l-8.59 14.87A2 2 0 003.41 22h17.18a2 2 0 001.71-3.27L13.71 3.86a2 2 0 00-3.42 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-red-700 dark:text-red-300">Required information missing</p>
+                          <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{formAlert}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-1.5 md:col-span-2">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Property Title
+                          Property Title <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.title ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. Luxury villa with sea view"
                           value={form.title}
                           onChange={(e) =>
                             handleFieldChange("title", e.target.value)
                           }
                         />
+                        {formErrors.title && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.title}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Property Type
+                          Property Type <span className="text-red-500">*</span>
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.type ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           value={form.type}
                           onChange={(e) =>
                             handleFieldChange("type", e.target.value)
@@ -1309,13 +1390,16 @@ export default function MyProperties() {
                           <option value="VILLA">Villa</option>
                           <option value="STUDIO">Studio</option>
                         </select>
+                        {formErrors.type && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.type}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Listing Type
+                          Listing Type <span className="text-red-500">*</span>
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.listingType ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           value={form.listingType}
                           onChange={(e) =>
                             handleFieldChange("listingType", e.target.value as "FOR_SALE" | "FOR_RENT" | "")
@@ -1325,76 +1409,94 @@ export default function MyProperties() {
                           <option value="FOR_SALE">For Sale</option>
                           <option value="FOR_RENT">For Rent</option>
                         </select>
+                        {formErrors.listingType && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.listingType}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Price
+                          Price <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.price ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. 850000"
                           value={form.price}
                           onChange={(e) =>
                             handleFieldChange("price", e.target.value)
                           }
                         />
+                        {formErrors.price && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.price}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Total Area (m²)
+                          Total Area (m²) <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.surface ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. 250"
                           value={form.surface}
                           onChange={(e) =>
                             handleFieldChange("surface", e.target.value)
                           }
                         />
+                        {formErrors.surface && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.surface}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5 md:col-span-2">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Property Address
+                          Property Address <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.address ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="Street and number"
                           value={form.address}
                           onChange={(e) =>
                             handleFieldChange("address", e.target.value)
                           }
                         />
+                        {formErrors.address && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.address}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          City
+                          City <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.city ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. Nice"
                           value={form.city}
                           onChange={(e) =>
                             handleFieldChange("city", e.target.value)
                           }
                         />
+                        {formErrors.city && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.city}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Country
+                          Country <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.country ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. France"
                           value={form.country}
                           onChange={(e) =>
                             handleFieldChange("country", e.target.value)
                           }
                         />
+                        {formErrors.country && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.country}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -1815,7 +1917,7 @@ export default function MyProperties() {
                   {activeStep < 3 && (
                     <button
                       type="button"
-                      onClick={() => setActiveStep((s) => (s === 3 ? s : ((s + 1) as 1 | 2 | 3)))}
+                      onClick={handleContinueStep}
                       className="px-5 py-2 text-xs font-semibold text-white rounded-full shadow-sm bg-brand-500 hover:bg-brand-600"
                     >
                       Continue
