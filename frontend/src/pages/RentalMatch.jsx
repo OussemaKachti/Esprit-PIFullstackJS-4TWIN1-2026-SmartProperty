@@ -10,7 +10,21 @@ const PROPERTY_TYPES = [
   'Locations de vacances',
 ];
 
-const EMPLOYMENT_TYPES = ['CDI', 'CDD', 'freelance', 'retired', 'unemployed'];
+const EMPLOYMENT_OPTIONS = [
+  { value: 'CDI', label: 'CDI' },
+  { value: 'CDD', label: 'CDD' },
+  { value: 'freelance', label: 'Freelance' },
+  { value: 'retired', label: 'Retraite' },
+  { value: 'unemployed', label: 'Sans emploi' },
+];
+
+const DOCUMENT_LABELS = {
+  national_id: 'Carte d identite nationale',
+  payslips_3months: '3 fiches de paie',
+  bank_statement: 'Releve bancaire',
+  employment_contract: 'Contrat de travail',
+  tax_notice: 'Declaration fiscale',
+};
 
 const initialCandidate = {
   name: 'Ahmed Ben Ali',
@@ -157,6 +171,10 @@ export default function RentalMatch() {
   const hint = useMemo(() => buildHint(candidate), [candidate]);
   const matchSummary = useMemo(() => buildMatchSummary(matches), [matches]);
   const creditSummary = useMemo(() => buildCreditSummary(creditResult), [creditResult]);
+  const documentEntries = useMemo(
+    () => Object.keys(credit.documents || {}).map((key) => ({ key, label: DOCUMENT_LABELS[key] || key.replace(/_/g, ' ') })),
+    [credit.documents]
+  );
 
   const handleCandidateChange = (field, value) => {
     setCandidate((prev) => ({ ...prev, [field]: value }));
@@ -355,8 +373,8 @@ export default function RentalMatch() {
                           value={credit.employment_type}
                           onChange={(e) => setCredit((p) => ({ ...p, employment_type: e.target.value }))}
                         >
-                          {EMPLOYMENT_TYPES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
+                          {EMPLOYMENT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
                         </select>
                       </div>
@@ -373,33 +391,32 @@ export default function RentalMatch() {
                     </div>
 
                     <div className="row g-2 mt-3">
-                      {Object.keys(credit.documents).map((docKey) => (
-                        <div className="col-md-6" key={docKey}>
-                          <div className="form-check form-switch bg-light p-2 rounded-3">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={credit.documents[docKey]}
-                              onChange={() => handleDocumentToggle(docKey)}
-                              id={`doc-${docKey}`}
-                            />
-                            <label className="form-check-label ms-1" htmlFor={`doc-${docKey}`}>
-                              {docKey.replace(/_/g, ' ')}
-                            </label>
-                          </div>
+                      <div className="col-12">
+                        <p className="text-muted mb-1 small">Documents disponibles</p>
+                      </div>
+                      {documentEntries.map(({ key, label }) => (
+                        <div className="col-md-6" key={key}>
+                          <button
+                            type="button"
+                            className={`credit-doc-chip ${credit.documents[key] ? 'active' : ''}`}
+                            onClick={() => handleDocumentToggle(key)}
+                            aria-pressed={credit.documents[key]}
+                          >
+                            <span className="credit-doc-chip__indicator">{credit.documents[key] ? '✓' : ''}</span>
+                            <span className="credit-doc-chip__label">{label}</span>
+                          </button>
                         </div>
                       ))}
                       <div className="col-md-12">
-                        <div className="form-check form-switch bg-light p-2 rounded-3">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={credit.has_guarantor}
-                            onChange={() => setCredit((p) => ({ ...p, has_guarantor: !p.has_guarantor }))}
-                            id="doc-guarantor"
-                          />
-                          <label className="form-check-label ms-1" htmlFor="doc-guarantor">Garant disponible</label>
-                        </div>
+                        <button
+                          type="button"
+                          className={`credit-doc-chip w-100 ${credit.has_guarantor ? 'active' : ''}`}
+                          onClick={() => setCredit((p) => ({ ...p, has_guarantor: !p.has_guarantor }))}
+                          aria-pressed={credit.has_guarantor}
+                        >
+                          <span className="credit-doc-chip__indicator">{credit.has_guarantor ? '✓' : ''}</span>
+                          <span className="credit-doc-chip__label">Garant disponible</span>
+                        </button>
                       </div>
                     </div>
                   </div>
