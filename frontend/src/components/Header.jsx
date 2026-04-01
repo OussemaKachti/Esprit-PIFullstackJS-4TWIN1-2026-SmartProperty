@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import LocalizedLink from './LocalizedLink';
 import { localizeRoute, getLanguageFromPath } from '../routes/routeConfig';
+import {
+  shouldAccessBackoffice,
+  getRedirectUrl,
+  redirectToBackofficeWithToken,
+} from '../utils/auth';
 
 const Header = () => {
   const { t, i18n } = useTranslation();
@@ -21,6 +26,17 @@ const Header = () => {
       setCurrentUser(null);
     }
   }, [location.pathname]);
+
+  const canAccessBackoffice =
+    !!currentUser?.role && shouldAccessBackoffice(currentUser.role);
+
+  const handleOpenBackoffice = () => {
+    const token = localStorage.getItem('token');
+    if (!token || !canAccessBackoffice) return;
+
+    const backofficeUrl = getRedirectUrl(currentUser.role);
+    redirectToBackofficeWithToken(backofficeUrl, token);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -159,6 +175,15 @@ const Header = () => {
                         <div style={{ fontSize: '12px', color: '#888' }}>{currentUser.role || 'Member'}</div>
                       </div>
                     </div>
+                    {canAccessBackoffice && (
+                      <button
+                        className="btn btn-dark w-100 mb-2 d-inline-flex align-items-center justify-content-center"
+                        onClick={handleOpenBackoffice}
+                      >
+                        <i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>dashboard_customize</i>
+                        Backoffice
+                      </button>
+                    )}
                     <LocalizedLink to="/form?step=1" className="btn btn-outline-primary w-100 mb-2 d-inline-flex align-items-center justify-content-center">
                       <i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>person_outline</i>Profile Settings
                     </LocalizedLink>
@@ -261,6 +286,15 @@ const Header = () => {
                         <span className="d-block">{currentUser.role || 'Member'}</span>
                       </div>
                     </div>
+                    {canAccessBackoffice && (
+                      <button
+                        className="dropdown-item d-inline-flex align-items-center w-100 text-start"
+                        style={{ background: 'none', border: 'none' }}
+                        onClick={handleOpenBackoffice}
+                      >
+                        <i className="material-icons-outlined me-2">dashboard_customize</i>Backoffice
+                      </button>
+                    )}
                     <LocalizedLink to="/form?step=1" className="dropdown-item d-inline-flex align-items-center">
                       <i className="material-icons-outlined me-2">person_outline</i>Profile Settings
                     </LocalizedLink>

@@ -171,34 +171,8 @@ const AppSidebar: React.FC = () => {
   }, []);
 
   const handleGoToFrontend = useCallback(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-    
-    if (token && user) {
-      // Store token and user in sessionStorage for the frontend to read
-      // Open frontend in new tab
-      const frontendWindow = window.open(FRONTEND_URL, '_blank');
-      
-      // Try to pass data via postMessage once the window loads
-      if (frontendWindow) {
-        const checkWindow = setInterval(() => {
-          try {
-            frontendWindow.postMessage(
-              { type: 'AUTH_FROM_BACKOFFICE', token, user }, 
-              FRONTEND_URL
-            );
-            clearInterval(checkWindow);
-          } catch (e) {
-            // Window not ready yet
-          }
-        }, 500);
-        
-        // Clear interval after 5 seconds
-        setTimeout(() => clearInterval(checkWindow), 5000);
-      }
-    } else {
-      window.open(FRONTEND_URL, '_blank');
-    }
+    // Redirect to frontend in the same tab
+    window.location.href = FRONTEND_URL;
   }, []);
 
   useEffect(() => {
@@ -457,7 +431,7 @@ const AppSidebar: React.FC = () => {
               <span className="menu-item-icon-size menu-item-icon-inactive">
                 <GlobeIcon />
               </span>
-              <span className="menu-item-text">Visit Frontend</span>
+              <span className="menu-item-text">Marketplace</span>
             </button>
             <Link
               to="/profile"
