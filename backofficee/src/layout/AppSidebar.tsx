@@ -63,6 +63,7 @@ const regularNavItems: NavItem[] = [
     path: "/documents",
   },
  
+  
   {
     icon: <CalenderIcon />,
     name: "Calendar",
