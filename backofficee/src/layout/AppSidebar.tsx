@@ -62,11 +62,7 @@ const regularNavItems: NavItem[] = [
     name: "Documents",
     path: "/documents",
   },
-  {
-    icon: <TableIcon />,
-    name: "Enquiries",
-    path: "/enquiries",
-  },
+ 
   {
     icon: <CalenderIcon />,
     name: "Calendar",
