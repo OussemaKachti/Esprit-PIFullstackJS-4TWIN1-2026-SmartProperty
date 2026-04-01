@@ -160,7 +160,7 @@ const BuyDetails = () => {
 	const formattedPrice = useMemo(() => {
 		const price = property?.price;
 		if (price === undefined || price === null || Number.isNaN(Number(price))) return 'N/A';
-		return `$${Number(price).toLocaleString()}`;
+		return `${Number(price).toLocaleString('en-US').replace(/,/g, ' ')} TND`;
 	}, [property?.price]);
 
 	const tourPanoramas = useMemo(

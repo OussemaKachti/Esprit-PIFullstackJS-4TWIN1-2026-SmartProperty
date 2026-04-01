@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 
+const formatPriceTND = (value) => {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) return 'N/A';
+    return `${numberValue.toLocaleString('en-US').replace(/,/g, ' ')} TND`;
+};
+
 const RentPropertyGrid = () => {
   const location = useLocation();
   const [properties, setProperties] = useState([]);
@@ -268,7 +274,7 @@ const RentPropertyGrid = () => {
                                                 )}
                                                 <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
                                                     <h6 className="text-white mb-0">
-                                                        ${property.price?.toLocaleString() || 'N/A'} 
+                                                        {formatPriceTND(property.price)} 
                                                         <span className="fs-14 fw-normal"> / {property.rentalPeriod || 'Month'} </span>
                                                     </h6>
                                                     <a href="javascript:void(0)" className="favourite">

@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 
+const formatPriceTND = (value) => {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) return 'N/A';
+    return `${numberValue.toLocaleString('en-US').replace(/,/g, ' ')} TND`;
+};
+
 const BuyPropertyGrid = () => {
   const location = useLocation();
   const [properties, setProperties] = useState([]);
@@ -247,7 +253,7 @@ const BuyPropertyGrid = () => {
                                                     </a>
                                                 </div>
                                                 <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                                    <h6 className="text-white mb-0">${property.price?.toLocaleString() || 'N/A'}</h6>
+                                                    <h6 className="text-white mb-0">{formatPriceTND(property.price)}</h6>
                                                     <div className="user-avatar avatar avatar-md border rounded-circle">
                                                         <img src="/assets/img/users/user-01.jpg" alt="User" className="rounded-circle" />
                                                     </div>
