@@ -40,7 +40,7 @@ const regularNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    path: "/",
   },
   {
     icon: <ListIcon />,
@@ -76,7 +76,7 @@ const adminNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Overview", path: "/admin", pro: false }],
+    path: "/admin",
   },
   {
     icon: <UserCircleIcon />,

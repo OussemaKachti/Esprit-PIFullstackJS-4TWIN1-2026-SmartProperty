@@ -2,6 +2,19 @@ const mongoose = require('mongoose');
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
+const { getDashboardStatsForUser } = require('../services/dashboardStats.service');
+
+// @desc    Dashboard stats for backoffice (scoped to user or full platform for admin)
+// @route   GET /api/properties/dashboard/stats
+// @access  Private (Admin / Agency / Owner)
+exports.getDashboardStats = async (req, res, next) => {
+  try {
+    const stats = await getDashboardStatsForUser(req.user._id, req.user.role);
+    res.status(200).json(apiResponse(true, 'Dashboard stats retrieved successfully', stats));
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Get all properties
 // @route   GET /api/properties

@@ -7,6 +7,12 @@ const auth = require('../middleware/auth.middleware');
 
 // Property CRUD routes (specific routes before /:id)
 router.get('/', propertyController.getAllProperties);
+router.get(
+  '/dashboard/stats',
+  auth.protect,
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
+  propertyController.getDashboardStats
+);
 router.get('/my', auth.protect, propertyController.getMyProperties);
 router.get('/user/:userId', propertyController.getPropertiesByUser);
 router.get('/:id', propertyController.getPropertyById);
