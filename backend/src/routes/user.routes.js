@@ -48,6 +48,13 @@ router.put(
   userController.updateProfile
 );
 
+router.get(
+  '/me/offers',
+  protect,
+  authorize(UserRole.BUYER, UserRole.TENANT),
+  userController.getMyOffers
+);
+
 router.post('/complete-onboarding', protect, userController.completeOnboarding);
 
 // Admin routes

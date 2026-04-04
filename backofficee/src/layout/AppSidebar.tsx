@@ -71,6 +71,39 @@ const regularNavItems: NavItem[] = [
   },
 ];
 
+const buyerTenantNavItems: NavItem[] = [
+  {
+    icon: <GridIcon />,
+    name: "Dashboard",
+    path: "/",
+  },
+  {
+    icon: <ListIcon />,
+    name: "Purchases & rentals",
+    path: "/my-portfolio",
+  },
+  {
+    icon: <TableIcon />,
+    name: "My offers",
+    path: "/my-offers",
+  },
+  {
+    icon: <PieChartIcon />,
+    name: "Activity",
+    path: "/transactions",
+  },
+  {
+    icon: <CalenderIcon />,
+    name: "Calendar",
+    path: "/calendar",
+  },
+  {
+    icon: <PageIcon />,
+    name: "Documents",
+    path: "/documents",
+  },
+];
+
 // Admin menu items
 const adminNavItems: NavItem[] = [
   {
@@ -113,23 +146,33 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
 
-  // Get user role from localStorage
   const [userRole, setUserRole] = useState<string>("");
 
-  useEffect(() => {
+  const syncRoleFromStorage = useCallback(() => {
     const user = localStorage.getItem("user");
-    if (user) {
-      try {
-        const userData = JSON.parse(user);
-        setUserRole(userData.role || "");
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
+    if (!user) {
+      setUserRole("");
+      return;
+    }
+    try {
+      const userData = JSON.parse(user);
+      setUserRole(String(userData.role || "").toUpperCase());
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setUserRole("");
     }
   }, []);
 
-  // Determine which nav items to show based on user role
-  const navItems = userRole === "ADMIN" ? adminNavItems : regularNavItems;
+  useEffect(() => {
+    syncRoleFromStorage();
+  }, [syncRoleFromStorage, location.pathname]);
+
+  const navItems =
+    userRole === "ADMIN"
+      ? adminNavItems
+      : userRole === "BUYER" || userRole === "TENANT"
+        ? buyerTenantNavItems
+        : regularNavItems;
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -346,7 +389,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-900
         ${
           isExpanded || isMobileOpen
             ? "w-[290px]"
@@ -383,10 +426,8 @@ const AppSidebar: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <h2
-                className={`mb-3 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
+                className={`mb-3 flex text-xs uppercase leading-[20px] text-gray-400 ${
+                  !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
                 }`}
               >
                 {isExpanded || isHovered || isMobileOpen ? (
@@ -419,11 +460,11 @@ const AppSidebar: React.FC = () => {
         </nav>
         {/* Bottom: user profile + logout — toujours en bas */}
         {(isExpanded || isHovered || isMobileOpen) && (
-          <div className="flex-shrink-0 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+          <div className="flex-shrink-0 space-y-2 border-t border-gray-200 pb-6 pt-4 dark:border-gray-800">
             <button
               type="button"
               onClick={handleGoToFrontend}
-              className="w-full text-left menu-item group menu-item-inactive"
+              className="menu-item group menu-item-inactive w-full text-left"
             >
               <span className="menu-item-icon-size menu-item-icon-inactive">
                 <GlobeIcon />
@@ -432,15 +473,11 @@ const AppSidebar: React.FC = () => {
             </button>
             <Link
               to="/profile"
-              className={`menu-item group ${
-                isActive("/profile") ? "menu-item-active" : "menu-item-inactive"
-              }`}
+              className={`menu-item group ${isActive("/profile") ? "menu-item-active" : "menu-item-inactive"}`}
             >
               <span
                 className={`menu-item-icon-size ${
-                  isActive("/profile")
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
+                  isActive("/profile") ? "menu-item-icon-active" : "menu-item-icon-inactive"
                 }`}
               >
                 <UserCircleIcon />
@@ -450,10 +487,9 @@ const AppSidebar: React.FC = () => {
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-left menu-item group menu-item-inactive text-error-600 hover:text-error-600"
+              className="menu-item group menu-item-inactive w-full text-left text-error-600 hover:text-error-600"
             >
               <span className="menu-item-icon-size menu-item-icon-inactive">
-                {/* simple logout icon using HorizontaLDots rotated or reuse existing */}
                 <PlugInIcon />
               </span>
               <span className="menu-item-text">Logout</span>

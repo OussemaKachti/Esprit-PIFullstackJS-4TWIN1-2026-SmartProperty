@@ -4,7 +4,12 @@ import "../../styles/login.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import GmailButton from "./GmailButton";
 import toast from "../../utils/toast";
-import { shouldAccessBackoffice, getRedirectUrl, storeUserData, redirectToBackofficeWithToken } from "../../utils/auth";
+import {
+  shouldAutoRedirectToBackofficeOnLogin,
+  getRedirectUrl,
+  storeUserData,
+  redirectToBackofficeWithToken,
+} from "../../utils/auth";
 const API_BASE = "http://localhost:5000";
 
 export default function Login() {
@@ -71,14 +76,12 @@ export default function Login() {
 
       toast.success("Login successful");
 
-      // Redirect based on user role
+      // Redirect based on user role (buyer/tenant stay on marketplace; owner/agency/admin go to backoffice)
       const userRole = data.user?.role;
-      if (userRole && shouldAccessBackoffice(userRole)) {
-        // AGENCY, OWNER, ADMIN → redirect to backoffice
+      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole)) {
         const backofficeUrl = getRedirectUrl(userRole);
         redirectToBackofficeWithToken(backofficeUrl, data.token);
       } else {
-        // TENANT, BUYER → stay in frontend
         navigate("/");
       }
     } catch (error) {

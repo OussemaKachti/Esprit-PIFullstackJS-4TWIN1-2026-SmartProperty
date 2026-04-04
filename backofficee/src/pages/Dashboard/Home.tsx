@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import BuyerTenantHome from "./BuyerTenantHome";
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import MonthlySalesChart from "../../components/ecommerce/MonthlySalesChart";
 import StatisticsChart from "../../components/ecommerce/StatisticsChart";
@@ -54,7 +55,22 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isBuyerOrTenant = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return false;
+      const r = String(JSON.parse(raw).role || "").toUpperCase();
+      return r === "BUYER" || r === "TENANT";
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
+    if (isBuyerOrTenant) {
+      setLoading(false);
+      return;
+    }
     const token = localStorage.getItem("token");
     if (!token) {
       setLoading(false);
@@ -91,9 +107,13 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isBuyerOrTenant]);
 
   const currency = stats?.currency ?? "TND";
+
+  if (isBuyerOrTenant) {
+    return <BuyerTenantHome />;
+  }
 
   return (
     <>

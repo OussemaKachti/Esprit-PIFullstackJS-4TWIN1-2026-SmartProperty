@@ -1,4 +1,6 @@
 const { User } = require('../models/User');
+const { Sale, Lease } = require('../models');
+const { apiResponse } = require('../utils/apiResponse');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -525,6 +527,44 @@ exports.validate2FAToken = async (req, res) => {
       message: 'Erreur serveur',
       error: error.message
     });
+  }
+};
+
+// @desc    Current user's purchase offers (sales) and rental bookings (leases)
+// @route   GET /api/users/me/offers?kind=all|sale|lease
+// @access  Private (BUYER, TENANT)
+exports.getMyOffers = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const kind = String(req.query.kind || 'all').toLowerCase();
+
+    const propertySelect = 'reference title city type price status listingType images';
+    const userSelect = 'login email firstName lastName phone';
+
+    let sales = [];
+    let leases = [];
+
+    if (kind === 'all' || kind === 'sale' || kind === 'sales') {
+      sales = await Sale.find({ buyerId: userId })
+        .sort({ saleDate: -1 })
+        .populate('propertyId', propertySelect)
+        .populate('buyerId', userSelect)
+        .populate('transactionId');
+    }
+
+    if (kind === 'all' || kind === 'lease' || kind === 'leases' || kind === 'rent') {
+      leases = await Lease.find({ tenantId: userId })
+        .sort({ createdAt: -1 })
+        .populate('propertyId', propertySelect)
+        .populate('tenantId', userSelect)
+        .populate('transactionId');
+    }
+
+    return res.status(200).json(
+      apiResponse(true, 'Offers retrieved successfully', { sales, leases })
+    );
+  } catch (error) {
+    next(error);
   }
 };
 

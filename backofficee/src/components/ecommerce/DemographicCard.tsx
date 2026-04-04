@@ -13,9 +13,21 @@ export type CitySlice = {
 type Props = {
   loading?: boolean;
   topCities?: CitySlice[];
+  title?: string;
+  subtitle?: string;
+  /** e.g. singular "deal" / plural "deals" — default property/properties */
+  entitySingular?: string;
+  entityPlural?: string;
 };
 
-export default function DemographicCard({ loading, topCities = [] }: Props) {
+export default function DemographicCard({
+  loading,
+  topCities = [],
+  title = "Property locations",
+  subtitle = "Where your listings are concentrated (by city)",
+  entitySingular = "property",
+  entityPlural = "properties",
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   function toggleDropdown() {
@@ -30,12 +42,8 @@ export default function DemographicCard({ loading, topCities = [] }: Props) {
     <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] sm:p-6">
       <div className="flex justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Property locations
-          </h3>
-          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Where your listings are concentrated (by city)
-          </p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">{title}</h3>
+          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">{subtitle}</p>
         </div>
         <div className="relative inline-block">
           <button type="button" className="dropdown-toggle" onClick={toggleDropdown}>
@@ -93,7 +101,7 @@ export default function DemographicCard({ loading, topCities = [] }: Props) {
                     {c.city}
                   </p>
                   <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                    {c.count} propert{c.count === 1 ? "y" : "ies"}
+                    {c.count} {c.count === 1 ? entitySingular : entityPlural}
                   </span>
                 </div>
               </div>
