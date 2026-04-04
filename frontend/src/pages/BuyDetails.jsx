@@ -1,14 +1,44 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getImageUrl, getPropertyById, API_BASE_URL, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import { apiRequest } from '../api/client';
 import { getUserData } from '../utils/auth';
 import { normalizePanoramas } from '../utils/panoramaUtils';
 import PanoViewer from '../components/PanoViewer';
 import ReviewSection from '../components/ReviewSection';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+	iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+	iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+	shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+function BuyDetailsMapFlyTo({ lat, lng }) {
+	const map = useMap();
+	const mapRef = useRef(map);
+	useEffect(() => {
+		mapRef.current.flyTo([lat, lng], 15, { duration: 1.5 });
+	}, [lat, lng]);
+	return null;
+}
+
+const FALLBACK_HERO_SLIDES = [
+	'/assets/img/buy/buy-slide-img-1.jpg',
+	'/assets/img/buy/buy-slide-img-2.jpg',
+	'/assets/img/buy/buy-slide-img-3.jpg',
+	'/assets/img/buy/buy-slide-img-4.jpg',
+	'/assets/img/buy/buy-slide-img-5.jpg',
+	'/assets/img/buy/buy-slide-img-6.jpg',
+];
+
+const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
 const BuyDetails = () => {
 	const { id } = useParams();
@@ -17,6 +47,7 @@ const BuyDetails = () => {
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
 	const [ratingSummary, setRatingSummary] = useState({ averageRating: '0.0', totalReviews: 0 });
+	const [mapPosition, setMapPosition] = useState(null);
 
 	// Virtual Staging states
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
@@ -175,6 +206,148 @@ const BuyDetails = () => {
 			.map((img) => getImageUrl(img))
 			.filter(Boolean);
 	}, [property?.images]);
+
+	const [heroImageIndex, setHeroImageIndex] = useState(0);
+
+	const heroSlides = useMemo(
+		() => (propertyImages.length > 0 ? propertyImages : FALLBACK_HERO_SLIDES),
+		[propertyImages]
+	);
+
+	useEffect(() => {
+		setHeroImageIndex(0);
+	}, [id, property?._id, propertyImages.length]);
+
+	useEffect(() => {
+		if (heroImageIndex >= heroSlides.length) {
+			setHeroImageIndex(0);
+		}
+	}, [heroSlides.length, heroImageIndex]);
+
+	const ownerProfile = useMemo(() => {
+		const o = property?.createdBy;
+		if (!o || typeof o !== 'object') {
+			return {
+				displayName: 'Listing owner',
+				email: null,
+				phone: null,
+				whatsappDigits: '',
+				memberSince: null,
+				initials: '?',
+			};
+		}
+		const name = [o.firstName, o.lastName].filter(Boolean).join(' ').trim();
+		const displayName = name || o.login || o.email || 'Listing owner';
+		const initials = (name || o.login || o.email || '?')
+			.split(/\s+/)
+			.map((p) => p[0])
+			.join('')
+			.slice(0, 2)
+			.toUpperCase();
+		let memberSince = null;
+		if (o.createdAt) {
+			const d = new Date(o.createdAt);
+			if (!Number.isNaN(d.getTime())) {
+				memberSince = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+			}
+		}
+		const wa = String(o.phone || '').replace(/\D/g, '');
+		return {
+			displayName,
+			email: o.email || null,
+			phone: o.phone || null,
+			whatsappDigits: wa,
+			memberSince,
+			initials,
+		};
+	}, [property?.createdBy]);
+
+	const goHeroPrev = useCallback(() => {
+		setHeroImageIndex((i) => (heroSlides.length ? (i - 1 + heroSlides.length) % heroSlides.length : 0));
+	}, [heroSlides.length]);
+
+	const goHeroNext = useCallback(() => {
+		setHeroImageIndex((i) => (heroSlides.length ? (i + 1) % heroSlides.length : 0));
+	}, [heroSlides.length]);
+
+	const safeHeroIndex = Math.min(heroImageIndex, Math.max(0, heroSlides.length - 1));
+	const canNavigateHero = heroSlides.length > 1;
+	const typeDisplayLabel = useMemo(
+		() => (property?.type ? String(property.type).replace(/_/g, ' ') : ''),
+		[property?.type]
+	);
+
+	const displayAddressForMap = useMemo(() => {
+		if (!property) return '';
+		const addr = property.address?.trim();
+		if (addr) return addr;
+		return [property.city, property.region, property.country || 'Tunisia'].filter(Boolean).join(', ');
+	}, [property]);
+
+	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
+	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
+	const mapKey = mapPosition ? `${mapPosition[0]}-${mapPosition[1]}` : 'default';
+
+	useEffect(() => {
+		setMapPosition(null);
+	}, [id]);
+
+	useEffect(() => {
+		if (!property) {
+			setMapPosition(null);
+			return;
+		}
+		const addressParts = [
+			property.address,
+			property.city,
+			property.region,
+			property.country || 'Tunisia',
+		].filter(Boolean);
+
+		if (addressParts.length === 0) {
+			const coords = property.location?.coordinates;
+			if (coords && Array.isArray(coords) && coords.length === 2) {
+				const [lon, lat] = coords;
+				if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
+					setMapPosition([lat, lon]);
+					return;
+				}
+			}
+				setMapPosition([...DEFAULT_MAP_CENTER]);
+			return;
+		}
+
+		const query = addressParts.join(', ');
+		const t = setTimeout(async () => {
+			try {
+				let res = await fetch(
+					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
+					{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+				);
+				let data = await res.json();
+				if (!data || data.length === 0) {
+					const simple = [property.address, property.city].filter(Boolean).join(', ');
+					res = await fetch(
+						`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simple)}&limit=1&addressdetails=1&countrycodes=tn`,
+						{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+					);
+					data = await res.json();
+				}
+				if (data && data.length > 0) {
+					const lat = parseFloat(data[0].lat);
+					const lon = parseFloat(data[0].lon);
+					if (Number.isFinite(lat) && Number.isFinite(lon)) {
+						setMapPosition([lat, lon]);
+						return;
+					}
+				}
+				setMapPosition([...DEFAULT_MAP_CENTER]);
+			} catch {
+				setMapPosition([...DEFAULT_MAP_CENTER]);
+			}
+		}, 500);
+		return () => clearTimeout(t);
+	}, [property]);
 
 	// Image check removed; button will always show now.
 
@@ -379,83 +552,127 @@ const BuyDetails = () => {
 											</div>
 
 
-											<div className="slider-card service-slider-card mb-4">
-												{propertyImages.length > 0 ? (
-													<>
-														<div className="slide-part mb-4 position-relative">
-															<div className="slider service-slider">
-																{propertyImages.map((src) => (
-																	<div key={src} className="service-img-wrap">
-																		<img src={src} className="img-fluid" alt="Slider Img" />
-																	</div>
-																))}
+											<div className="slider-card service-slider-card mb-4 overflow-hidden bg-white border rounded-4 shadow-sm">
+												<div className="position-relative">
+													<img
+														src={heroSlides[safeHeroIndex] || heroSlides[0]}
+														className="w-100 d-block bg-light"
+														alt={property?.title || 'Property'}
+														style={{
+															objectFit: 'contain',
+															height: 'clamp(220px, 52vw, 384px)',
+														}}
+													/>
+													{canNavigateHero && (
+														<>
+															<button
+																type="button"
+																className="position-absolute top-50 start-0 translate-middle-y ms-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
+																style={{
+																	width: 40,
+																	height: 40,
+																	zIndex: 6,
+																	background: 'rgba(0,0,0,0.5)',
+																}}
+																onClick={goHeroPrev}
+																aria-label="Previous photo"
+															>
+																<i className="material-icons-outlined">chevron_left</i>
+															</button>
+															<button
+																type="button"
+																className="position-absolute top-50 end-0 translate-middle-y me-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
+																style={{
+																	width: 40,
+																	height: 40,
+																	zIndex: 6,
+																	background: 'rgba(0,0,0,0.5)',
+																}}
+																onClick={goHeroNext}
+																aria-label="Next photo"
+															>
+																<i className="material-icons-outlined">chevron_right</i>
+															</button>
+															<div
+																className="position-absolute top-0 end-0 m-3 px-3 py-1 rounded-pill text-white small fw-semibold"
+																style={{ zIndex: 6, background: 'rgba(0,0,0,0.5)', fontSize: '11px' }}
+															>
+																{safeHeroIndex + 1}/{heroSlides.length}
 															</div>
-															{hasPanoramas && (
+														</>
+													)}
+													<div
+														className="position-absolute start-0 end-0 bottom-0 d-flex align-items-end justify-content-between px-3 py-3 text-white"
+														style={{
+															zIndex: 5,
+															background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 55%, transparent 100%)',
+														}}
+													>
+														<div>
+															<div className="fw-semibold fs-5">{formattedPrice}</div>
+															<p className="mb-0 small text-white-50">
+																{property?.city}
+																{property?.country ? `, ${property.country}` : ', Tunisia'}
+															</p>
+														</div>
+														{typeDisplayLabel && (
+															<span
+																className="px-3 py-1 small fw-semibold text-white rounded-pill text-uppercase"
+																style={{ background: 'rgba(79, 70, 229, 0.92)' }}
+															>
+																{typeDisplayLabel}
+															</span>
+														)}
+													</div>
+													{hasPanoramas && (
+														<button
+															type="button"
+															className="btn btn-sm text-white border-0 shadow position-absolute d-flex align-items-center gap-1"
+															style={{
+																bottom: '72px',
+																left: '12px',
+																zIndex: 7,
+																background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+																padding: '8px 14px',
+																borderRadius: '999px',
+																fontWeight: 600,
+															}}
+															onClick={() => setIsTourModalOpen(true)}
+															aria-label="Open 360 degree virtual tour"
+														>
+															<i className="material-icons-outlined" style={{ fontSize: '18px' }}>panorama</i>
+															360° Tour
+														</button>
+													)}
+												</div>
+												{heroSlides.length > 1 && (
+													<div
+														className="row g-1 p-3 border-top"
+														style={{ marginLeft: 0, marginRight: 0 }}
+													>
+														{heroSlides.slice(0, 8).map((url, index) => (
+															<div className="col-3" key={`thumb-${index}-${url}`}>
 																<button
 																	type="button"
-																	className="btn btn-sm text-white border-0 shadow position-absolute d-flex align-items-center gap-1"
-																	style={{
-																		bottom: '16px',
-																		right: '16px',
-																		zIndex: 5,
-																		background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-																		padding: '10px 16px',
-																		borderRadius: '999px',
-																		fontWeight: 600,
-																	}}
-																	onClick={() => setIsTourModalOpen(true)}
-																	aria-label="Open 360 degree virtual tour"
+																	className={`w-100 p-0 border rounded-3 overflow-hidden bg-light ${
+																		index === safeHeroIndex
+																			? 'border-primary border-2 shadow-sm'
+																			: 'border'
+																	}`}
+																	style={{ maxHeight: 88 }}
+																	onClick={() => setHeroImageIndex(index)}
+																	aria-label={`Show photo ${index + 1}`}
 																>
-																	<i className="material-icons-outlined" style={{ fontSize: '20px' }}>panorama</i>
-																	360° Tour
+																	<img
+																		src={url}
+																		alt=""
+																		className="w-100 h-100"
+																		style={{ objectFit: 'cover' }}
+																	/>
 																</button>
-															)}
-														</div>
-														<div className="slider slider-nav-thumbnails">
-															{propertyImages.map((src) => (
-																<div key={src} className="slide-img">
-																	<img src={src} className="img-fluid" alt="Slider Img" />
-																</div>
-															))}
-														</div>
-													</>
-												) : (
-													<>
-														<div className="slide-part mb-4">
-															<div className="slider service-slider">
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-1.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-3.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-4.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-5.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-6.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
 															</div>
-														</div>
-														<div className="slider slider-nav-thumbnails">
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-1.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-3.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-4.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-5.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-6.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-														</div>
-													</>
+														))}
+													</div>
 												)}
 											</div>
 
@@ -538,13 +755,32 @@ const BuyDetails = () => {
 													</div>
 													<div id="accordion-3" className="accordion-collapse collapse show">
 														<div className="accordion-body">
-															<p className="mb-2">This property is mostly wooded and sits high on a hilltop overlooking the Mohawk River Valley.</p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> 100 meters from school. 3km away from bypass.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> First floor - 2 large bedrooms with attached bathrooms.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Spacious and well-Equipped kitchen.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Inviting living room with balcony.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Terrace with breathtaking views.  </p>
-															<p className="mb-0"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Independent electric and water connections.  </p>
+															<p className="mb-2 text-body">
+																This property offers a practical mix of comfort, accessibility, and neighborhood amenities — aligned with what you see in the listing description and photos.
+															</p>
+															<p className="mb-2 text-body">
+																Located in{' '}
+																<strong>{property?.city || '—'}</strong>
+																{property?.country ? `, ${property.country}` : ', Tunisia'}
+																{property?.listingType === 'FOR_RENT'
+																	? ', it is offered for rent on Smart Property.'
+																	: ', it is offered for sale on Smart Property.'}
+															</p>
+															<p className="mb-2 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" />{' '}
+																{property?.surface != null
+																	? `Interior surface around ${property.surface} m² (as listed).`
+																	: 'See the property features for size and room counts.'}
+															</p>
+															<p className="mb-2 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" />{' '}
+																Type: <strong>{typeDisplayLabel || '—'}</strong>
+																{property?.rooms != null ? ` · ${property.rooms} rooms` : ''}
+																{property?.bathrooms != null ? ` · ${property.bathrooms} bathrooms` : ''}
+															</p>
+															<p className="mb-0 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" /> Contact the listing owner for visits, paperwork, and any questions specific to this home.
+															</p>
 														</div>
 													</div>
 												</div>
@@ -658,40 +894,24 @@ const BuyDetails = () => {
 													<div id="accordion-6" className="accordion-collapse collapse show">
 														<div className="accordion-body gallery-body">
 															<div className="gallery-slider">
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-1.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-1.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-2.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-2.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-3.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-3.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-4.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-4.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-5.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-5.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-6.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-6.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-2.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-2.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
+																{propertyImages.length > 0 ? (
+																	propertyImages.map((src, idx) => (
+																		<div key={`g-${idx}-${src}`} className="gallery-card">
+																			<a href={src} data-fancybox="property-gallery" data-caption={property?.title || ''} className="gallery-item rounded">
+																				<img src={src} alt="" className="rounded img-fluid" />
+																			</a>
+																		</div>
+																	))
+																) : (
+																	<p className="text-body mb-0">No photos have been uploaded for this listing yet.</p>
+																)}
 															</div>
 														</div>
 													</div>
 												</div>
 
 
-												<div className="accordion-item">
+												{/* <div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-7" aria-expanded="true">
 															Video
@@ -707,75 +927,14 @@ const BuyDetails = () => {
 															</div>
 														</div>
 													</div>
-												</div>
+												</div> */}
 
 
+												{/* FAQ section hidden — template copy was not property-specific
 												<div className="accordion-item">
-													<div className="accordion-header">
-														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-8" aria-expanded="true">
-															Frequently Asked Questions
-														</button>
-													</div>
-													<div id="accordion-8" className="accordion-collapse collapse show">
-														<div className="accordion-body">
-															<div className="faq-items">
-
-																<div className="faq-card mb">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Does offer free cancellation for a full refund?</Link>
-																	</h4>
-																	<div id="faqone" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Does have fully refundable room rates available to book on our site. If youÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ve booked a fully refundable room rate, this can be cancelled up to a few days before check-in depending on the property's cancellation policy. Just make sure to check this property's cancellation policy for the exact terms and conditions.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Is there a pool?</Link>
-																	</h4>
-																	<div id="faqtwo" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, there is a pool available for guests, providing a perfect place to relax, unwind, and enjoy some leisure time during their stay.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Are pets allowed?</Link>
-																	</h4>
-																	<div id="faqthree" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, pets are allowed, and we welcome your furry friends to stay with you, ensuring a comfortable experience for both you and your pets.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Is airport shuttle service offered?</Link>
-																	</h4>
-																	<div id="faqfour" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, airport shuttle service is offered to provide convenient and reliable transportation for our guests between the airport and their destination, ensuring a smooth and stress-free travel experience.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card mb-0">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">What are the check-in and check-out times? </Link>
-																	</h4>
-																	<div id="faqfive" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Check-in is typically from 12:00 PM, and check-out is usually by 11:00 AM to ensure a smooth transition for all guests.</p>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-
-														</div>
-													</div>
+													...
 												</div>
+												*/}
 
 
 												<div className="accordion-item mb-xl-0">
@@ -1237,34 +1396,70 @@ const BuyDetails = () => {
 												</div>
 												<div className="card-body">
 													<div className="d-flex align-items-center gap-2 mb-3">
-														<div className="avatar avatar-lg">
-															<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+														<div
+															className="avatar avatar-lg rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-semibold fs-18"
+															style={{ width: 56, height: 56, minWidth: 56 }}
+															aria-hidden
+														>
+															{ownerProfile.initials}
 														</div>
 														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">John Carter</h6>
-															<div className="review-icons d-flex align-items-center">
-																<div className="me-1">
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																</div>
-																<p className="mb-0 fs-14 text-body">5.0 (12 Reviews) </p>
-															</div>
+															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+															<p className="mb-0 fs-14 text-body">
+																This listing: {ratingSummary.averageRating || '0.0'} / 5 · {ratingSummary.totalReviews || 0}{' '}
+																review{Number(ratingSummary.totalReviews) === 1 ? '' : 's'}
+															</p>
 														</div>
 													</div>
-													<ul className="mb-3">
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body"> Phone</span> Call Us : +1 12545 45548</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">Email</span></li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">No of Listings</span>05</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">No of Bookings</span>225</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">Member on</span>15 Jan2014</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0"><span className="text-body">Verification</span> <div className="badge bg-success text-white">Verified</div></li>
+													<ul className="mb-3 list-unstyled">
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+															<span className="text-body">Phone</span>
+															<span className="text-end">{ownerProfile.phone || '—'}</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+															<span className="text-body">Email</span>
+															<span className="text-end text-break">
+																{ownerProfile.email ? (
+																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
+																		{ownerProfile.email}
+																	</a>
+																) : (
+																	'—'
+																)}
+															</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+															<span className="text-body">Member since</span>
+															<span>{ownerProfile.memberSince || '—'}</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
+															<span className="text-body">Account</span>
+															<div className="badge bg-success text-white">Registered</div>
+														</li>
 													</ul>
 													<div className="d-flex align-items-center justify-content-between gap-3">
-														<a href="#" className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center">Whatsapp</a>
-														<a href="#" className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center">Chat Now</a>
+														{ownerProfile.whatsappDigits ? (
+															<a
+																href={`https://wa.me/${ownerProfile.whatsappDigits}`}
+																target="_blank"
+																rel="noopener noreferrer"
+																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
+															>
+																WhatsApp
+															</a>
+														) : (
+															<span className="btn btn-secondary disabled w-100">WhatsApp</span>
+														)}
+														{ownerProfile.email ? (
+															<a
+																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
+																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
+															>
+																Email owner
+															</a>
+														) : (
+															<span className="btn btn-secondary disabled w-100">Email owner</span>
+														)}
 													</div>
 												</div>
 											</div>
@@ -1318,15 +1513,61 @@ const BuyDetails = () => {
 											</div>
 
 
-											<div className="card mb-0">
+											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">
+												<div className="card-header bg-white border-bottom py-3">
+													<h5 className="mb-0 fs-6 fw-semibold">Nearby Landmarks &amp; Visits</h5>
+												</div>
 												<div className="card-body">
-													<div className="custom-map position-relative rounded overflow-hidden">
-														<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d9582106.12236644!2d-15.012343587457918!3d54.10244278649341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x25a3b1142c791a9%3A0xc4f8a0433288257a!2sUnited%20Kingdom!5e0!3m2!1sen!2sin!4v1747587865989!5m2!1sen!2sin" width="100" height="100" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="rounded"></iframe>
+													<div className="rounded-4 border overflow-hidden mb-3" style={{ height: 176 }}>
+														{mapPosition ? (
+															<MapContainer
+																key={mapKey}
+																center={[mapLat, mapLng]}
+																zoom={15}
+																scrollWheelZoom={false}
+																style={{ height: '100%', width: '100%' }}
+																className="z-0"
+															>
+																<BuyDetailsMapFlyTo lat={mapLat} lng={mapLng} />
+																<TileLayer
+																	attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+																	url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+																/>
+																<Marker position={[mapLat, mapLng]}>
+																	<Popup>
+																		<div className="small">
+																			<div className="fw-semibold">{property?.title}</div>
+																			<div className="text-muted">{displayAddressForMap}</div>
+																		</div>
+																	</Popup>
+																</Marker>
+															</MapContainer>
+														) : (
+															<div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted small">
+																Loading map…
+															</div>
+														)}
 													</div>
-													<h6 className="mb-3 fs-16"> Nearby Landmarks & Visits </h6>
-													<p className="mb-2 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i>  Near By Statue of Liberty </p>
-													<p className="mb-2 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i> The Metropolitan Museum of Art </p>
-													<p className="mb-0 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i> Yellowstone National Park </p>
+													<div className="px-3 py-2 border rounded-4 bg-light mb-3">
+														<p className="mb-0 text-uppercase fw-semibold text-muted" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
+															Property address
+														</p>
+														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || '—'}</p>
+													</div>
+													<ul className="list-unstyled small text-body mb-0">
+														<li className="d-flex align-items-center gap-2 mb-2">
+															<span className="text-success">✔</span>
+															Near main city attractions
+														</li>
+														<li className="d-flex align-items-center gap-2 mb-2">
+															<span className="text-success">✔</span>
+															Easy access to transportation
+														</li>
+														<li className="d-flex align-items-center gap-2 mb-0">
+															<span className="text-success">✔</span>
+															Shops and services nearby
+														</li>
+													</ul>
 												</div>
 											</div>
 

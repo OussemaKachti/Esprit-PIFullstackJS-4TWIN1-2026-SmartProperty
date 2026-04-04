@@ -287,7 +287,7 @@ exports.getPropertyById = async (req, res, next) => {
       );
     }
     const property = await Property.findById(id)
-      .populate('createdBy', 'login email role firstName lastName')
+      .populate('createdBy', 'login email role firstName lastName phone createdAt')
       .lean(); // Plain JSON so panoramas (id, url, linkHotspots) match front + backoffice
 
     if (!property) {
