@@ -40,6 +40,9 @@ const FALLBACK_HERO_SLIDES = [
 
 const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
+/** Long listing text: show preview + working Read more / Read less */
+const DESCRIPTION_PREVIEW_MAX = 320;
+
 const BuyDetails = () => {
 	const { id } = useParams();
 	const [currentUser] = useState(() => getUserData());
@@ -58,6 +61,7 @@ const BuyDetails = () => {
   const [selectedStyle, setSelectedStyle] = useState('modern');
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
 	const [blockingSale, setBlockingSale] = useState(null);
+	const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 	const [enquiryForm, setEnquiryForm] = useState({
 		offerPrice: '',
 		note: 'I would like to proceed with a purchase request.',
@@ -305,6 +309,20 @@ const BuyDetails = () => {
 		[property?.type]
 	);
 
+	const descriptionText = (property?.description || '').trim();
+	const descriptionNeedsTruncate = descriptionText.length > DESCRIPTION_PREVIEW_MAX;
+	const descriptionShown =
+		!descriptionText
+			? ''
+			: !descriptionNeedsTruncate || descriptionExpanded
+				? descriptionText
+				: (() => {
+						let cut = descriptionText.slice(0, DESCRIPTION_PREVIEW_MAX);
+						const lastSpace = cut.lastIndexOf(' ');
+						if (lastSpace > DESCRIPTION_PREVIEW_MAX * 0.55) cut = cut.slice(0, lastSpace);
+						return `${cut.trim()}…`;
+				  })();
+
 	const displayAddressForMap = useMemo(() => {
 		if (!property) return '';
 		const addr = property.address?.trim();
@@ -318,6 +336,10 @@ const BuyDetails = () => {
 
 	useEffect(() => {
 		setMapPosition(null);
+	}, [id]);
+
+	useEffect(() => {
+		setDescriptionExpanded(false);
 	}, [id]);
 
 	useEffect(() => {
@@ -717,14 +739,24 @@ const BuyDetails = () => {
 													</div>
 													<div id="accordion-1" className="accordion-collapse collapse show">
 														<div className="accordion-body">
-															<p>{property?.description || '—'}</p>
-															<div className="more-menu">
-																<p>{property?.description || '—'}</p>
-															</div>
-															<div className="view-all d-inline-flex align-items-center">
-																<a href="#" className="viewall-button fs-14">Read More </a>
-																<i className="material-icons-outlined">keyboard_arrow_down</i>
-															</div>
+															<p className="mb-0 text-body" style={{ whiteSpace: 'pre-wrap' }}>
+																{descriptionText ? descriptionShown : '—'}
+															</p>
+															{descriptionNeedsTruncate && (
+																<div className="mt-2 d-inline-flex align-items-center gap-1">
+																	<button
+																		type="button"
+																		className="btn btn-link p-0 fs-14 text-decoration-none viewall-button"
+																		onClick={() => setDescriptionExpanded((v) => !v)}
+																		aria-expanded={descriptionExpanded}
+																	>
+																		{descriptionExpanded ? 'Read less' : 'Read more'}
+																	</button>
+																	<i className="material-icons-outlined" style={{ fontSize: '18px' }}>
+																		{descriptionExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+																	</i>
+																</div>
+															)}
 														</div>
 													</div>
 												</div>
@@ -784,30 +816,31 @@ const BuyDetails = () => {
 													<div id="accordion-3" className="accordion-collapse collapse show">
 														<div className="accordion-body">
 															<p className="mb-2 text-body">
-																This property offers a practical mix of comfort, accessibility, and neighborhood amenities — aligned with what you see in the listing description and photos.
+																This property offers a practical mix of comfort, accessibility, and neighborhood amenities — consistent with the
+																description and photos in this listing.
 															</p>
 															<p className="mb-2 text-body">
-																Located in{' '}
-																<strong>{property?.city || '—'}</strong>
+																Located in <strong>{property?.city || '—'}</strong>
 																{property?.country ? `, ${property.country}` : ', Tunisia'}
 																{property?.listingType === 'FOR_RENT'
 																	? ', it is offered for rent on Smart Property.'
 																	: ', it is offered for sale on Smart Property.'}
 															</p>
 															<p className="mb-2 text-body">
-																<i className="fa-solid fa-circle-check text-success me-2" />{' '}
+																<i className="fa-solid fa-circle-check text-success me-2" />
 																{property?.surface != null
 																	? `Interior surface around ${property.surface} m² (as listed).`
-																	: 'See the property features for size and room counts.'}
+																	: 'See property features for size and room counts.'}
 															</p>
 															<p className="mb-2 text-body">
-																<i className="fa-solid fa-circle-check text-success me-2" />{' '}
+																<i className="fa-solid fa-circle-check text-success me-2" />
 																Type: <strong>{typeDisplayLabel || '—'}</strong>
 																{property?.rooms != null ? ` · ${property.rooms} rooms` : ''}
 																{property?.bathrooms != null ? ` · ${property.bathrooms} bathrooms` : ''}
 															</p>
 															<p className="mb-0 text-body">
-																<i className="fa-solid fa-circle-check text-success me-2" /> Contact the listing owner for visits, paperwork, and any questions specific to this home.
+																<i className="fa-solid fa-circle-check text-success me-2" />
+																Contact the listing owner for visits, paperwork, and any questions specific to this home.
 															</p>
 														</div>
 													</div>
