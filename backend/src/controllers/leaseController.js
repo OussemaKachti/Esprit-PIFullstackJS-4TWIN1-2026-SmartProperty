@@ -31,6 +31,25 @@ const logSideEffectError = (context, error) => {
   console.error(`[lease:${context}]`, error?.message || error);
 };
 
+/** Tenant cannot open a new request if a non-cancelled pending request exists, or rental period (end date) has not passed yet. */
+const findBlockingLeaseForTenant = async (propertyId, tenantId) => {
+  const candidates = await Lease.find({
+    propertyId,
+    tenantId,
+    status: { $ne: LeaseStatus.CANCELLED },
+  }).lean();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return candidates.find((l) => {
+    if (l.status === LeaseStatus.PENDING) return true;
+    const end = new Date(l.endDate);
+    end.setHours(0, 0, 0, 0);
+    return end >= today;
+  });
+};
+
 const mapLeaseStatusToTransactionStatus = (status) => {
   switch (status) {
     case 'CONFIRMED':
@@ -367,6 +386,18 @@ exports.createLease = async (req, res, next) => {
     }
 
     const owner = property.createdBy ? await User.findById(property.createdBy) : null;
+
+    const blockingLease = await findBlockingLeaseForTenant(propertyId, tenantId);
+    if (blockingLease) {
+      return res.status(409).json(
+        apiResponse(
+          false,
+          blockingLease.status === LeaseStatus.PENDING
+            ? 'You already have a pending rental request for this property. Cancel it before sending another one.'
+            : 'You already have an active or upcoming rental for this property. You can request again after your rental end date has passed, or if the booking was cancelled.'
+        )
+      );
+    }
 
     const initialStatus = adminish && status && Object.values(LeaseStatus).includes(status)
       ? status

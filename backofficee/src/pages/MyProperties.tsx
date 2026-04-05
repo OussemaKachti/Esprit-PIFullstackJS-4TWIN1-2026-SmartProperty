@@ -126,6 +126,37 @@ type NewPropertyForm = {
 
 type FormFieldErrors = Partial<Record<keyof NewPropertyForm, string>>;
 
+type PropertyFeedbackSummary = {
+  totalReviews: number;
+  averageRating: string;
+};
+
+function PropertyRatingSnippet({
+  propertyId,
+  map,
+}: {
+  propertyId: string;
+  map: Record<string, PropertyFeedbackSummary>;
+}) {
+  const fb = map[propertyId];
+  if (!fb || !fb.totalReviews) {
+    return (
+      <span className="text-[11px] text-gray-500 dark:text-gray-400">
+        No reviews yet
+      </span>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 text-xs text-amber-500">
+      <span aria-hidden>★</span>
+      <span className="text-[11px] text-gray-600 dark:text-gray-300 font-medium">
+        {fb.averageRating} · {fb.totalReviews}{" "}
+        {fb.totalReviews === 1 ? "review" : "reviews"}
+      </span>
+    </div>
+  );
+}
+
 export default function MyProperties() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -166,6 +197,9 @@ export default function MyProperties() {
     propertyId: null,
     propertyTitle: "",
   });
+  const [feedbackByProperty, setFeedbackByProperty] = useState<
+    Record<string, PropertyFeedbackSummary>
+  >({});
 
   // Advanced search filters
   const [showFilters, setShowFilters] = useState(false);
@@ -240,7 +274,28 @@ export default function MyProperties() {
 
       const data = await res.json();
       const payload = data.data || data;
-      setMyProperties(payload.properties || []);
+      const propsList: BackendProperty[] = payload.properties || [];
+      setMyProperties(propsList);
+
+      if (propsList.length > 0) {
+        const ids = propsList.map((p) => p._id).filter(Boolean);
+        const idParam = ids.join(",");
+        try {
+          const sr = await fetch(
+            `${API_URL}/feedbacks/summary?propertyIds=${encodeURIComponent(idParam)}`
+          );
+          const j = await sr.json();
+          if (j.success && j.data?.byProperty) {
+            setFeedbackByProperty(j.data.byProperty as Record<string, PropertyFeedbackSummary>);
+          } else {
+            setFeedbackByProperty({});
+          }
+        } catch {
+          setFeedbackByProperty({});
+        }
+      } else {
+        setFeedbackByProperty({});
+      }
     } catch (err) {
       console.error("Error while loading my properties:", err);
     } finally {
@@ -1107,12 +1162,10 @@ export default function MyProperties() {
                   </div>
 
                   <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 text-xs text-amber-500">
-                      ★★★★★
-                      <span className="ml-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        4.9
-                      </span>
-                    </div>
+                    <PropertyRatingSnippet
+                      propertyId={property._id}
+                      map={feedbackByProperty}
+                    />
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/my-properties/${property._id}`}
@@ -1225,12 +1278,10 @@ export default function MyProperties() {
                   </ul>
 
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800 gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 text-xs text-amber-500">
-                      ★★★★★
-                      <span className="ml-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        4.9 Excellent
-                      </span>
-                    </div>
+                    <PropertyRatingSnippet
+                      propertyId={property._id}
+                      map={feedbackByProperty}
+                    />
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/my-properties/${property._id}`}

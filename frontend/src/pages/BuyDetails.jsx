@@ -57,6 +57,7 @@ const BuyDetails = () => {
   const [stagedResultUrl, setStagedResultUrl] = useState(null);
   const [selectedStyle, setSelectedStyle] = useState('modern');
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
+	const [blockingSale, setBlockingSale] = useState(null);
 	const [enquiryForm, setEnquiryForm] = useState({
 		offerPrice: '',
 		note: 'I would like to proceed with a purchase request.',
@@ -104,8 +105,9 @@ const BuyDetails = () => {
 			offerPrice: '',
 			note: 'I would like to proceed with a purchase request.',
 			});
+			setBlockingSale({ status: 'PENDING' });
 		} catch (submitError) {
-			toast.error(submitError?.response?.data?.message || 'Failed to send request.');
+			toast.error(submitError?.message || submitError?.response?.data?.message || 'Failed to send request.');
 		} finally {
 			setIsEnquirySubmitting(false);
 		}
@@ -116,6 +118,32 @@ const BuyDetails = () => {
 			setEnquiryForm((prev) => ({ ...prev, offerPrice: property.price }));
 		}
 	}, [property?.price, enquiryForm.offerPrice]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const buyerId = currentUser?._id || currentUser?.id;
+		if (!property?._id || !buyerId) {
+			setBlockingSale(null);
+			return () => {
+				cancelled = true;
+			};
+		}
+		(async () => {
+			try {
+				const data = await apiRequest(
+					`/api/sales?propertyId=${encodeURIComponent(property._id)}&buyerId=${encodeURIComponent(buyerId)}&limit=50`
+				);
+				const sales = data?.data?.sales || [];
+				const active = sales.find((s) => s.status !== 'CANCELLED');
+				if (!cancelled) setBlockingSale(active || null);
+			} catch {
+				if (!cancelled) setBlockingSale(null);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [property?._id, currentUser]);
 
 	const handleStagingSubmit = async () => {
 		setIsStagingLoading(true);
@@ -1214,6 +1242,13 @@ const BuyDetails = () => {
 																</div>
 															</div>
 
+																				{blockingSale && (
+																					<div className="alert alert-warning py-2 small mb-3" role="alert">
+																						You already have an active purchase request for this property (status:{' '}
+																						<strong>{blockingSale.status}</strong>). You can submit a new offer only after it is
+																						cancelled or completed.
+																					</div>
+																				)}
 																				<div className="mb-3">
 																					<label className="form-label fw-semibold"> Offer Price </label>
 																					<input
@@ -1222,6 +1257,7 @@ const BuyDetails = () => {
 																						placeholder="Your offer"
 																						value={enquiryForm.offerPrice}
 																						onChange={handleEnquiryFieldChange('offerPrice')}
+																						disabled={Boolean(blockingSale)}
 																					/>
 																				</div>
 																				<div className="mb-4">
@@ -1231,6 +1267,7 @@ const BuyDetails = () => {
 																						rows="3"
 																						value={enquiryForm.note}
 																						onChange={handleEnquiryFieldChange('note')}
+																						disabled={Boolean(blockingSale)}
 																					></textarea>
 																				</div>
 																				<div>
@@ -1238,7 +1275,7 @@ const BuyDetails = () => {
 																						type="button"
 																						className="btn btn-dark w-100 py-2 fs-14"
 																						onClick={handleEnquirySubmit}
-																						disabled={isEnquirySubmitting}
+																						disabled={isEnquirySubmitting || Boolean(blockingSale)}
 																					>
 																						{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
 																					</button>
@@ -1302,7 +1339,7 @@ const BuyDetails = () => {
 													type="button"
 													className="btn btn-dark w-100 py-2 fs-14"
 													onClick={handleEnquirySubmit}
-													disabled={isEnquirySubmitting}
+													disabled={isEnquirySubmitting || Boolean(blockingSale)}
 												>
 													{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
 												</button>

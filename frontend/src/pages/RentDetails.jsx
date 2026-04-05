@@ -38,6 +38,20 @@ const FALLBACK_HERO_SLIDES = [
 
 const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
+/** Same rules as backend: block if pending, or non-cancelled lease whose end date is today or later. */
+function pickBlockingLease(leases) {
+	if (!Array.isArray(leases)) return null;
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	return leases.find((l) => {
+		if (l.status === 'CANCELLED') return false;
+		if (l.status === 'PENDING') return true;
+		const end = new Date(l.endDate);
+		end.setHours(0, 0, 0, 0);
+		return end >= today;
+	});
+}
+
 const RentDetails = () => {
 	const location = useLocation();
 	const { id: routeId } = useParams();
@@ -45,6 +59,7 @@ const RentDetails = () => {
 	const [isSending, setIsSending] = useState(false);
 	const [successMessage, setSuccessMessage] = useState('');
 	const [errorMessage, setErrorMessage] = useState('');
+	const [blockingLease, setBlockingLease] = useState(null);
 	const [bookingForm, setBookingForm] = useState({
 		startDate: '',
 		endDate: '',
@@ -274,6 +289,32 @@ const RentDetails = () => {
 		}
 	}, [property?.price, bookingForm.rentAmount]);
 
+	useEffect(() => {
+		let cancelled = false;
+		const tenantId = currentUser?._id || currentUser?.id;
+		if (!propertyId || !tenantId) {
+			setBlockingLease(null);
+			return () => {
+				cancelled = true;
+			};
+		}
+		(async () => {
+			try {
+				const data = await apiRequest(
+					`/api/leases?propertyId=${encodeURIComponent(propertyId)}&tenantId=${encodeURIComponent(tenantId)}&limit=50`
+				);
+				const leases = data?.data?.leases || [];
+				const block = pickBlockingLease(leases);
+				if (!cancelled) setBlockingLease(block || null);
+			} catch {
+				if (!cancelled) setBlockingLease(null);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [propertyId, currentUser]);
+
 	const closeTourModal = useCallback(() => setIsTourModalOpen(false), []);
 
 	useEffect(() => {
@@ -333,6 +374,11 @@ const RentDetails = () => {
 			});
 
 			setSuccessMessage('Request sent! We pinged the owner by email, push, and in-app notification.');
+			setBlockingLease({
+				status: 'PENDING',
+				endDate: bookingForm.endDate,
+				startDate: bookingForm.startDate,
+			});
 		} catch (error) {
 			setErrorMessage(error.message || 'Could not send request.');
 		} finally {
@@ -1150,6 +1196,28 @@ const RentDetails = () => {
 																				<div className="small text-body">Push + email + in-app to the owner, with your profile attached.</div>
 																		</div>
 
+																		{blockingLease && (
+																			<div className="alert alert-warning py-2 mb-3 small" role="alert">
+																				{blockingLease.status === 'PENDING' ? (
+																					<>
+																						You already have a <strong>pending</strong> rental request for this listing.
+																					</>
+																				) : (
+																					<>
+																						You have an active or upcoming stay until{' '}
+																						<strong>
+																							{blockingLease.endDate
+																								? new Date(blockingLease.endDate).toLocaleDateString()
+																								: '—'}
+																						</strong>
+																						.
+																					</>
+																				)}{' '}
+																				Send another request only after it is <strong>cancelled</strong> or after your rental{' '}
+																				<strong>end date</strong> has passed.
+																			</div>
+																		)}
+
 																		<div className="mb-3">
 																				<label className="form-label fw-semibold">Start date</label>
 																				<input
@@ -1157,6 +1225,7 @@ const RentDetails = () => {
 																					className="form-control"
 																					value={bookingForm.startDate}
 																					onChange={handleBookingChange('startDate')}
+																					disabled={Boolean(blockingLease)}
 																				/>
 																		</div>
 
@@ -1167,6 +1236,7 @@ const RentDetails = () => {
 																					className="form-control"
 																					value={bookingForm.endDate}
 																					onChange={handleBookingChange('endDate')}
+																					disabled={Boolean(blockingLease)}
 																				/>
 																		</div>
 
@@ -1179,6 +1249,7 @@ const RentDetails = () => {
 																					placeholder="e.g. 1200"
 																					value={bookingForm.rentAmount}
 																					onChange={handleBookingChange('rentAmount')}
+																					disabled={Boolean(blockingLease)}
 																				/>
 																		</div>
 
@@ -1189,6 +1260,7 @@ const RentDetails = () => {
 																					rows="3"
 																					value={bookingForm.note}
 																					onChange={handleBookingChange('note')}
+																					disabled={Boolean(blockingLease)}
 																				/>
 																		</div>
 
@@ -1202,7 +1274,7 @@ const RentDetails = () => {
 																		<button
 																			className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-center justify-content-center"
 																			onClick={handleSendBooking}
-																			disabled={isSending}
+																			disabled={isSending || Boolean(blockingLease)}
 																		>
 																			<i className="material-icons-outlined me-2">rocket_launch</i>
 																			{isSending ? 'Sending...' : 'Send rental request'}
