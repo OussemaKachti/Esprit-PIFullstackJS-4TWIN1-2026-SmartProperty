@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
+import PropertyListPagination from '../components/PropertyListPagination';
+
+const GRID_PAGE_SIZE = 12;
 
 const formatPriceTND = (value) => {
     const numberValue = Number(value);
@@ -8,36 +11,58 @@ const formatPriceTND = (value) => {
     return `${numberValue.toLocaleString('en-US').replace(/,/g, ' ')} TND`;
 };
 
+const filterRentProperties = (list) =>
+  (list || []).filter((p) => {
+    const tx = p.latestRentTransaction;
+    if (!tx) return p.status === 'AVAILABLE';
+    return (
+      tx.status === 'PENDING' ||
+      tx.status === 'CONFIRMED' ||
+      tx.status === 'COMPLETED'
+    );
+  });
+
 const RentPropertyGrid = () => {
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [ratingMap, setRatingMap] = useState({});
 
-    const formatDate = (value) => {
-        if (!value) return null;
-        const d = new Date(value);
-        return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString();
-    };
+  const formatDate = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString();
+  };
 
-  // Fetch properties based on URL parameters
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+  const goToPage = useCallback(
+    (page) => {
+      const p = Math.max(1, Math.min(page, totalPages));
+      const next = new URLSearchParams(searchParams);
+      if (p <= 1) next.delete('page');
+      else next.set('page', String(p));
+      setSearchParams(next, { replace: true });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [searchParams, setSearchParams, totalPages]
+  );
+
   useEffect(() => {
     const fetchProperties = async () => {
       setLoading(true);
       setError(null);
-      
-      try {
-        // Parse URL search parameters
-        const searchParams = new URLSearchParams(location.search);
-        
-                // Build filters object - ALWAYS use FOR_RENT for this page
-                const filters = {
-                    listingType: 'FOR_RENT',
-                };
 
-        // Add optional filters from URL (ignore listingType from URL)
+      try {
+        const filters = {
+          listingType: 'FOR_RENT',
+          page: currentPage,
+          limit: GRID_PAGE_SIZE,
+        };
+
         if (searchParams.get('type')) filters.type = searchParams.get('type');
         if (searchParams.get('city')) filters.city = searchParams.get('city');
         if (searchParams.get('minPrice')) filters.minPrice = searchParams.get('minPrice');
@@ -46,43 +71,37 @@ const RentPropertyGrid = () => {
         if (searchParams.get('bathrooms')) filters.bathrooms = searchParams.get('bathrooms');
         if (searchParams.get('minSurface')) filters.minSurface = searchParams.get('minSurface');
 
-        console.log('🏠 RentPropertyGrid - Fetching with filters:', filters);
-                const data = await getProperties(filters);
-                console.log('✅ RentPropertyGrid - Received properties:', data.properties?.length, 'properties');
+        const data = await getProperties(filters);
+        const tp = Math.max(1, Number(data.totalPages) || 1);
+        if (currentPage > tp) {
+          const next = new URLSearchParams(searchParams);
+          if (tp <= 1) next.delete('page');
+          else next.set('page', String(tp));
+          setSearchParams(next, { replace: true });
+          setLoading(false);
+          return;
+        }
 
-
-                                // Use transaction status for rental logic
-                                const filteredProperties = (data.properties || []).filter((p) => {
-                                    const tx = p.latestRentTransaction;
-                                    if (!tx) return p.status === 'AVAILABLE'; // fallback
-                                    // Show if transaction is PENDING, CONFIRMED, or COMPLETED (if you want to show rental history)
-                                    return (
-                                        tx.status === 'PENDING' ||
-                                        tx.status === 'CONFIRMED' ||
-                                        tx.status === 'COMPLETED'
-                                    );
-                                });
-
-                // Log first property's image data for debugging
-                if (filteredProperties.length > 0) {
-                    console.log('📸 First property image data:', filteredProperties[0].images);
-                }
-
-                const nextProperties = filteredProperties;
-                setProperties(nextProperties);
-                setTotalResults(data.total || nextProperties.length);
-                const summary = await getFeedbackSummaryByPropertyIds(nextProperties.map((p) => p._id));
-                setRatingMap(summary);
+        const raw = data.properties || [];
+        const nextProperties = filterRentProperties(raw);
+        setProperties(nextProperties);
+        setTotalResults(data.total || 0);
+        setTotalPages(tp);
+        const summary = await getFeedbackSummaryByPropertyIds(raw.map((p) => p._id));
+        setRatingMap(summary);
       } catch (err) {
         console.error('Error fetching properties:', err);
         setError('Failed to load properties. Please try again.');
+        setProperties([]);
+        setTotalResults(0);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProperties();
-  }, [location.search]);
+  }, [currentPage, searchParams, setSearchParams]);
 
   useEffect(() => {
     // Force enable scrolling
@@ -126,6 +145,11 @@ const RentPropertyGrid = () => {
     const timer = setTimeout(initializePlugins, 300);
     return () => clearTimeout(timer);
   }, []);
+
+  const rangeStart =
+    totalResults === 0 || properties.length === 0 ? 0 : (currentPage - 1) * GRID_PAGE_SIZE + 1;
+  const rangeEnd =
+    totalResults === 0 || properties.length === 0 ? 0 : (currentPage - 1) * GRID_PAGE_SIZE + properties.length;
 
   return (
     <div style={{ 
@@ -175,8 +199,24 @@ const RentPropertyGrid = () => {
                             <div className="row align-items-center">
                                 <div className="col-lg-3">
                                     <p className="mb-4 mb-lg-0 mb-md-3 text-lg-start text-md-start  text-center">
-                                        Showing result <span className="result-value"> {properties.length}</span> of
-                                        <span className="result-value"> {totalResults}</span>
+                                        {loading ? (
+                                            <span className="text-muted">Loading…</span>
+                                        ) : totalResults === 0 ? (
+                                            <span className="text-muted">No listings</span>
+                                        ) : properties.length === 0 ? (
+                                            <span className="text-muted">
+                                                0 on this page · <span className="result-value">{totalResults}</span> total
+                                            </span>
+                                        ) : (
+                                            <>
+                                                Showing{' '}
+                                                <span className="result-value">
+                                                    {rangeStart}
+                                                    {rangeEnd !== rangeStart ? `–${rangeEnd}` : ''}
+                                                </span>{' '}
+                                                of <span className="result-value">{totalResults}</span>
+                                            </>
+                                        )}
                                     </p>
                                 </div> 
 
@@ -231,12 +271,17 @@ const RentPropertyGrid = () => {
                         </div>
                     )}
 
-                    {/* No Results */}
-                    {!loading && !error && properties.length === 0 && (
+                    {!loading && !error && properties.length === 0 && totalResults === 0 && (
                         <div className="text-center py-5">
                             <i className="material-icons-outlined" style={{ fontSize: '48px', color: '#ccc' }}>search_off</i>
                             <h5 className="mt-3">No properties found</h5>
                             <p className="text-muted">Try adjusting your search filters</p>
+                        </div>
+                    )}
+
+                    {!loading && !error && properties.length === 0 && totalResults > 0 && (
+                        <div className="text-center py-4">
+                            <p className="text-muted mb-0">No listings on this page.</p>
                         </div>
                     )}
 
@@ -348,16 +393,15 @@ const RentPropertyGrid = () => {
                         </div>
                     )}
                     
-                    {/* Load More Button - Only show if there are results */}
-                    {!loading && !error && properties.length > 0 && (
-                        <div className="text-center">
-                            <a href="javascript:void(0)" className="btn btn-dark d-inline-flex align-items-center">
-                                <i className="material-icons-outlined me-1">autorenew</i>Load More
-                            </a>
-                        </div>
+                    {!loading && !error && totalPages > 1 && (
+                        <PropertyListPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={goToPage}
+                            disabled={loading}
+                        />
                     )}
 
-                    
                     <div className="row mb-4" style={{ display: 'none' }}>
 
                     

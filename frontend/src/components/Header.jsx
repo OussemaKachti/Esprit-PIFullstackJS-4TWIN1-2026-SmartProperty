@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import LocalizedLink from './LocalizedLink';
-import { localizeRoute, getLanguageFromPath } from '../routes/routeConfig';
+import { localizeRoute, getLanguageFromPath, stripLanguagePrefix } from '../routes/routeConfig';
 import {
   shouldAccessBackoffice,
   getRedirectUrl,
@@ -83,6 +83,25 @@ const Header = () => {
     return flagMap[lang] || 'us';
   };
 
+  const path = stripLanguagePrefix(location.pathname);
+
+  const navActive = {
+    home:
+      path === '/' ||
+      path === '/home' ||
+      path === '/index-2' ||
+      path === '/index-3',
+    buy:
+      path.startsWith('/buy-') ||
+      path.startsWith('/add-property-buy'),
+    rent:
+      (path.startsWith('/rent-') && !path.startsWith('/rental-')) ||
+      path.startsWith('/add-property-rent'),
+    agency: path.startsWith('/agency-') || path.startsWith('/agent-'),
+    about: path.startsWith('/about-us'),
+    contact: path.startsWith('/contact-us'),
+  };
+
   return (
     <div className="main-header-two">
       <header className="header header-three">
@@ -117,34 +136,32 @@ const Header = () => {
               </div>
 
               <ul className="main-nav">
-                <li className="active">
+                <li className={navActive.home ? 'active' : ''}>
                   <LocalizedLink to="/">{t('navigation.home')}</LocalizedLink>
                 </li>
-               {/* <li>
-  <LocalizedLink to="/buy-property-grid">
-    {t('navigation.buyProperty')}
-  </LocalizedLink>
-</li> */}
-<li className="has-submenu">
+                <li className={navActive.buy ? 'active' : ''}>
+                  <LocalizedLink to="/buy-property-grid">{t('navigation.buyProperty')}</LocalizedLink>
+                </li>
+{/* <li className="has-submenu">
                       <a href="#">{t('navigation.buyProperty')}</a>
                       <ul className="submenu">
                         <li><LocalizedLink to="/buy-property-grid">{t('navigation.buyProperty')}</LocalizedLink></li>
                         <li><LocalizedLink to="/buy-property-grid-sidebar">{t('navigation.buyGridSidebar')}</LocalizedLink></li>
                       </ul>
-                    </li>
+                    </li> */}
 
-<li>
-  <LocalizedLink to="/rent-property-grid">
-    {t('navigation.rentProperty')}
-  </LocalizedLink>
-</li>
-               <li>
-  <LocalizedLink to="/agency-grid">
-    {t('navigation.agency')}
-  </LocalizedLink>
-</li>
-                <li><LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink></li>
-                <li><LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink></li>
+                <li className={navActive.rent ? 'active' : ''}>
+                  <LocalizedLink to="/rent-property-grid">{t('navigation.rentProperty')}</LocalizedLink>
+                </li>
+                <li className={navActive.agency ? 'active' : ''}>
+                  <LocalizedLink to="/agency-grid">{t('navigation.agency')}</LocalizedLink>
+                </li>
+                <li className={navActive.about ? 'active' : ''}>
+                  <LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink>
+                </li>
+                <li className={navActive.contact ? 'active' : ''}>
+                  <LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink>
+                </li>
               </ul>
 
               <div className="menu-dropdown">

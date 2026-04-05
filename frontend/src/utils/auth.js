@@ -12,6 +12,12 @@ const FRONTEND_ROLES = ['TENANT', 'BUYER'];
 
 const normalizeRole = (role) => String(role || '').toUpperCase();
 
+/** Only agency & property owners can start the “list your property” flow from the homepage */
+export const canListPropertyFromHomepage = (role) => {
+  const r = normalizeRole(role);
+  return r === 'AGENCY' || r === 'OWNER';
+};
+
 /**
  * Check if user role should see Backoffice in the menu and may open the backoffice URL
  * @param {string} role - User role

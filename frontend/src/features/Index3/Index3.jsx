@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import LocalizedLink from '../../components/LocalizedLink';
+import { getUserData, canListPropertyFromHomepage } from '../../utils/auth';
 import './index3-banner.css';
 
 const Index3 = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [listingUser, setListingUser] = useState(() => getUserData());
+
+  useEffect(() => {
+    setListingUser(getUserData());
+  }, [location.pathname]);
 
   const [buyFilters, setBuyFilters] = useState({
     type: '',
@@ -250,10 +258,12 @@ const Index3 = () => {
 								</div>
 								<h1>{t('banner.title1')} <span>{t('banner.title2')}</span></h1>
 								<p className="index3-banner-subtitle">{t('banner.subtitle')}</p>
-								<Link to="/form?step=1" className="btn btn-primary btn-lg">
-									<i className="material-icons-outlined me-2">add_home</i>
-									{t('banner.listProperty')}
-								</Link>
+								{canListPropertyFromHomepage(listingUser?.role) && (
+									<LocalizedLink to="/form?step=1" className="btn btn-primary btn-lg">
+										<i className="material-icons-outlined me-2">add_home</i>
+										{t('banner.listProperty')}
+									</LocalizedLink>
+								)}
 							</div>
 						</div>
 					</div>

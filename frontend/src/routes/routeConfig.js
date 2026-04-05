@@ -160,6 +160,17 @@ export const getLanguageFromPath = (pathname) => {
 };
 
 /**
+ * Path without /fr /de /it prefix (for matching nav active state, etc.)
+ * @param {string} pathname
+ * @returns {string}
+ */
+export const stripLanguagePrefix = (pathname) => {
+  if (!pathname || pathname === '/') return pathname || '/';
+  const without = pathname.replace(/^\/([a-z]{2})(\/|$)/, '/');
+  return without === '' ? '/' : without;
+};
+
+/**
  * Convert path to localized path
  * @param {string} path - Original path
  * @param {string} targetLang - Target language code

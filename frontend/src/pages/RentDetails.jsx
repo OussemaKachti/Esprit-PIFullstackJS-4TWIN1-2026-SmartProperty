@@ -729,7 +729,7 @@ const RentDetails = () => {
 								</div> */}
 
 								
-								<div className="accordion-item">
+								{/* <div className="accordion-item">
 									<div className="accordion-header">
 										<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-5" aria-expanded="true">
 											Floor Plan
@@ -769,7 +769,7 @@ const RentDetails = () => {
 										
 										</div>
 									</div>
-								</div>
+								</div> */}
 
 								{hasPanoramas && (
 									<div className="accordion-item">
