@@ -1,7 +1,77 @@
-﻿import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { apiRequest } from '../api/client';
+import { getUserData } from '../utils/auth';
+import ReviewSection from '../components/ReviewSection';
 
 const RentDetails = () => {
+	const location = useLocation();
+	const { id: routeId } = useParams();
+	const [currentUser, setCurrentUser] = useState(() => getUserData());
+	const [isSending, setIsSending] = useState(false);
+	const [successMessage, setSuccessMessage] = useState('');
+	const [errorMessage, setErrorMessage] = useState('');
+	const [bookingForm, setBookingForm] = useState({
+		startDate: '',
+		endDate: '',
+		rentAmount: '',
+		note: 'I would like to book this property. Please confirm availability.',
+	});
+
+	const propertyId = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return routeId || params.get('propertyId') || params.get('id') || '';
+	}, [routeId, location.search]);
+
+	const handleBookingChange = (field) => (event) => {
+		setBookingForm((prev) => ({ ...prev, [field]: event.target.value }));
+	};
+
+	const handleSendBooking = async () => {
+		setErrorMessage('');
+		setSuccessMessage('');
+
+		const userId = currentUser?._id || currentUser?.id;
+
+		if (!propertyId) {
+			setErrorMessage('Missing property identifier. Open this page from a property card to book.');
+			return;
+		}
+
+		if (!currentUser || !userId) {
+			setErrorMessage('Please sign in to request a booking.');
+			return;
+		}
+
+		if (!bookingForm.startDate || !bookingForm.endDate || !bookingForm.rentAmount) {
+			setErrorMessage('Choose start date, end date, and your budget.');
+			return;
+		}
+
+		setIsSending(true);
+		try {
+			const payload = {
+				propertyId,
+				tenantId: userId,
+				startDate: bookingForm.startDate,
+				endDate: bookingForm.endDate,
+				rentAmount: Number(bookingForm.rentAmount),
+				charges: 0,
+				status: 'PENDING',
+			};
+
+			await apiRequest('/api/leases', {
+				method: 'POST',
+				body: JSON.stringify(payload),
+			});
+
+			setSuccessMessage('Request sent! We pinged the owner by email, push, and in-app notification.');
+		} catch (error) {
+			setErrorMessage(error.message || 'Could not send request.');
+		} finally {
+			setIsSending(false);
+		}
+	};
   useEffect(() => {
     // Force enable scrolling
     const enableScrolling = () => {
@@ -16,7 +86,7 @@ const RentDetails = () => {
     enableScrolling();
 
     // Initialize plugins
-    const initializePlugins = () => {
+		const initializePlugins = () => {
       enableScrolling();
       if (window.AOS) {
         window.AOS.refresh();
@@ -430,6 +500,8 @@ const RentDetails = () => {
 									</div>
 									<div id="accordion-9" className="accordion-collapse collapse show">
 										<div className="accordion-body">
+											<ReviewSection propertyId={propertyId} currentUser={currentUser} />
+											{false && (<div style={{ display: 'none' }}>
 											<div className="sub-head d-flex align-items-center justify-content-between mb-4">
 												<h6 className="fs-16 fw-semibold"> Reviews (45) </h6>
 												<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
@@ -649,6 +721,7 @@ const RentDetails = () => {
 											<div className="text-center">
 												<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
 											</div>
+											</div>)}
 
 										</div>
 									</div>
@@ -691,32 +764,82 @@ const RentDetails = () => {
 							</div> 
 
                             
-                            <div className="card">
-								<div className="card-header">
-									<h5 className="mb-0">Enquire Us</h5>
-								</div>
-								<div className="card-body">
-									<div className="mb-3">
-										<label className="form-label fw-semibold"> Name </label>
-										<input type="text" className="form-control" placeholder="Your Name" />
-									</div>
-									<div className="mb-3">
-										<label className="form-label fw-semibold"> Email </label>
-										<input type="text" className="form-control" placeholder="Your Email" />
-									</div>
-									<div className="mb-3">
-										<label className="form-label fw-semibold"> Phone </label>
-										<input type="text" className="form-control" placeholder="Your Phone Number" />
-									</div>
-									<div className="mb-4">
-										<label className="form-label fw-semibold"> Description </label>
-										<textarea className="form-control" rows="3"></textarea>
-									</div>
-									<div>
-										<Link to="/rent-details" className="btn btn-dark w-100 py-2 fs-14">Submit</Link>
-									</div>
-								</div> 
-							</div> 
+														<div className="card">
+																<div className="card-header d-flex align-items-center justify-content-between">
+																		<h5 className="mb-0">Smart Booking Request</h5>
+																		<span className="badge bg-primary">Live</span>
+																</div>
+																<div className="card-body">
+																		<div className="alert alert-info py-2 mb-3">
+																				<div className="fw-semibold">We’ll notify the owner instantly.</div>
+																				<div className="small text-body">Push + email + in-app to the owner, with your profile attached.</div>
+																		</div>
+
+																		<div className="mb-3">
+																				<label className="form-label fw-semibold">Start date</label>
+																				<input
+																					type="date"
+																					className="form-control"
+																					value={bookingForm.startDate}
+																					onChange={handleBookingChange('startDate')}
+																				/>
+																		</div>
+
+																		<div className="mb-3">
+																				<label className="form-label fw-semibold">End date</label>
+																				<input
+																					type="date"
+																					className="form-control"
+																					value={bookingForm.endDate}
+																					onChange={handleBookingChange('endDate')}
+																				/>
+																		</div>
+
+																		<div className="mb-3">
+																				<label className="form-label fw-semibold">Your budget (TND)</label>
+																				<input
+																					type="number"
+																					min="0"
+																					className="form-control"
+																					placeholder="e.g. 1200"
+																					value={bookingForm.rentAmount}
+																					onChange={handleBookingChange('rentAmount')}
+																				/>
+																		</div>
+
+																		<div className="mb-3">
+																				<label className="form-label fw-semibold">Message to owner</label>
+																				<textarea
+																					className="form-control"
+																					rows="3"
+																					value={bookingForm.note}
+																					onChange={handleBookingChange('note')}
+																				/>
+																		</div>
+
+																		{successMessage && (
+																			<div className="alert alert-success py-2 mb-3">{successMessage}</div>
+																		)}
+																		{errorMessage && (
+																			<div className="alert alert-danger py-2 mb-3">{errorMessage}</div>
+																		)}
+
+																		<button
+																			className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-center justify-content-center"
+																			onClick={handleSendBooking}
+																			disabled={isSending}
+																		>
+																			<i className="material-icons-outlined me-2">rocket_launch</i>
+																			{isSending ? 'Sending...' : 'Send rental request'}
+																		</button>
+																		{!propertyId && (
+																			<p className="text-danger small mt-2 mb-0">Open this page from a property card so we know which listing to book.</p>
+																		)}
+																		{!currentUser && (
+																			<p className="text-muted small mt-2 mb-0">Sign in to auto-attach your profile and contact.</p>
+																		)}
+																</div> 
+														</div> 
 
 							
 							<div className="card">
@@ -1085,58 +1208,6 @@ const RentDetails = () => {
 			
 
 		
-		<div id="add_review" className="modal fade">
-			<div className="modal-dialog modal-dialog-centered">
-				<div className="modal-content">
-					<form action="rent-details.html">
-						<div className="modal-header">
-							<h4 className="text-dark modal-title fw-bold">Write a Review</h4>
-							<button type="button" className="btn-close btn-close-modal custom-btn-close" data-bs-dismiss="modal" aria-label="Close"><i className="material-icons-outlined">close</i></button>
-						</div>
-						<div className="modal-body">
-							<div className="mb-3">
-								<label className="form-label">Ratings</label>
-								<div className="selection-wrap">
-                                	<div className="d-inline-block">
-                                    	<div className="rating-selction">
-                                        	<input type="radio" name="rating" value="5" id="rating5" />
-                                            <label htmlFor="rating5"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="4" id="rating4" />
-                                            <label htmlFor="rating4"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="3" id="rating3" />
-                                            <label htmlFor="rating3"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="2" id="rating2" />
-                                            <label htmlFor="rating2"><i className="fa-solid fa-star"></i></label>
-                                            <input type="radio" name="rating" value="1" id="rating1" />
-                                            <label htmlFor="rating1"><i className="fa-solid fa-star"></i></label>
-                                        </div>
-                                    </div>
-                                </div>
-							</div>
-							<div className="mb-3">
-								<label className="form-label">Ratings</label>
-								<input type="text" className="form-control" />
-							</div>
-							<div className="mb-3">
-								<label className="form-label">Email</label>
-								<input type="email" className="form-control" />
-							</div>
-							<div className="mb-0">
-								<label className="form-label">Write your review</label>
-								<textarea className="form-control" rows="3"></textarea>
-							</div>
-						</div>
-						<div className="modal-footer">
-							<div className="d-flex align-items-center justify-content-end">
-								<button type="submit" className="btn btn-lg btn-primary">Submit Review</button>
-							</div>
-						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-		
-
     </div>
     </div>
   );

@@ -17,20 +17,6 @@ dotenv.config();
 
 const app = express();
 
-// Serve uploaded images via explicit route (avoids static + helmet issues, works on Windows)
-const uploadsDir = path.resolve(__dirname, '..', 'uploads');
-app.get('/uploads/:filename', (req, res) => {
-  const filename = path.basename(req.params.filename);
-  if (!filename) return res.status(400).end();
-  const filePath = path.join(uploadsDir, filename);
-  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      if (err.statusCode) res.status(err.statusCode).end();
-      else res.status(404).json({ message: 'File not found' });
-    }
-  });
-});
 
 // Security middleware
 app.use(helmet());
@@ -44,13 +30,15 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3002', // Backup port for backoffice
   'http://localhost:5173', // New backoffice (Vite default port)
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -67,6 +55,27 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
+
+// Serve uploaded images securely AFTER CORS is applied so WebGL textures don't crash Marzipano
+const uploadsDir = path.resolve(__dirname, '..', 'uploads');
+app.get('/uploads/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  if (!filename) return res.status(400).end();
+  const filePath = path.join(uploadsDir, filename);
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+  } else {
+    res.set('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  }
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      if (err.statusCode) res.status(err.statusCode).end();
+      else res.status(404).json({ message: 'File not found' });
+    }
+  });
+});
 
 // Body parser middleware (BEFORE routes)
 app.use(express.json({ limit: '10mb' }));
@@ -85,13 +94,17 @@ if (process.env.NODE_ENV === 'development') {
 // Tone changer API (with CORS enabled)
 app.use('/api/tone-changer', toneChangerApi);
 
-// Serve static files from uploads directory with CORS headers
+// Serve static files from uploads directory with CORS headers (Marzipano / WebGL needs correct origin)
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  }
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  console.log('📁 Image request:', req.url);
   next();
 }, express.static(path.join(__dirname, '../uploads')));
 

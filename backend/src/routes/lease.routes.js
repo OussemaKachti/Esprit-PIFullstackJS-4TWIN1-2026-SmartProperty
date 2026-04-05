@@ -11,6 +11,11 @@ router.post(
   auth.protect,
   leaseController.createLease
 );
+router.patch(
+  '/:id/confirm',
+  auth.protect,
+  leaseController.confirmLease
+);
 router.put(
   '/:id',
   auth.protect,

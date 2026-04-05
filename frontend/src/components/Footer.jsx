@@ -101,8 +101,8 @@ const Footer = () => {
                   <div className="contact-info">
                     <span className="bg-danger"><i className="material-icons-outlined">phone</i></span>
                     <div>
-                      <p>{t('footer.visit_us')}</p>
-                      <h6>{t('footer.address')}</h6>
+                      {/* <p>{t('footer.visit_us')}</p> */}
+                      <h6>Pôle Technologique, 1, 2 rue André Ampère, Cebalat 2083</h6>
                     </div>
                   </div>
                 </div>

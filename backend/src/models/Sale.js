@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
 const SaleStatus = {
-  COMPLETED: 'COMPLETED',
   PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 };
 
@@ -30,6 +31,10 @@ const saleSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(SaleStatus),
       default: SaleStatus.PENDING,
+    },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction',
     },
   },
   { timestamps: true }

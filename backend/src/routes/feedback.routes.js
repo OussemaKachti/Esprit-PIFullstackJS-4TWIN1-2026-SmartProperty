@@ -5,6 +5,7 @@ const auth = require('../middleware/auth.middleware');
 
 // Feedback CRUD routes
 router.get('/', feedbackController.getAllFeedbacks);
+router.get('/summary', feedbackController.getFeedbackSummary);
 router.get('/:id', feedbackController.getFeedbackById);
 router.post(
   '/',

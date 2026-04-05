@@ -1,12 +1,24 @@
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Two bases: backend (Express) and FastAPI (matching/credit).
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const FASTAPI_BASE = 'http://127.0.0.1:8000';
 
-export function getApiUrl(path) {
+function resolveBase(path, base) {
+  if (base === 'backend') return BACKEND_BASE;
+  if (base === 'fastapi') return FASTAPI_BASE;
+  // Heuristic: backend endpoints start with /api/
+  if (path.startsWith('/api/')) return BACKEND_BASE;
+  return FASTAPI_BASE;
+}
+
+export function getApiUrl(path, base) {
   const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE}${normalized}`;
+  const root = resolveBase(normalized, base);
+  return `${root}${normalized}`;
 }
 
 export async function apiRequest(path, options = {}) {
-  const url = getApiUrl(path);
+  const { base, ...rest } = options;
+  const url = getApiUrl(path, base);
 
   const token =
     typeof window !== 'undefined' &&
@@ -15,10 +27,10 @@ export async function apiRequest(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
+    ...rest.headers,
   };
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...rest, headers });
 
   const data = await res.json().catch(() => ({}));
 

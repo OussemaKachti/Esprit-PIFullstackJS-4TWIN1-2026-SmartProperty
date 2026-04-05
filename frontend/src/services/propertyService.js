@@ -1,6 +1,9 @@
-// Property API Service
-const API_URL = 'http://localhost:5000/api';
-export const API_BASE_URL = 'http://localhost:5000';
+import { getApiBaseUrl } from '../utils/panoramaUtils';
+
+// Property API Service — REACT_APP_API_URL may be http://host:5000 or http://host:5000/api
+
+export const API_BASE_URL = getApiBaseUrl();
+export const API_URL = `${API_BASE_URL}/api`;
 
 /**
  * Get image URL from property image object
@@ -44,6 +47,7 @@ export const getProperties = async (filters = {}) => {
     if (filters.type) params.append('type', filters.type);
     if (filters.city) params.append('city', filters.city);
     if (filters.listingType) params.append('listingType', filters.listingType);
+    if (filters.status) params.append('status', filters.status);
     if (filters.minPrice) params.append('minPrice', filters.minPrice);
     if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
     if (filters.rooms) params.append('rooms', filters.rooms);
@@ -89,5 +93,28 @@ export const getPropertyById = async (id) => {
   } catch (error) {
     console.error('Error fetching property:', error);
     throw error;
+  }
+};
+
+/**
+ * Fetch ratings summary keyed by property id
+ * @param {string[]} propertyIds
+ * @returns {Promise<Object>} map of propertyId => { averageRating, totalReviews }
+ */
+export const getFeedbackSummaryByPropertyIds = async (propertyIds = []) => {
+  const ids = Array.isArray(propertyIds) ? propertyIds.filter(Boolean) : [];
+  if (ids.length === 0) return {};
+  try {
+    const params = new URLSearchParams();
+    params.append('propertyIds', ids.join(','));
+    const response = await fetch(`${API_URL}/feedbacks/summary?${params.toString()}`);
+    const data = await response.json();
+    if (data.success) {
+      return data.data?.byProperty || {};
+    }
+    return {};
+  } catch (error) {
+    console.error('Error fetching feedback summary:', error);
+    return {};
   }
 };

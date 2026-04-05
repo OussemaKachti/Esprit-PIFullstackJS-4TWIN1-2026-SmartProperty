@@ -1,7 +1,9 @@
-﻿import React, { useEffect } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Signin = () => {
+	const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     // Force enable scrolling
     const enableScrolling = () => {
@@ -82,9 +84,16 @@ const Signin = () => {
 											<div className="mb-3">
 												<label className="form-label">Password<span className="text-danger ms-1">*</span></label>
 												<div className="position-relative form-cover password">
-													<input type="password" className="pass-inputs form-control" />
+													<input type={showPassword ? "text" : "password"} className="pass-inputs form-control" />
 													<i className="material-icons-outlined">lock</i>
-													<span className="fas toggle-passwords fa-eye-slash"></span>
+													<button
+														type="button"
+														onClick={() => setShowPassword((prev) => !prev)}
+														className="border-0 bg-transparent p-0"
+														aria-label={showPassword ? "Hide password" : "Show password"}
+													>
+														<span className={`fas toggle-passwords ${showPassword ? 'fa-eye' : 'fa-eye-slash'}`}></span>
+													</button>
 												</div>
 											</div>
 											<div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">

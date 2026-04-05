@@ -1,26 +1,27 @@
 const mongoose = require('mongoose');
 const { Property } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
+const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
 
 // @desc    Get all properties
 // @route   GET /api/properties
 // @access  Public
 exports.getAllProperties = async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      type, 
+    const {
+      page = 1,
+      limit = 10,
+      type,
       status,
       listingType,
       city,
       region,
-      minPrice, 
+      minPrice,
       maxPrice,
       rooms,
       bathrooms,
       minSurface,
-      search 
+      search
     } = req.query;
 
     // Validate listingType if provided
@@ -53,11 +54,32 @@ exports.getAllProperties = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
-    const properties = await Property.find(filter)
+    // Fetch properties
+    let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName'); // Peupler les infos user
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const count = await Property.countDocuments(filter);
 
@@ -85,17 +107,30 @@ exports.getMyProperties = async (req, res, next) => {
       limit = 10,
       type,
       status,
+      listingType,
       city,
       minPrice,
       maxPrice,
     } = req.query;
+    const validListingTypes = ['FOR_SALE', 'FOR_RENT'];
+    if (listingType && !validListingTypes.includes(listingType)) {
+      return res.status(400).json(
+        apiResponse(false, `Invalid listingType. Must be one of: ${validListingTypes.join(', ')}`)
+      );
+    }
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
 
     const filter = { createdBy: userId };
     if (type) filter.type = type;
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      // Hide sold properties from the default "my listings" view; they drop off once a sale is confirmed/completed
+      filter.status = { $ne: 'SOLD' };
+    }
+    if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -105,11 +140,31 @@ exports.getMyProperties = async (req, res, next) => {
 
     const skip = (pageNum - 1) * limitNum;
 
-    const properties = await Property.find(filter)
+    let properties = await Property.find(filter)
       .limit(limitNum)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const total = await Property.countDocuments(filter);
 
@@ -137,14 +192,27 @@ exports.getPropertiesByUser = async (req, res, next) => {
       limit = 10,
       type,
       status,
+      listingType,
       city,
       minPrice,
       maxPrice,
     } = req.query;
 
+    const validListingTypes = ['FOR_SALE', 'FOR_RENT'];
+    if (listingType && !validListingTypes.includes(listingType)) {
+      return res.status(400).json(
+        apiResponse(false, `Invalid listingType. Must be one of: ${validListingTypes.join(', ')}`)
+      );
+    }
+
     const filter = { createdBy: userId };
     if (type) filter.type = type;
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'SOLD' };
+    }
+    if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -154,115 +222,33 @@ exports.getPropertiesByUser = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
-    const properties = await Property.find(filter)
+    let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean();
+
+    // Attach latest RENT transaction (if any) to each property
+    const propertyIds = properties.map(p => p._id);
+    const Transaction = require('../models/Transaction').Transaction;
+    const transactions = await Transaction.aggregate([
+      { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
+      { $sort: { endDate: -1, createdAt: -1 } },
+      { $group: {
+          _id: '$propertyId',
+          latest: { $first: '$$ROOT' }
+        }
+      }
+    ]);
+    const txMap = {};
+    transactions.forEach(tg => { txMap[tg._id.toString()] = tg.latest; });
+    properties = properties.map(p => ({
+      ...p,
+      latestRentTransaction: txMap[p._id.toString()] || null
+    }));
 
     const total = await Property.countDocuments(filter);
-
-    res.status(200).json(
-      apiResponse(true, 'Properties by user retrieved successfully', {
-        properties,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page,
-        total,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get properties of the connected user (my properties)
-// @route   GET /api/properties/my
-// @access  Private
-exports.getMyProperties = async (req, res, next) => {
-  try {
-    const userId = req.user._id.toString();
-    const {
-      page = 1,
-      limit = 10,
-      type,
-      status,
-      city,
-      minPrice,
-      maxPrice,
-    } = req.query;
-
-    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
-
-    const filter = { createdBy: userId };
-    if (type) filter.type = type;
-    if (status) filter.status = status;
-    if (city) filter.city = new RegExp(city, 'i');
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    const skip = (pageNum - 1) * limitNum;
-
-    const properties = await Property.find(filter)
-      .limit(limitNum)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
-
-    const total = await Property.countDocuments(filter);
-
-    res.status(200).json(
-      apiResponse(true, 'My properties retrieved successfully', {
-        properties,
-        totalPages: Math.ceil(total / limitNum),
-        currentPage: pageNum,
-        total,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get properties by user (createdBy)
-// @route   GET /api/properties/user/:userId
-// @access  Public
-exports.getPropertiesByUser = async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-    const {
-      page = 1,
-      limit = 10,
-      type,
-      status,
-      city,
-      minPrice,
-      maxPrice,
-    } = req.query;
-
-    const filter = { createdBy: userId };
-    if (type) filter.type = type;
-    if (status) filter.status = status;
-    if (city) filter.city = new RegExp(city, 'i');
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    const skip = (page - 1) * limit;
-
-    const properties = await Property.find(filter)
-      .limit(limit * 1)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .populate('createdBy', 'login email role firstName lastName');
-
-    const total = await Property.countDocuments(filter);
-
     res.status(200).json(
       apiResponse(true, 'Properties by user retrieved successfully', {
         properties,
@@ -288,7 +274,8 @@ exports.getPropertyById = async (req, res, next) => {
       );
     }
     const property = await Property.findById(id)
-      .populate('createdBy', 'login email role firstName lastName'); // Peupler les infos user
+      .populate('createdBy', 'login email role firstName lastName')
+      .lean(); // Plain JSON so panoramas (id, url, linkHotspots) match front + backoffice
 
     if (!property) {
       return res.status(404).json(
@@ -328,12 +315,12 @@ exports.createProperty = async (req, res, next) => {
         publicId: file.filename,
         fieldName: file.fieldname, // Store which field was used
       }));
-      
+
       console.log(`✅ Uploaded ${req.files.length} image(s)`);
     }
 
     const property = await Property.create(propertyData);
-    
+
     // Populate createdBy if it exists
     if (property.createdBy) {
       await property.populate('createdBy', 'login email role firstName lastName');
@@ -362,16 +349,38 @@ exports.updateProperty = async (req, res, next) => {
 
     // Handle new image uploads - accepts any field names
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(file => ({
-        url: file.path,
-        publicId: file.filename,
-        fieldName: file.fieldname,
-      }));
-      
-      // Merge existing images with new ones
-      req.body.images = [...property.images, ...newImages];
-      
-      console.log(`✅ Added ${req.files.length} new image(s). Total: ${req.body.images.length}`);
+      const newImages = [];
+      const newPanoramas = [];
+
+      req.files.forEach(file => {
+        const item = {
+          url: file.path,
+          publicId: file.filename,
+          fieldName: file.fieldname,
+        };
+
+        if (file.fieldname && file.fieldname.startsWith('pano')) {
+          // It's a panorama
+          newPanoramas.push({
+            ...item,
+            id: file.filename, // Use filename as unique ID for scene management
+            name: file.originalname.split('.')[0], // Default name from filename
+          });
+        } else {
+          // It's a regular image
+          newImages.push(item);
+        }
+      });
+
+      if (newImages.length > 0) {
+        req.body.images = [...property.images, ...newImages];
+        console.log(`✅ Added ${newImages.length} new image(s).`);
+      }
+
+      if (newPanoramas.length > 0) {
+        req.body.panoramas = [...(property.panoramas || []), ...newPanoramas];
+        console.log(`✅ Added ${newPanoramas.length} new panorama(s).`);
+      }
     }
 
     const updatedProperty = await Property.findByIdAndUpdate(
@@ -382,6 +391,39 @@ exports.updateProperty = async (req, res, next) => {
 
     res.status(200).json(
       apiResponse(true, 'Property updated successfully', updatedProperty)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update property panoramas (hotspots, names)
+// @route   PUT /api/properties/:id/panoramas
+// @access  Private (Admin/Agent)
+exports.updatePropertyPanoramas = async (req, res, next) => {
+  try {
+    const { panoramas } = req.body;
+
+    if (!panoramas || !Array.isArray(panoramas)) {
+      return res.status(400).json(
+        apiResponse(false, 'Please provide panoramas array')
+      );
+    }
+
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    // Update panoramas data (names, hotspots) while keeping URLs
+    property.panoramas = panoramas;
+    await property.save();
+
+    res.status(200).json(
+      apiResponse(true, 'Property panoramas updated successfully', property)
     );
   } catch (error) {
     next(error);
@@ -417,7 +459,7 @@ exports.deleteProperty = async (req, res, next) => {
 exports.deletePropertyImage = async (req, res, next) => {
   try {
     const { id, imageId } = req.params;
-    
+
     const property = await Property.findById(id);
 
     if (!property) {
@@ -442,6 +484,102 @@ exports.deletePropertyImage = async (req, res, next) => {
 
     res.status(200).json(
       apiResponse(true, 'Image deleted successfully', property)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Analyze property images for virtual staging eligibility
+// @route   POST /api/properties/:id/analyze-images
+// @access  Private (Admin/Agent/Owner)
+exports.analyzePropertyImages = async (req, res, next) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    // Real Image Classification via HuggingFace (Free Vision AI)
+    let analyzedCount = 0;
+
+    // Process sequentially to avoid rate-limiting
+    for (const img of property.images) {
+      if (!img.classification || img.classification === 'other') {
+        const { isEligible, classification } = await analyzeImageWithAI(img.url);
+        img.classification = classification;
+        img.isEligibleForStaging = isEligible;
+        analyzedCount++;
+      }
+    }
+
+    if (analyzedCount > 0) {
+      await property.save();
+    }
+
+    res.status(200).json(
+      apiResponse(true, `Analyzed ${analyzedCount} images successfully`, property)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate virtual staging for a specific property image
+// @route   POST /api/properties/:id/virtual-staging
+// @access  Private (Admin/Agent/Owner)
+exports.generateVirtualStaging = async (req, res, next) => {
+  try {
+    const { imageId, style, roomType } = req.body;
+
+    if (!imageId || !style) {
+      return res.status(400).json(
+        apiResponse(false, 'Please provide imageId and style')
+      );
+    }
+
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json(
+        apiResponse(false, 'Property not found')
+      );
+    }
+
+    const image = property.images.id(imageId);
+
+    if (!image) {
+      return res.status(404).json(
+        apiResponse(false, 'Image not found in this property')
+      );
+    }
+
+    if (!image.isEligibleForStaging) {
+      return res.status(400).json(
+        apiResponse(false, 'This image is not eligible for virtual staging. It must be classified as an empty room.')
+      );
+    }
+
+    // Call Real Hugging Face API (Instruct-Pix2Pix - Free Image editing)
+    const prompt = `Virtually staged ${roomType}, ${style} style interior design, highly detailed, realistic`;
+    const stagedImageUrl = await generateHuggingFaceStaging(image.url, prompt);
+
+    // Push the result to the virtualStaging array
+    property.virtualStaging.push({
+      originalImageId: image._id,
+      stagedImageUrl,
+      roomType: roomType || 'other',
+      style,
+      createdAt: new Date()
+    });
+
+    await property.save();
+
+    res.status(200).json(
+      apiResponse(true, 'Virtual staging generated successfully', property.virtualStaging[property.virtualStaging.length - 1])
     );
   } catch (error) {
     next(error);

@@ -50,6 +50,7 @@ export const ROUTES = [
   { path: '/buy-property-list-sidebar', component: 'BuyPropertyListSidebar' },
   { path: '/buy-grid-map', component: 'BuyGridMap' },
   { path: '/buy-list-map', component: 'BuyListMap' },
+  { path: '/buy-details/:id', component: 'BuyDetails' },
   { path: '/buy-details', component: 'BuyDetails' },
   { path: '/add-property-buy', component: 'AddPropertyBuy' },
 
@@ -60,6 +61,7 @@ export const ROUTES = [
   { path: '/rent-property-list-sidebar', component: 'RentPropertyListSidebar' },
   { path: '/rent-grid-map', component: 'RentGridMap' },
   { path: '/rent-list-map', component: 'RentListMap' },
+  { path: '/rent-details/:id', component: 'RentDetails' },
   { path: '/rent-details', component: 'RentDetails' },
   { path: '/add-property-rent', component: 'AddPropertyRent' },
 
@@ -98,6 +100,7 @@ export const ROUTES = [
   { path: '/testimonial', component: 'Testimonial' },
   { path: '/privacy-policy', component: 'PrivacyPolicy' },
   { path: '/terms-condition', component: 'TermsCondition' },
+  { path: '/rental-match', component: 'RentalMatch' },
 
   // E-commerce Routes
   { path: '/wishlist', component: 'Wishlist' },

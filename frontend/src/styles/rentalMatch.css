@@ -1,0 +1,92 @@
+.gradient-hero {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  border: none;
+  border-radius: 16px;
+  color: #fff;
+}
+
+.alert-primary-soft { background: #e0e7ff; border: 1px solid #c7d2fe; }
+.alert-info-soft { background: #dbeafe; border: 1px solid #bfdbfe; }
+.alert-success-soft { background: #dcfce7; border: 1px solid #bbf7d0; }
+
+.score-pill {
+  background: #0f172a;
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 700;
+  min-width: 64px;
+  justify-content: center;
+}
+
+.pill {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pill-accept { background: #c7f9cc; color: #065f46; }
+.pill-guarantee { background: #fef3c7; color: #92400e; }
+.pill-refuse { background: #fee2e2; color: #991b1b; }
+
+.bg-soft-primary { background: #eef2ff; }
+.credit-card .card-body { background: linear-gradient(135deg, #f8fafc, #eef2ff); }
+
+.credit-doc-chip {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.credit-doc-chip:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.credit-doc-chip.active {
+  border-color: #2563eb;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.credit-doc-chip__indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.credit-doc-chip.active .credit-doc-chip__indicator {
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+.credit-doc-chip__label {
+  font-size: 0.95rem;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+@media (max-width: 575px) {
+  .score-pill { min-width: 56px; }
+}

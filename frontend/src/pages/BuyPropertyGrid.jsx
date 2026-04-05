@@ -1,6 +1,12 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getProperties, getImageUrl } from '../services/propertyService';
+import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
+
+const formatPriceTND = (value) => {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) return 'N/A';
+    return `${numberValue.toLocaleString('en-US').replace(/,/g, ' ')} TND`;
+};
 
 const BuyPropertyGrid = () => {
   const location = useLocation();
@@ -8,6 +14,7 @@ const BuyPropertyGrid = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [ratingMap, setRatingMap] = useState({});
 
   // Fetch properties based on URL parameters
   useEffect(() => {
@@ -21,7 +28,8 @@ const BuyPropertyGrid = () => {
         
         // Build filters object - ALWAYS use FOR_SALE for this page
         const filters = {
-          listingType: 'FOR_SALE'
+                    listingType: 'FOR_SALE',
+                    status: 'AVAILABLE'
         };
 
         // Add optional filters from URL (ignore listingType from URL)
@@ -42,8 +50,11 @@ const BuyPropertyGrid = () => {
           console.log('📸 First property image data:', data.properties[0].images);
         }
         
-        setProperties(data.properties || []);
+        const nextProperties = data.properties || [];
+        setProperties(nextProperties);
         setTotalResults(data.total || 0);
+        const summary = await getFeedbackSummaryByPropertyIds(nextProperties.map((p) => p._id));
+        setRatingMap(summary);
       } catch (err) {
         console.error('Error fetching properties:', err);
         setError('Failed to load properties. Please try again.');
@@ -242,7 +253,7 @@ const BuyPropertyGrid = () => {
                                                     </a>
                                                 </div>
                                                 <div className="d-flex align-items-center justify-content-between position-absolute bottom-0 end-0 start-0 p-3 z-1">
-                                                    <h6 className="text-white mb-0">${property.price?.toLocaleString() || 'N/A'}</h6>
+                                                    <h6 className="text-white mb-0">{formatPriceTND(property.price)}</h6>
                                                     <div className="user-avatar avatar avatar-md border rounded-circle">
                                                         <img src="/assets/img/users/user-01.jpg" alt="User" className="rounded-circle" />
                                                     </div>
@@ -251,10 +262,19 @@ const BuyPropertyGrid = () => {
                                             <div className="buy-grid-content">
                                                 <div className="d-flex align-items-center justify-content-between mb-3">
                                                     <div className="d-flex align-items-center justify-content-center">
-                                                        {[...Array(5)].map((_, i) => (
-                                                            <i key={i} className="material-icons-outlined text-warning">star</i>
-                                                        ))}
-                                                        <span className="ms-1 fs-14">5.0</span>
+                                                        {[...Array(5)].map((_, i) => {
+                                                            const avg = Number(ratingMap?.[property._id]?.averageRating || 0);
+                                                            const filled = i < Math.round(avg);
+                                                            return (
+                                                                <i key={i} className={`material-icons${filled ? '' : '-outlined'} text-warning`}>star</i>
+                                                            );
+                                                        })}
+                                                        <span className="ms-1 fs-14">
+                                                            {ratingMap?.[property._id]?.averageRating || 'New'}
+                                                            {ratingMap?.[property._id]?.totalReviews
+                                                                ? ` (${ratingMap[property._id].totalReviews})`
+                                                                : ''}
+                                                        </span>
                                                     </div>
                                                 </div>
                                                 <div className="d-flex align-items-center justify-content-between mb-3">

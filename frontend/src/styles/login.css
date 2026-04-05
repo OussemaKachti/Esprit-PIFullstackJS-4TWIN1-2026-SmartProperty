@@ -258,6 +258,10 @@ input{
 
 }
 
+.password-input {
+  position: relative;
+}
+
 .email-input input,
 .password-input input {
   font-size: var(--font-input);
@@ -267,6 +271,43 @@ input{
   font-family: var(--font-form);
   font-weight: 400;
   height: 20px;
+}
+
+.password-input input {
+  padding-right: 32px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #111827;
+  background-color: #f3f4f6;
+}
+
+.password-toggle-btn:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 1px;
+}
+
+.password-toggle-icon {
+  width: 18px;
+  height: 18px;
 }
 
 

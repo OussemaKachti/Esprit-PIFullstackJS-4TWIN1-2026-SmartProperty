@@ -10,6 +10,9 @@ const leaseRoutes = require('./lease.routes');
 const rentPaymentRoutes = require('./rentPayment.routes');
 const feedbackRoutes = require('./feedback.routes');
 const saleRoutes = require('./sale.routes');
+const transactionRoutes = require('./transaction.routes');
+const pusherRoutes = require('./pusher.routes');
+const notificationRoutes = require('./notification.routes');
 
 
 // Mount routes
@@ -21,6 +24,9 @@ router.use('/leases', leaseRoutes);
 router.use('/rent-payments', rentPaymentRoutes);
 router.use('/feedbacks', feedbackRoutes);
 router.use('/sales', saleRoutes);
+router.use('/transactions', transactionRoutes);
+router.use('/pusher', pusherRoutes);
+router.use('/notifications', notificationRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 
 const LeaseStatus = {
-  ACTIVE: 'ACTIVE',
   PENDING: 'PENDING',
-  TERMINATED: 'TERMINATED',
+  CONFIRMED: 'CONFIRMED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
 };
 
 const leaseSchema = new mongoose.Schema(
@@ -38,6 +39,10 @@ const leaseSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(LeaseStatus),
       default: LeaseStatus.PENDING,
+    },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction',
     },
   },
   { timestamps: true }

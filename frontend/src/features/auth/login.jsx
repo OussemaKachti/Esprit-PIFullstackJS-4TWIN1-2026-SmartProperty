@@ -13,10 +13,10 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   // 2FA state
   const [show2FA, setShow2FA] = useState(false);
@@ -295,6 +295,7 @@ export default function Login() {
               }}
               disabled={isLoading}
             />
+
             <span
               onClick={() => setShowPassword((prev) => !prev)}
               style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 2 }}
@@ -311,6 +312,43 @@ export default function Login() {
                 </svg>
               )}
             </span>
+=======
+            <button
+              type="button"
+              className="password-toggle-btn"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              disabled={isLoading}
+            >
+              <svg
+                className="password-toggle-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {showPassword ? (
+                  <>
+                    <path
+                      d="M2 12C3.8 7.8 7.6 5 12 5C16.4 5 20.2 7.8 22 12C20.2 16.2 16.4 19 12 19C7.6 19 3.8 16.2 2 12Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                  </>
+                ) : (
+                  <>
+                    <path
+                      d="M2 12C3.8 7.8 7.6 5 12 5C16.4 5 20.2 7.8 22 12C20.2 16.2 16.4 19 12 19C7.6 19 3.8 16.2 2 12Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M4 20L20 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </>
+                )}
+              </svg>
+            </button>
           </div>
           {passwordError && <span className="input-error-text">{passwordError}</span>}
         </div>
