@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link } from "react-router";
 
 type User = {
   firstName?: string;
@@ -12,6 +11,7 @@ type User = {
 };
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const FRONTEND_SIGNIN_URL = import.meta.env.VITE_FRONTEND_URL || "http://localhost:3000";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -81,6 +81,29 @@ export default function UserDropdown() {
   function closeDropdown() {
     setIsOpen(false);
   }
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      if (token) {
+        await fetch(`${API_URL}/users/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch {
+      // Ignore network errors and clear local session anyway.
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      closeDropdown();
+      window.location.href = `${FRONTEND_SIGNIN_URL}/login`;
+    }
+  };
+
   return (
     <div className="relative">
       <button
@@ -154,7 +177,7 @@ export default function UserDropdown() {
               Edit profile
             </DropdownItem>
           </li>
-          <li>
+          {/* <li>
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
@@ -178,7 +201,7 @@ export default function UserDropdown() {
               </svg>
               Account settings
             </DropdownItem>
-          </li>
+          </li> */}
           <li>
             <DropdownItem
               onItemClick={closeDropdown}
@@ -205,8 +228,9 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
         </ul>
-        <Link
-          to="/signin"
+        <button
+          type="button"
+          onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
         >
           <svg
@@ -225,7 +249,7 @@ export default function UserDropdown() {
             />
           </svg>
           Sign out
-        </Link>
+        </button>
       </Dropdown>
     </div>
   );

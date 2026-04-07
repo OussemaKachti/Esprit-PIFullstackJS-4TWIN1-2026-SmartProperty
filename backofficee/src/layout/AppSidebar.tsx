@@ -10,7 +10,6 @@ import {
   ListIcon,
   PageIcon,
   PieChartIcon,
-  PlugInIcon,
   TableIcon,
   UserCircleIcon,
 } from "../icons";
@@ -403,21 +402,21 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`pt-4 pb-2 flex items-start shrink-0 ${
+        className={`pt-8 pb-6 flex items-center shrink-0 ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
         <Link to={userRole === "ADMIN" ? "/admin" : "/"} className="block w-full">
           <img
-            src="/images/logo/Smart.png"
+            src="/img/logo-removebg-preview.png"
             alt="Smart Property"
             className={`object-contain object-left ${
               isExpanded || isHovered || isMobileOpen
-                ? "w-full max-w-[250px] h-auto"
-                : "mx-auto w-[72px] h-auto max-h-12"
+                ? "w-full max-w-[310px] h-auto"
+                : "mx-auto w-[100px] h-auto max-h-16"
             }`}
-            width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
-            height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
+            width={isExpanded || isHovered || isMobileOpen ? 340 : 100}
+            height={isExpanded || isHovered || isMobileOpen ? 140 : 40}
           />
         </Link>
       </div>
@@ -458,44 +457,78 @@ const AppSidebar: React.FC = () => {
             )}
           </div>
         </nav>
-        {/* Bottom: user profile + logout — toujours en bas */}
-        {(isExpanded || isHovered || isMobileOpen) && (
-          <div className="flex-shrink-0 space-y-2 border-t border-gray-200 pb-6 pt-4 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={handleGoToFrontend}
-              className="menu-item group menu-item-inactive w-full text-left"
-            >
-              <span className="menu-item-icon-size menu-item-icon-inactive">
-                <GlobeIcon />
-              </span>
+        {/* Bottom: user profile + logout */}
+        <div className="flex-shrink-0 space-y-2 border-t border-gray-200 pb-6 pt-4 dark:border-gray-800">
+          {/* <button
+            type="button"
+            onClick={handleGoToFrontend}
+            title="Marketplace"
+            aria-label="Marketplace"
+            className={`menu-item group menu-item-inactive w-full text-left ${
+              !isExpanded && !isHovered && !isMobileOpen
+                ? "lg:justify-center"
+                : ""
+            }`}
+          >
+            <span className="menu-item-icon-size menu-item-icon-inactive">
+              <GlobeIcon />
+            </span>
+            {(isExpanded || isHovered || isMobileOpen) && (
               <span className="menu-item-text">Marketplace</span>
-            </button>
-            <Link
-              to="/profile"
-              className={`menu-item group ${isActive("/profile") ? "menu-item-active" : "menu-item-inactive"}`}
+            )}
+          </button> */}
+          <Link
+            to="/profile"
+            title="User Profile"
+            aria-label="User Profile"
+            className={`menu-item group ${
+              isActive("/profile") ? "menu-item-active" : "menu-item-inactive"
+            } ${!isExpanded && !isHovered && !isMobileOpen ? "lg:justify-center" : ""}`}
+          >
+            <span
+              className={`menu-item-icon-size ${
+                isActive("/profile")
+                  ? "menu-item-icon-active"
+                  : "menu-item-icon-inactive"
+              }`}
             >
-              <span
-                className={`menu-item-icon-size ${
-                  isActive("/profile") ? "menu-item-icon-active" : "menu-item-icon-inactive"
-                }`}
-              >
-                <UserCircleIcon />
-              </span>
+              <UserCircleIcon />
+            </span>
+            {(isExpanded || isHovered || isMobileOpen) && (
               <span className="menu-item-text">User Profile</span>
-            </Link>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="menu-item group menu-item-inactive w-full text-left text-error-600 hover:text-error-600"
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Logout"
+            aria-label="Logout"
+            className={`menu-item group menu-item-inactive w-full text-left text-error-600 hover:text-error-600 ${
+              !isExpanded && !isHovered && !isMobileOpen
+                ? "lg:justify-center"
+                : ""
+            }`}
+          >
+            <svg
+              className="fill-gray-500 group-hover:fill-gray-700 dark:group-hover:fill-gray-300"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <span className="menu-item-icon-size menu-item-icon-inactive">
-                <PlugInIcon />
-              </span>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M15.1007 19.247C14.6865 19.247 14.3507 18.9112 14.3507 18.497L14.3507 14.245H12.8507V18.497C12.8507 19.7396 13.8581 20.747 15.1007 20.747H18.5007C19.7434 20.747 20.7507 19.7396 20.7507 18.497L20.7507 5.49609C20.7507 4.25345 19.7433 3.24609 18.5007 3.24609H15.1007C13.8581 3.24609 12.8507 4.25345 12.8507 5.49609V9.74501L14.3507 9.74501V5.49609C14.3507 5.08188 14.6865 4.74609 15.1007 4.74609L18.5007 4.74609C18.9149 4.74609 19.2507 5.08188 19.2507 5.49609L19.2507 18.497C19.2507 18.9112 18.9149 19.247 18.5007 19.247H15.1007ZM3.25073 11.9984C3.25073 12.2144 3.34204 12.4091 3.48817 12.546L8.09483 17.1556C8.38763 17.4485 8.86251 17.4487 9.15549 17.1559C9.44848 16.8631 9.44863 16.3882 9.15583 16.0952L5.81116 12.7484L16.0007 12.7484C16.4149 12.7484 16.7507 12.4127 16.7507 11.9984C16.7507 11.5842 16.4149 11.2484 16.0007 11.2484L5.81528 11.2484L9.15585 7.90554C9.44864 7.61255 9.44847 7.13767 9.15547 6.84488C8.86248 6.55209 8.3876 6.55226 8.09481 6.84525L3.52309 11.4202C3.35673 11.5577 3.25073 11.7657 3.25073 11.9984Z"
+                fill=""
+              />
+            </svg>
+            {(isExpanded || isHovered || isMobileOpen) && (
               <span className="menu-item-text">Logout</span>
-            </button>
-          </div>
-        )}
+            )}
+          </button>
+        </div>
       </div>
     </aside>
   );

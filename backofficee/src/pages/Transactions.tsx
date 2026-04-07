@@ -164,6 +164,9 @@ export default function Transactions() {
   const [loading, setLoading] = useState(false);
   const [filterType, setFilterType] = useState<FilterType>("ALL");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL");
+  const [adminSearch, setAdminSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
 
@@ -189,6 +192,50 @@ export default function Transactions() {
   }, [transactions, currentUser, isParticipantView]);
 
   const displayList = isParticipantView ? participantTransactions : transactions;
+
+  const adminDisplayList = useMemo(() => {
+    if (isParticipantView) return displayList;
+    const q = adminSearch.trim().toLowerCase();
+    if (!q) return displayList;
+
+    return displayList.filter((txn) => {
+      const propertyLabel = `${txn.propertyId?.title || ""} ${txn.propertyId?.reference || ""} ${txn.propertyId?.city || ""}`.toLowerCase();
+      const ownerLabel = formatName(txn.ownerId).toLowerCase();
+      const partyLabel = formatName(txn.partyId).toLowerCase();
+      return propertyLabel.includes(q) || ownerLabel.includes(q) || partyLabel.includes(q);
+    });
+  }, [adminSearch, displayList, isParticipantView]);
+
+  const adminStats = useMemo(() => {
+    const total = adminDisplayList.length;
+    const pending = adminDisplayList.filter((t) => t.status === "PENDING").length;
+    const confirmed = adminDisplayList.filter((t) => t.status === "CONFIRMED").length;
+    const completed = adminDisplayList.filter((t) => t.status === "COMPLETED").length;
+    const cancelled = adminDisplayList.filter((t) => t.status === "CANCELLED").length;
+    const volume = adminDisplayList.reduce((acc, txn) => acc + Number(txn.amount || 0), 0);
+    return { total, pending, confirmed, completed, cancelled, volume };
+  }, [adminDisplayList]);
+
+  const totalItems = isParticipantView ? displayList.length : adminDisplayList.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const paginatedAdminList = useMemo(
+    () => adminDisplayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
+    [adminDisplayList, currentPage, itemsPerPage]
+  );
+  const paginatedParticipantList = useMemo(
+    () => displayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
+    [displayList, currentPage, itemsPerPage]
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, filterStatus, adminSearch, isParticipantView]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -356,11 +403,120 @@ export default function Transactions() {
 
       <div className="grid gap-4">
         {loading && <div className="text-sm text-gray-500">Loading...</div>}
-        {!loading && displayList.length === 0 && <EmptyState participant={isParticipantView} />}
+        {!loading && totalItems === 0 && <EmptyState participant={isParticipantView} />}
+
+        {!loading && !isParticipantView && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+              <AdminStatCard title="Total" value={adminStats.total} helper="Visible requests" accent="indigo" />
+              <AdminStatCard title="Pending" value={adminStats.pending} helper="Need review" accent="amber" />
+              <AdminStatCard title="Confirmed" value={adminStats.confirmed} helper="Accepted" accent="sky" />
+              <AdminStatCard title="Completed" value={adminStats.completed} helper="Closed" accent="emerald" />
+              <AdminStatCard title="Cancelled" value={adminStats.cancelled} helper="Rejected / withdrawn" accent="rose" />
+              <AdminStatCard title="Volume" value={formatAmount(adminStats.volume, "TND")} helper="Total amount" accent="violet" />
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                <div className="lg:col-span-8">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                    Quick search
+                  </label>
+                  <input
+                    type="text"
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    placeholder="Search by property, city, owner, buyer, or tenant"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="lg:col-span-4 flex items-center justify-end gap-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {adminDisplayList.length} transaction(s)
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setAdminSearch("")}>Clear</Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+              <div className="grid grid-cols-12 gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-300">
+                <div className="col-span-2">Type / Status</div>
+                <div className="col-span-3">Property</div>
+                <div className="col-span-3">Parties</div>
+                <div className="col-span-2">Amount</div>
+                <div className="col-span-2">Action</div>
+              </div>
+
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {paginatedAdminList.map((txn) => {
+                  const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
+                  const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
+                  const canEdit = canUpdateStatus(txn);
+                  const busy = statusBusyId === txn._id;
+                  const latestTimeline =
+                    txn.timeline && txn.timeline.length > 0 ? txn.timeline[txn.timeline.length - 1] : null;
+
+                  return (
+                    <div key={txn._id} className="grid grid-cols-12 gap-2 px-4 py-4 text-sm hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
+                      <div className="col-span-2 space-y-2">
+                        <Pill label={txn.type} className={`${typeCfg.bg} ${typeCfg.text}`} />
+                        <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
+                      </div>
+
+                      <div className="col-span-3">
+                        <p className="font-semibold text-gray-900 dark:text-white line-clamp-1">
+                          {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                          {txn.propertyId?.city || "No city"}
+                        </p>
+                        
+                      </div>
+
+                      <div className="col-span-3 space-y-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Owner / Agency</p>
+                        <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{formatName(txn.ownerId) || "—"}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Buyer / Tenant</p>
+                        <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{formatName(txn.partyId) || "—"}</p>
+                      </div>
+
+                      <div className="col-span-2">
+                        <p className="font-semibold text-gray-900 dark:text-white">{formatAmount(txn.amount, txn.currency)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Created {formatDate(txn.createdAt)}</p>
+                        {latestTimeline && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Updated {formatDate(latestTimeline.at)}</p>
+                        )}
+                      </div>
+
+                      <div className="col-span-2">
+                        <select
+                          value={txn.status}
+                          disabled={!canEdit || busy}
+                          onChange={(e) => updateStatus(txn, e.target.value as StatusTarget)}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-xs font-semibold text-gray-800 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        >
+                          {WORKFLOW_STEPS.map((step) => (
+                            <option key={step.value} value={step.value}>
+                              {step.title}
+                            </option>
+                          ))}
+                        </select>
+                        {!canEdit && (
+                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">View only</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
         {!loading &&
           isParticipantView &&
-          displayList.map((txn) => {
+          paginatedParticipantList.map((txn) => {
             const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
             const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
             const label = txn.type === "SALE" ? "Purchase" : "Rental";
@@ -439,151 +595,63 @@ export default function Transactions() {
             );
           })}
 
-        {!loading &&
-          !isParticipantView &&
-          displayList.map((txn) => {
-            const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
-            const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
-            const latestTimeline =
-              txn.timeline && txn.timeline.length > 0 ? txn.timeline[txn.timeline.length - 1] : null;
-            const canEdit = canUpdateStatus(txn);
-            const busy = statusBusyId === txn._id;
-
-            return (
-              <div
-                key={txn._id}
-                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Pill label={txn.type} className={`${typeCfg.bg} ${typeCfg.text}`} />
-                    <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
-                    </span>
-                    {txn.propertyId?.city && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{txn.propertyId.city}</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {formatAmount(txn.amount, txn.currency)}
-                    </span>
-                    {txn.type === "RENT" && (
-                      <span className="ml-2 text-xs">
-                        {formatDate(txn.startDate)} → {formatDate(txn.endDate)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div className="rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
-                    <p className="text-xs font-medium text-gray-500">Owner / Agency</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {formatName(txn.ownerId) || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
-                    <p className="text-xs font-medium text-gray-500">Buyer / Tenant</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {formatName(txn.partyId) || "—"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 dark:bg-white/5">
-                    Created {formatDate(txn.createdAt)}
-                  </span>
-                  {latestTimeline && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 dark:bg-white/5">
-                      Updated {formatDate(latestTimeline.at)}
-                    </span>
-                  )}
-                </div>
-
-                {txn.timeline && txn.timeline.length > 0 && (
-                  <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50/80 p-4 dark:border-gray-800 dark:bg-gray-800/40">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                      History
-                    </p>
-                    <div className="space-y-2">
-                      {txn.timeline
-                        .slice(Math.max(txn.timeline.length - 5, 0))
-                        .reverse()
-                        .map((entry, idx) => (
-                          <div
-                            key={`${entry.at}-${idx}`}
-                            className="flex flex-wrap items-start gap-2 text-xs text-gray-600 dark:text-gray-300"
-                          >
-                            <Pill
-                              label={entry.status}
-                              className="bg-white text-gray-800 dark:bg-gray-900 dark:text-white"
-                            />
-                            <span className="text-gray-500">{formatDate(entry.at)}</span>
-                            {entry.note && <span className="text-gray-500">— {entry.note}</span>}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-5 rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-4 dark:border-gray-700 dark:from-gray-800/40 dark:to-gray-900">
-                  <div className="mb-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Workflow
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Choose the next status for this request. Current step is highlighted.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    {WORKFLOW_STEPS.map((step) => {
-                      const isCurrent = txn.status === step.value;
-                      return (
-                        <button
-                          key={step.value}
-                          type="button"
-                          disabled={!canEdit || busy || isCurrent}
-                          onClick={() => updateStatus(txn, step.value)}
-                          className={`flex flex-col rounded-xl border px-3 py-3 text-left transition ${
-                            isCurrent ? step.currentClass : step.idleClass
-                          } ${
-                            !canEdit || busy
-                              ? "cursor-not-allowed opacity-50"
-                              : isCurrent
-                                ? "cursor-default"
-                                : "cursor-pointer"
-                          }`}
-                        >
-                          <span
-                            className={`text-sm font-bold ${
-                              isCurrent ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-100"
-                            }`}
-                          >
-                            {step.title}
-                            {isCurrent && (
-                              <span className="ml-1.5 text-xs font-semibold text-brand-600 dark:text-brand-400">
-                                · now
-                              </span>
-                            )}
-                          </span>
-                          <span className="mt-1 text-xs text-gray-600 dark:text-gray-400">{step.hint}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {!canEdit && (
-                    <p className="mt-3 text-xs text-amber-700 dark:text-amber-400/90">
-                      You can view this transaction but only the listing owner or an admin can change its status.
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
       </div>
+
+      {!loading && totalItems > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Showing <span className="font-semibold text-gray-900 dark:text-white">{(currentPage - 1) * itemsPerPage + 1}</span>-<span className="font-semibold text-gray-900 dark:text-white">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span> · Page <span className="font-semibold text-gray-900 dark:text-white">{currentPage}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-indigo-600 bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminStatCard({
+  title,
+  value,
+  helper,
+  accent,
+}: {
+  title: string;
+  value: string | number;
+  helper: string;
+  accent: "indigo" | "amber" | "sky" | "emerald" | "rose" | "violet";
+}) {
+  const accentClass: Record<typeof accent, string> = {
+    indigo: "from-indigo-500 to-indigo-600",
+    amber: "from-amber-500 to-amber-600",
+    sky: "from-sky-500 to-sky-600",
+    emerald: "from-emerald-500 to-emerald-600",
+    rose: "from-rose-500 to-rose-600",
+    violet: "from-violet-500 to-violet-600",
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accentClass[accent]}`} />
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</p>
+      <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helper}</p>
     </div>
   );
 }

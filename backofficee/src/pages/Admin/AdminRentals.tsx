@@ -2,10 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 
-const API_URL = import.meta.env.VITE_FASTAPI_URL || "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const resolveImageUrl = (relativeUrl?: string) => {
+  if (!relativeUrl) {
+    return "/img/default_property.jfif";
+  }
+
+  const normalized = relativeUrl.replace(/\\/g, "/");
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+
+  const baseApi = API_URL.replace(/\/api$/, "");
+  if (normalized.startsWith("/uploads/")) return `${baseApi}${normalized}`;
+  if (normalized.startsWith("uploads/")) return `${baseApi}/${normalized}`;
+  return `${baseApi}/${normalized}`;
+};
 
 export type Rental = {
-  id: number;
+  id: string;
   property_type: string;
   room_count: number;
   bathroom_count: number;
@@ -13,56 +27,93 @@ export type Rental = {
   price: number;
   city: string;
   region: string;
+  status?: string;
   price_per_m2?: number;
+  image?: string;
 };
 
 const PROPERTY_TYPES = [
-  "Appartements",
-  "Maisons et Villas",
-  "Locations de vacances",
-  "Bureaux",
-  "Terrains",
+  { value: "", label: "All types" },
+  { value: "APARTMENT", label: "Apartment" },
+  { value: "HOUSE", label: "House" },
+  { value: "VILLA", label: "Villa" },
+  { value: "STUDIO", label: "Studio" },
 ];
 
 export default function AdminRentals() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState({
     city: "",
     propertyType: "",
     minPrice: "",
     maxPrice: "",
   });
+  const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const stats = useMemo(() => {
     const total = rentals.length;
     const avgPrice = total
       ? Math.round(rentals.reduce((acc, r) => acc + (r.price || 0), 0) / total)
       : 0;
-    return { total, avgPrice };
+    const premium = rentals.filter((r) => (r.price || 0) >= avgPrice).length;
+    const withImages = rentals.filter((r) => Boolean(r.image)).length;
+    return { total, avgPrice, premium, withImages };
   }, [rentals]);
 
   useEffect(() => {
     fetchRentals();
-  }, []);
+  }, [page, appliedFilters]);
 
   const fetchRentals = async () => {
     setLoading(true);
     try {
-      const url = new URL(`${API_URL}/admin/properties`);
-      if (filters.city) url.searchParams.set("city", filters.city);
-      if (filters.propertyType) url.searchParams.set("property_type", filters.propertyType);
-      if (filters.minPrice) url.searchParams.set("min_price", filters.minPrice);
-      if (filters.maxPrice) url.searchParams.set("max_price", filters.maxPrice);
-      url.searchParams.set("limit", "200");
+      const url = new URL(`${API_URL}/properties`);
+      if (appliedFilters.city) url.searchParams.set("city", appliedFilters.city);
+      if (appliedFilters.propertyType) url.searchParams.set("type", appliedFilters.propertyType);
+      if (appliedFilters.minPrice) url.searchParams.set("minPrice", appliedFilters.minPrice);
+      if (appliedFilters.maxPrice) url.searchParams.set("maxPrice", appliedFilters.maxPrice);
+      url.searchParams.set("listingType", "FOR_RENT");
+      url.searchParams.set("status", "AVAILABLE");
+      url.searchParams.set("limit", "25");
+      url.searchParams.set("page", String(page));
 
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error("Failed to fetch properties");
       const data = await res.json();
-      setRentals(Array.isArray(data?.properties) ? data.properties : []);
+
+      const payload = data?.data || data;
+      const properties = Array.isArray(payload?.properties) ? payload.properties : [];
+      const rawTotal = Number(payload?.total || properties.length);
+      const rawTotalPages = Number(payload?.totalPages || 1);
+
+      const mapped: Rental[] = properties.map((p: any) => {
+        const priceNum = Number(p.price) || 0;
+        const sizeNum = Number(p.surface) || 0;
+        return {
+          id: p._id,
+          property_type: p.type || "Property",
+          room_count: Number(p.rooms) || 0,
+          bathroom_count: Number(p.bathrooms) || 0,
+          size: sizeNum,
+          price: priceNum,
+          city: p.city || "",
+          region: p.country || "",
+          status: p.status,
+          price_per_m2: sizeNum > 0 ? priceNum / sizeNum : undefined,
+          image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0]?.url : undefined,
+        };
+      });
+
+      setRentals(mapped);
+      setTotalCount(rawTotal);
+      setTotalPages(Math.max(1, rawTotalPages));
     } catch (error) {
       console.error(error);
-      toast.error("Unable to load rentals from FastAPI");
+      toast.error("Unable to load rentals from backend");
       setRentals([]);
     } finally {
       setLoading(false);
@@ -70,19 +121,33 @@ export default function AdminRentals() {
   };
 
   const resetFilters = () => {
-    setFilters({ city: "", propertyType: "", minPrice: "", maxPrice: "" });
+    const empty = { city: "", propertyType: "", minPrice: "", maxPrice: "" };
+    setFilters(empty);
+    setAppliedFilters(empty);
+    setPage(1);
+  };
+
+  const applyFilters = () => {
+    setPage(1);
+    setAppliedFilters(filters);
+  };
+
+  const formatTND = (value: number) => `${Math.round(value).toLocaleString("fr-TN")} TND`;
+
+  const goToPage = (nextPage: number) => {
+    setPage(Math.min(Math.max(1, nextPage), totalPages));
   };
 
   return (
     <>
-      <PageMeta title="Admin · Rentals" description="Browse rental listings from the dataset" />
+      <PageMeta title="Smart Property" description="Browse live rental listings from backend" />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rental Listings</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Dataset-powered view with city, price, and property type filters.
+              Live backend view of available rentals with city, price, and property type filters.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -94,18 +159,20 @@ export default function AdminRentals() {
               Reset
             </button>
             <button
-              onClick={fetchRentals}
+              onClick={applyFilters}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               disabled={loading}
             >
-              {loading ? "Loading..." : "Apply"}
+              {loading ? "Loading..." : "Apply filters"}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total listings" value={stats.total} helper="from dataset" />
-          <StatCard title="Average price" value={`${stats.avgPrice.toLocaleString("fr-TN")} TND`} helper="approx." />
+          <StatCard title="Visible rentals" value={stats.total} helper={`page ${page} of ${totalPages}`} tone="indigo" />
+          <StatCard title="Total catalogue" value={totalCount || stats.total} helper="all matching rentals" tone="slate" />
+          <StatCard title="Average price" value={formatTND(stats.avgPrice)} helper="current page" tone="emerald" />
+          <StatCard title="With images" value={stats.withImages} helper={`${stats.premium} premium priced`} tone="amber" />
         </div>
 
         <div className="bg-white dark:bg-gray-dark rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
@@ -127,10 +194,9 @@ export default function AdminRentals() {
                 onChange={(e) => setFilters({ ...filters, propertyType: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">All types</option>
                 {PROPERTY_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                  <option key={type.value || "all"} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>
@@ -185,15 +251,29 @@ export default function AdminRentals() {
                   rentals.map((rental) => (
                     <tr key={rental.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
                       <td className="px-3 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                        {rental.property_type}
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{rental.region}</p>
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <img
+                              src={resolveImageUrl(rental.image)}
+                              alt={rental.property_type}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "/img/default_property.jfif";
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <div>{rental.property_type}</div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{rental.status || "AVAILABLE"}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-800 dark:text-gray-100">
                         {rental.city}
                         <p className="text-xs text-gray-500 dark:text-gray-400">{rental.region}</p>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900 dark:text-white font-semibold">
-                        {Math.round(rental.price).toLocaleString("fr-TN")} TND
+                        {formatTND(rental.price)}
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {rental.price_per_m2 ? `${rental.price_per_m2.toFixed(2)} TND / m²` : "–"}
                         </p>
@@ -211,16 +291,48 @@ export default function AdminRentals() {
             </table>
           )}
         </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Showing page <span className="font-semibold text-gray-900 dark:text-white">{page}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => goToPage(page - 1)}
+              disabled={page <= 1 || loading}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= totalPages || loading}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-indigo-600 bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );
 }
 
-function StatCard({ title, value, helper }: { title: string; value: number | string; helper: string }) {
+function StatCard({ title, value, helper, tone = "indigo" }: { title: string; value: number | string; helper: string; tone?: "indigo" | "slate" | "emerald" | "amber" }) {
+  const toneClass: Record<"indigo" | "slate" | "emerald" | "amber", string> = {
+    indigo: "from-indigo-500 to-indigo-600",
+    slate: "from-slate-500 to-slate-600",
+    emerald: "from-emerald-500 to-emerald-600",
+    amber: "from-amber-500 to-amber-600",
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-dark rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
-      <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
-      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{value}</p>
+    <div className="relative overflow-hidden bg-white dark:bg-gray-dark rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-sm transition-shadow">
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${toneClass[tone]}`} />
+      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2 tracking-tight">{value}</p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{helper}</p>
     </div>
   );
