@@ -136,7 +136,7 @@
     "visit_us": "Besuchen Sie Uns",
     "address": "367 Hillcrest Lane, Irvine, Kalifornien, Vereinigte Staaten",
     "follow_us": "Folgen Sie Uns",
-    "copyright": "Copyright © {year}. Alle Rechte Vorbehalten, Dreams Estate"
+    "copyright": "Copyright © {{year}}. Alle Rechte Vorbehalten, Dreams Estate"
   },
   "search": {
     "title": "Suchen Sie Nach Ihrer Immobilie",

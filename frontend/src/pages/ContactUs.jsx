@@ -95,7 +95,8 @@ const ContactUs = () => {
 								<div className="card-body p-4">
 									<h4 className="mb-2">{t('contactPage.salesTeamTitle')}</h4>
 									<p className="mb-3">{t('contactPage.salesTeamDesc')}</p>
-									<p className="fw-semibold mb-0">{t('contactPage.tollFree')}</p>
+									<p className="fw-semibold mb-1">{t('contactPage.tollFree')}</p>
+									<p className="text-muted mb-0">{t('contactPage.responseTime')}</p>
 								</div>
 							</div>
 							<div className="card border-0 mb-0">

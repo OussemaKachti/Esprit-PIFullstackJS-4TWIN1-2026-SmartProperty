@@ -137,7 +137,7 @@
     "visit_us": "Visit Us",
     "address": "367 Hillcrest Lane, Irvine, California, United States",
     "follow_us": "Follow Us",
-    "copyright": "Copyright © {year}. All Rights Reserved, Dreams Estate"
+    "copyright": "Copyright © {{year}}. All Rights Reserved, Dreams Estate"
   },
   "search": {
     "title": "Find your property",
@@ -418,9 +418,10 @@
   },
   "contactPage": {
     "title": "Contact Us",
-    "salesTeamTitle": "Talk to Member of Sales Team",
-    "salesTeamDesc": "Connect with our expert sales team for personalized guidance, property insights, and support tailored to your real estate needs.",
-    "tollFree": "Toll Free : 888 634-5891",
+    "salesTeamTitle": "Talk to Our Sales Team",
+    "salesTeamDesc": "Get personalized guidance, exclusive property insights, and expert support tailored to your real estate goals. Our team is ready to help you find your next move.",
+    "tollFree": "Email us at: rh@smartproperty.com",
+    "responseTime": "We typically respond within 24 hours.",
     "productSupportTitle": "Product & Account Support",
     "productSupportDesc": "Get dedicated help with your account, features, and services through our expert Product & Account Support team today.",
     "goToFaq": "Go to FAQ",

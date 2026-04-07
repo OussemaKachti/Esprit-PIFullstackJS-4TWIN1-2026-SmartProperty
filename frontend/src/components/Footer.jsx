@@ -75,34 +75,34 @@ const Footer = () => {
               </div>
             </div>
 
-            <div className="col-xl-7">
-              <div className="row justify-content-center gy-4">
-                <div className="col-md-4 col-sm-6">
-                  <div className="contact-info">
+            <div className="col-xl-8">
+              <div className="row justify-content-center align-items-stretch gy-4">
+                <div className="col-md-4 col-sm-6 d-flex">
+                  <div className="contact-info w-100 h-100 d-flex align-items-start gap-3">
                     <span className="bg-primary"><i className="material-icons-outlined">headphones</i></span>
-                    <div>
-                      <p>{t('footer.call_us')}</p>
-                      <h6>+216 70 000 000</h6>
+                    <div className="flex-grow-1">
+                      <p className="mb-1">{t('footer.call_us')}</p>
+                      <h6 className="mb-0">+216 70 000 000</h6>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-md-4 col-sm-6">
-                  <div className="contact-info">
+                <div className="col-md-4 col-sm-6 d-flex">
+                  <div className="contact-info w-100 h-100 d-flex align-items-start gap-3">
                     <span className="bg-secondary"><i className="material-icons-outlined">message</i></span>
-                    <div>
-                      <p>{t('footer.email_us')}</p>
-                      <h6>contact@smartproperty.tn</h6>
+                    <div className="flex-grow-1">
+                      <p className="mb-1">{t('footer.email_us')}</p>
+                      <h6 className="mb-0">contact@smartproperty.tn</h6>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-md-4 col-sm-6">
-                  <div className="contact-info">
+                <div className="col-md-4 col-sm-6 d-flex">
+                  <div className="contact-info w-100 h-100 d-flex align-items-start gap-3">
                     <span className="bg-danger"><i className="material-icons-outlined">phone</i></span>
-                    <div>
-                      {/* <p>{t('footer.visit_us')}</p> */}
-                      <h6>Pôle Technologique, 1, 2 rue André Ampère, Cebalat 2083</h6>
+                    <div className="flex-grow-1">
+                      <p className="mb-1">{t('footer.visit_us')}</p>
+                      <h6 className="mb-0 lh-base">Pôle Technologique, 1, 2 rue André Ampère, Cebalat 2083</h6>
                     </div>
                   </div>
                 </div>
@@ -114,7 +114,7 @@ const Footer = () => {
 
       <div className="footer-bottom">
         <div className="text-center">
-          <p className="copy-right">{t('footer.copyright', { year: new Date().getFullYear().toString() })}</p>
+          <p className="copy-right">{t('footer.copyright', { year: '2026' })}</p>
         </div>
       </div>
     </footer>
