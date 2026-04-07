@@ -109,26 +109,22 @@ const AdminSidebar: React.FC = () => {
       <div className="no-scrollbar flex flex-col overflow-y-auto">
         {/* Logo */}
         <div
-          className={`flex items-center justify-center px-6 mb-8 transition-all duration-300 ${
+          className={`flex items-center justify-center px-6 mb-10 transition-all duration-300 ${
             isExpanded || isHovered ? "justify-start" : "justify-center"
           }`}
         >
-          <Link to="/admin" className="flex items-center gap-3">
-            {(isExpanded || isHovered) ? (
-              <img 
-                src="/images/logo/Smart.png" 
-                alt="SmartProperty" 
-                className="h-10 w-auto object-contain"
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
-                <img 
-                  src="/images/logo/Smart.png" 
-                  alt="SmartProperty" 
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            )}
+          <Link to="/admin" className="block w-full">
+            <img 
+              src="/img/logo-removebg-preview.png" 
+              alt="Smart Property" 
+              className={`object-contain ${
+                isExpanded || isHovered
+                  ? "w-full max-w-[280px] h-auto"
+                  : "mx-auto w-[90px] h-auto max-h-14"
+              }`}
+              width={isExpanded || isHovered ? 280 : 90}
+              height={isExpanded || isHovered ? 110 : 36}
+            />
           </Link>
         </div>
 

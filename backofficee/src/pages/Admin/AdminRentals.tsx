@@ -140,7 +140,7 @@ export default function AdminRentals() {
 
   return (
     <>
-      <PageMeta title="Admin · Rentals" description="Browse live rental listings from backend" />
+      <PageMeta title="Smart Property" description="Browse live rental listings from backend" />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">

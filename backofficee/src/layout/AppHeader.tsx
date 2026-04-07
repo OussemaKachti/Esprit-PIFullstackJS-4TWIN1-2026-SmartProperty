@@ -85,7 +85,7 @@ const AppHeader: React.FC = () => {
 
           <Link to="/" className="lg:hidden flex items-center">
             <img
-              src="./images/logo/Smart.png"
+              src="./images/logo/logo-removebg-preview.png"
               alt="Smart Property"
               className="h-8 w-auto max-w-[140px] object-contain"
             />
