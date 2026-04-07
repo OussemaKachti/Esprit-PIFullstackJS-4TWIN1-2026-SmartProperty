@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from dotenv import load_dotenv
@@ -23,6 +23,9 @@ from config import TOP_N_MATCHES
 from src.matching_engine import find_top_matches
 from src.credit_scorer import evaluate_candidate
 from src.notifier import send_match_email
+from ultralytics import YOLO
+import io
+from PIL import Image
 
 # Load .env so notifier picks up credentials when present
 load_dotenv()
@@ -32,6 +35,23 @@ app = FastAPI(
     version="1.0.0",
     description="Endpoints for property matching, credit scoring, and email notification.",
 )
+
+# Load YOLOv8 model once at startup
+MODEL_PATH = Path(__file__).parent / "yolov8n.pt"
+model = YOLO(str(MODEL_PATH))
+
+# Feature mapping: detected object -> inferred room
+FEATURE_ROOM_MAP = {
+    "bed": "bedroom",
+    "couch": "living_room",
+    "tv": "living_room",
+    "microwave": "kitchen",
+    "oven": "kitchen",
+    "sink": "kitchen",
+    "toilet": "bathroom",
+    "refrigerator": "kitchen",
+    "dining table": "dining_room",
+}
 
 # CORS: allow local frontends
 app.add_middleware(
@@ -269,6 +289,40 @@ def notify_candidate(request: NotifyRequest):
         raise HTTPException(status_code=500, detail="Email not sent. Check credentials or candidate profile.")
 
     return {"sent": True}
+
+
+@app.post("/detect/")
+async def detect_objects(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image.")
+
+    try:
+        contents = await file.read()
+        img = Image.open(io.BytesIO(contents))
+        results = model(img)
+
+        detected_objects = set()
+        room_votes = {}  # room -> count of supporting features
+
+        for r in results:
+            for cls in r.boxes.cls:
+                label = model.names[int(cls)]
+                detected_objects.add(label)
+                if label in FEATURE_ROOM_MAP:
+                    room = FEATURE_ROOM_MAP[label]
+                    room_votes[room] = room_votes.get(room, 0) + 1
+
+        # Pick the room with the most supporting features
+        inferred_room = max(room_votes, key=room_votes.get) if room_votes else None
+
+        return {
+            "filename": file.filename,
+            "detected_objects": list(detected_objects),
+            "inferred_room": inferred_room,   
+            "room_votes": room_votes,         # op
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {exc}") from exc
 
 
 @app.get("/health")
