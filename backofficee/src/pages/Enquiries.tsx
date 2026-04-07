@@ -8,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 type EnquiryNotification = {
   id: string;
   type: "ENQUIRY" | "RENT_REQUEST";
+  isRead?: boolean;
   propertyId: string;
   propertyTitle: string;
   authorName: string;
@@ -72,9 +73,19 @@ export default function Enquiries() {
 
         if (isMounted) {
           setNotifications(list);
+
+          // Viewing the notifications page marks all owner notifications as read.
+          await fetch(`${API_URL}/notifications/owner/read`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({}),
+          });
         }
       } catch (error) {
-        console.error("Failed to fetch enquiries:", error);
+        console.error("Failed to fetch notifications:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -108,15 +119,15 @@ export default function Enquiries() {
 
   return (
     <>
-      <PageMeta title="Enquiries | Smart Property" description="Property owner enquiries" />
-      <PageBreadcrumb pageTitle="Enquiries" />
+      <PageMeta title="Notifications | Smart Property" description="Property owner notifications" />
+      <PageBreadcrumb pageTitle="Notifications" />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <section className="lg:col-span-5 xl:col-span-4">
           <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
             <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
               <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
-                All Enquiries
+                All Notifications
               </h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {notifications.length} total
@@ -126,11 +137,11 @@ export default function Enquiries() {
             <ul className="max-h-[620px] overflow-y-auto custom-scrollbar">
               {loading ? (
                 <li className="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                  Loading enquiries...
+                  Loading notifications...
                 </li>
               ) : notifications.length === 0 ? (
                 <li className="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                  No enquiries yet.
+                  No notifications yet.
                 </li>
               ) : (
                 notifications.map((item) => {
@@ -174,7 +185,7 @@ export default function Enquiries() {
             {!selectedEnquiry ? (
               <div className="flex h-full min-h-[360px] items-center justify-center text-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Select an enquiry from the list to view details.
+                  Select a notification from the list to view details.
                 </p>
               </div>
             ) : (
@@ -189,7 +200,7 @@ export default function Enquiries() {
                     </p>
                   </div>
                   <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                    {selectedEnquiry.type === "RENT_REQUEST" ? "Rent Request" : "Enquiry"}
+                    {selectedEnquiry.type === "RENT_REQUEST" ? "Rent Request" : "Notification"}
                   </span>
                 </div>
 

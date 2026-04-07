@@ -8,7 +8,6 @@ import {
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  PageIcon,
   PieChartIcon,
   TableIcon,
   UserCircleIcon,
@@ -57,12 +56,10 @@ const regularNavItems: NavItem[] = [
     path: "/performance",
   },
   {
-    icon: <PageIcon />,
-    name: "Documents",
-    path: "/documents",
+    icon: <CalenderIcon />,
+    name: "Notifications",
+    path: "/enquiries",
   },
- 
-  
   {
     icon: <CalenderIcon />,
     name: "Calendar",
@@ -93,13 +90,13 @@ const buyerTenantNavItems: NavItem[] = [
   },
   {
     icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
+    name: "Notifications",
+    path: "/enquiries",
   },
   {
-    icon: <PageIcon />,
-    name: "Documents",
-    path: "/documents",
+    icon: <CalenderIcon />,
+    name: "Calendar",
+    path: "/calendar",
   },
 ];
 
@@ -121,11 +118,6 @@ const adminNavItems: NavItem[] = [
     path: "/admin/rentals",
   },
   {
-    icon: <CalenderIcon />,
-    name: "Notifications",
-    path: "/admin/notifications",
-  },
-  {
     icon: <UserCircleIcon />,
     name: "Users",
     path: "/admin/users",
@@ -137,7 +129,7 @@ const adminNavItems: NavItem[] = [
   },
 ];
 
-// No \"Others\" menu for now – we keep the config so the component works,
+// No "Others" menu for now – we keep the config so the component works,
 // but with an empty list.
 const othersItems: NavItem[] = [];
 
@@ -459,24 +451,26 @@ const AppSidebar: React.FC = () => {
         </nav>
         {/* Bottom: user profile + logout */}
         <div className="flex-shrink-0 space-y-2 border-t border-gray-200 pb-6 pt-4 dark:border-gray-800">
-          { <button
-            type="button"
-            onClick={handleGoToFrontend}
-            title="Marketplace"
-            aria-label="Marketplace"
-            className={`menu-item group menu-item-inactive w-full text-left ${
-              !isExpanded && !isHovered && !isMobileOpen
-                ? "lg:justify-center"
-                : ""
-            }`}
-          >
-            <span className="menu-item-icon-size menu-item-icon-inactive">
-              <GlobeIcon />
-            </span>
-            {(isExpanded || isHovered || isMobileOpen) && (
-              <span className="menu-item-text">Marketplace</span>
-            )}
-          </button> }
+          {userRole !== "ADMIN" && (
+            <button
+              type="button"
+              onClick={handleGoToFrontend}
+              title="Marketplace"
+              aria-label="Marketplace"
+              className={`menu-item group menu-item-inactive w-full text-left ${
+                !isExpanded && !isHovered && !isMobileOpen
+                  ? "lg:justify-center"
+                  : ""
+              }`}
+            >
+              <span className="menu-item-icon-size menu-item-icon-inactive">
+                <GlobeIcon />
+              </span>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <span className="menu-item-text">Marketplace</span>
+              )}
+            </button>
+          )}
           <Link
             to="/profile"
             title="User Profile"

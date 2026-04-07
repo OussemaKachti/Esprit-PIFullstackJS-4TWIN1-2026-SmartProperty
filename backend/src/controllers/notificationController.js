@@ -96,6 +96,7 @@ exports.getOwnerNotifications = async (req, res, next) => {
       return {
         id: String(item._id),
         type: item.type,
+        isRead: Boolean(item.isRead),
         propertyId: property._id ? String(property._id) : String(item.propertyId),
         propertyTitle: property.title || property.reference || 'your property',
         authorName: item.senderName,
@@ -108,6 +109,32 @@ exports.getOwnerNotifications = async (req, res, next) => {
     return res.status(200).json(
       apiResponse(true, 'Notifications retrieved successfully', {
         notifications: mapped,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// @desc    Mark owner notifications as read
+// @route   PATCH /api/notifications/owner/read
+// @access  Private
+exports.markOwnerNotificationsRead = async (req, res, next) => {
+  try {
+    const { notificationIds } = req.body || {};
+
+    const filter = { recipientId: req.user._id, isRead: false };
+    if (Array.isArray(notificationIds) && notificationIds.length > 0) {
+      filter._id = { $in: notificationIds };
+    }
+
+    const result = await Notification.updateMany(filter, {
+      $set: { isRead: true },
+    });
+
+    return res.status(200).json(
+      apiResponse(true, 'Notifications marked as read', {
+        updated: result.modifiedCount || 0,
       })
     );
   } catch (error) {

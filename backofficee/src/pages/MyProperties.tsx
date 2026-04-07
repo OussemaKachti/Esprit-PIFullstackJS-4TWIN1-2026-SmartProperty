@@ -220,9 +220,12 @@ export default function MyProperties() {
   const formattedPrice = (price: number | undefined | null) => {
     if (price == null) return "—";
     try {
-      return `${new Intl.NumberFormat("fr-TN").format(price)} TND`;
+      const formatted = new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 0,
+      }).format(price);
+      return `${formatted.replace(/,/g, " ")} TND`;
     } catch {
-      return `${price} TND`;
+      return `${String(price).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} TND`;
     }
   };
 

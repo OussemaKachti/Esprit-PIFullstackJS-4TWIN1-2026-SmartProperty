@@ -8,6 +8,16 @@ import UserDropdown from "../components/header/UserDropdown";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
+  const [userRole] = useState(() => {
+    try {
+      const rawUser = localStorage.getItem("user");
+      if (!rawUser) return "";
+      const parsedUser = JSON.parse(rawUser);
+      return String(parsedUser.role || "").toUpperCase();
+    } catch {
+      return "";
+    }
+  });
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
@@ -155,7 +165,7 @@ const AppHeader: React.FC = () => {
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
-            {/* <NotificationDropdown /> */}
+            {userRole !== "ADMIN" && <NotificationDropdown />}
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}
