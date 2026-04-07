@@ -81,7 +81,8 @@ exports.getAllProperties = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -166,7 +167,8 @@ exports.getMyProperties = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -248,7 +250,8 @@ exports.getPropertiesByUser = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -330,6 +333,70 @@ exports.createProperty = async (req, res, next) => {
       }));
 
       console.log(`✅ Uploaded ${req.files.length} image(s)`);
+
+      // Attempt to auto-detect features using FastAPI /detect/ endpoint (all images)
+      try {
+        const fs = require('fs');
+        // Only process regular images (skip panoramas)
+        const imagesToDetect = req.files.filter(f => !f.fieldname || !f.fieldname.startsWith('pano'));
+
+        if (imagesToDetect.length > 0) {
+          console.log(`🔍 Calling FastAPI detect endpoint for ${imagesToDetect.length} image(s)...`);
+
+          // Run detection on every image in parallel
+          const detectionResults = await Promise.allSettled(
+            imagesToDetect.map(async (imgFile) => {
+              const buffer = fs.readFileSync(imgFile.path);
+              const mimeType = imgFile.mimetype || 'image/jpeg';
+
+              const blob = new Blob([buffer], { type: mimeType });
+              const formData = new FormData();
+              formData.append('file', blob, imgFile.originalname);
+
+              const detectRes = await fetch('http://127.0.0.1:8000/detect/', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (!detectRes.ok) {
+                console.warn(`⚠️ Detect API returned ${detectRes.status} for ${imgFile.originalname}`);
+                return null;
+              }
+              return detectRes.json();
+            })
+          );
+
+          // Aggregate results across all images
+          const allObjectsSet = new Set();
+          const aggregatedRoomVotes = {};
+
+          for (const result of detectionResults) {
+            if (result.status === 'fulfilled' && result.value) {
+              const data = result.value;
+              (data.detected_objects || []).forEach(obj => allObjectsSet.add(obj));
+              for (const [room, votes] of Object.entries(data.room_votes || {})) {
+                aggregatedRoomVotes[room] = (aggregatedRoomVotes[room] || 0) + votes;
+              }
+            }
+          }
+
+          const allObjects = Array.from(allObjectsSet);
+          const inferredRoom = Object.keys(aggregatedRoomVotes).length > 0
+            ? Object.entries(aggregatedRoomVotes).sort((a, b) => b[1] - a[1])[0][0]
+            : null;
+
+          if (allObjects.length > 0 || inferredRoom) {
+            propertyData.detectedFeatures = {
+              objects: allObjects,
+              inferredRoom,
+              roomVotes: aggregatedRoomVotes,
+            };
+            console.log(`✅ AI Detection complete — objects: [${allObjects.join(', ')}], inferred room: ${inferredRoom}`);
+          }
+        }
+      } catch (detectErr) {
+        console.warn('⚠️ Error calling auto-detect API:', detectErr.message);
+      }
     }
 
     const property = await Property.create(propertyData);

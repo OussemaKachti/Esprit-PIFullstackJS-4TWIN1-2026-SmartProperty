@@ -54,11 +54,11 @@ const BuyDetails = () => {
 
 	// Virtual Staging states
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
-  // Virtual Staging states
-  const [showStagingModal, setShowStagingModal] = useState(false);
-  const [isStagingLoading, setIsStagingLoading] = useState(false);
-  const [stagedResultUrl, setStagedResultUrl] = useState(null);
-  const [selectedStyle, setSelectedStyle] = useState('modern');
+	// Virtual Staging states
+	const [showStagingModal, setShowStagingModal] = useState(false);
+	const [isStagingLoading, setIsStagingLoading] = useState(false);
+	const [stagedResultUrl, setStagedResultUrl] = useState(null);
+	const [selectedStyle, setSelectedStyle] = useState('modern');
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
 	const [blockingSale, setBlockingSale] = useState(null);
 	const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -104,10 +104,10 @@ const BuyDetails = () => {
 				}),
 			});
 
-		toast.success('Your purchase request was sent to the property owner.');
+			toast.success('Your purchase request was sent to the property owner.');
 			setEnquiryForm({
-			offerPrice: '',
-			note: 'I would like to proceed with a purchase request.',
+				offerPrice: '',
+				note: 'I would like to proceed with a purchase request.',
 			});
 			setBlockingSale({ status: 'PENDING' });
 		} catch (submitError) {
@@ -317,11 +317,11 @@ const BuyDetails = () => {
 			: !descriptionNeedsTruncate || descriptionExpanded
 				? descriptionText
 				: (() => {
-						let cut = descriptionText.slice(0, DESCRIPTION_PREVIEW_MAX);
-						const lastSpace = cut.lastIndexOf(' ');
-						if (lastSpace > DESCRIPTION_PREVIEW_MAX * 0.55) cut = cut.slice(0, lastSpace);
-						return `${cut.trim()}…`;
-				  })();
+					let cut = descriptionText.slice(0, DESCRIPTION_PREVIEW_MAX);
+					const lastSpace = cut.lastIndexOf(' ');
+					if (lastSpace > DESCRIPTION_PREVIEW_MAX * 0.55) cut = cut.slice(0, lastSpace);
+					return `${cut.trim()}…`;
+				})();
 
 	const displayAddressForMap = useMemo(() => {
 		if (!property) return '';
@@ -363,7 +363,7 @@ const BuyDetails = () => {
 					return;
 				}
 			}
-				setMapPosition([...DEFAULT_MAP_CENTER]);
+			setMapPosition([...DEFAULT_MAP_CENTER]);
 			return;
 		}
 
@@ -704,11 +704,10 @@ const BuyDetails = () => {
 															<div className="col-3" key={`thumb-${index}-${url}`}>
 																<button
 																	type="button"
-																	className={`w-100 p-0 border rounded-3 overflow-hidden bg-light ${
-																		index === safeHeroIndex
+																	className={`w-100 p-0 border rounded-3 overflow-hidden bg-light ${index === safeHeroIndex
 																			? 'border-primary border-2 shadow-sm'
 																			: 'border'
-																	}`}
+																		}`}
 																	style={{ maxHeight: 88 }}
 																	onClick={() => setHeroImageIndex(index)}
 																	aria-label={`Show photo ${index + 1}`}
@@ -761,6 +760,51 @@ const BuyDetails = () => {
 													</div>
 												</div>
 
+
+												{property?.detectedFeatures && Object.keys(property.detectedFeatures).length > 0 && (
+													<div className="accordion-item border-primary" style={{ borderWidth: '2px', backgroundColor: '#f8f9fa' }}>
+														<div className="accordion-header">
+															<button className="accordion-button text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-ai-buy" aria-expanded="true">
+																<i className="material-icons-outlined me-2">auto_awesome</i> AI Auto-Detected Features
+															</button>
+														</div>
+														<div id="accordion-ai-buy" className="accordion-collapse collapse show">
+															<div className="accordion-body">
+																<div className="row g-3">
+																	<div className="col-12">
+																		<p className="mb-2 d-flex align-items-start gap-2">
+																			<i className="material-icons-outlined text-success mt-1">category</i>
+																			<span>
+																				<strong>Detected Objects: </strong>
+																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : 'None'}</span>
+																			</span>
+																		</p>
+																	</div>
+																	{property.detectedFeatures.roomVotes && Object.keys(property.detectedFeatures.roomVotes).length > 0 && (
+																		<div className="col-12">
+																			<p className="mb-2 fw-semibold d-flex align-items-center gap-2">
+																				<i className="material-icons-outlined text-success">sensor_window</i>
+																				Detected Rooms:
+																			</p>
+																			<div className="d-flex flex-wrap gap-2">
+																				{Object.entries(property.detectedFeatures.roomVotes)
+																					.sort((a, b) => b[1] - a[1])
+																					.map(([room, votes]) => (
+																						<span key={room} className={`badge rounded-pill px-3 py-2 ${room === property.detectedFeatures.inferredRoom ? 'bg-primary' : 'bg-secondary'}`} style={{ fontSize: '13px' }}>
+																							<i className="material-icons-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>meeting_room</i>
+																							{room.replace(/_/g, ' ')}
+																							<span className="ms-1 opacity-75 small">({votes})</span>
+																						</span>
+																					))}
+																			</div>
+																			<small className="text-muted mt-1 d-block">Primary room in blue · count = supporting objects</small>
+																		</div>
+																	)}
+																</div>
+															</div>
+														</div>
+													</div>
+												)}
 
 												<div className="accordion-item">
 													<div className="accordion-header">
@@ -1008,125 +1052,92 @@ const BuyDetails = () => {
 														<div className="accordion-body">
 															<ReviewSection propertyId={id} currentUser={currentUser} />
 															{false && (<>
-															<div className="sub-head d-flex align-items-center justify-content-between mb-4">
-																<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
-																<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
-															</div>
+																<div className="sub-head d-flex align-items-center justify-content-between mb-4">
+																	<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
+																	<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
+																</div>
 
 
-															<div className="row mb-3  gap-xl-0 gap-lg-0 gap-3">
-																<div className="col-lg-6 d-flex">
-																	<div className="p-4 bg-light rounded text-center d-flex align-items-center justify-content-center flex-column flex-fill">
-																		<h6 className="fs-16 fw-medium mb-3"> Customer Reviews & Ratings </h6>
-																		<div className="mb-3">
-																			<h2 className="mb-1"> 4.9 <span className="fs-16 text-body fw-normal"> / 5.0</span> </h2>
-																			<div className="d-flex align-items-center justify-content-center gap-1">
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
+																<div className="row mb-3  gap-xl-0 gap-lg-0 gap-3">
+																	<div className="col-lg-6 d-flex">
+																		<div className="p-4 bg-light rounded text-center d-flex align-items-center justify-content-center flex-column flex-fill">
+																			<h6 className="fs-16 fw-medium mb-3"> Customer Reviews & Ratings </h6>
+																			<div className="mb-3">
+																				<h2 className="mb-1"> 4.9 <span className="fs-16 text-body fw-normal"> / 5.0</span> </h2>
+																				<div className="d-flex align-items-center justify-content-center gap-1">
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																				</div>
+																			</div>
+																			<p className="mb-0 fs-14"> Based On 2,459 Reviews </p>
+																		</div>
+																	</div>
+
+																	<div className="col-lg-6 d-flex">
+																		<div className="card shadow-none review-progress flex-fill mb-0">
+																			<div className="card-body ">
+
+																				<div className="progress-lvl mb-2">
+																					<p>5 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning five-star" role="progressbar" aria-label="Success example" style={{ width: '95%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>247</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>4 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '65%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>145</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>3 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '55%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>600</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>2 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '45%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>560</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-0">
+																					<p className="mb-0">1 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '25%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p className="mb-0">400</p>
+																				</div>
 																			</div>
 																		</div>
-																		<p className="mb-0 fs-14"> Based On 2,459 Reviews </p>
 																	</div>
 																</div>
 
-																<div className="col-lg-6 d-flex">
-																	<div className="card shadow-none review-progress flex-fill mb-0">
-																		<div className="card-body ">
-
-																			<div className="progress-lvl mb-2">
-																				<p>5 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning five-star" role="progressbar" aria-label="Success example" style={{ width: '95%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>247</p>
-																			</div>
 
 
-																			<div className="progress-lvl mb-2">
-																				<p>4 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '65%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>145</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-2">
-																				<p>3 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '55%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>600</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-2">
-																				<p>2 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '45%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>560</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-0">
-																				<p className="mb-0">1 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '25%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p className="mb-0">400</p>
-																			</div>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-
-
-															<div className="card shadow-none review-items">
-																<div className="card-body">
-																	<div className="mb-2 d-flex align-center gap-2 flex-wrap">
-																		<div className="avatar avatar-lg">
-																			<img src="/assets/img/users/user-06.jpg" alt="" className="img-fluid rounded-circle" />
-																		</div>
-																		<div className="">
-																			<h6 className="fs-16 fw-medium mb-1">Joseph Massey</h6>
-																			<div className="d-flex align-items-center gap-2 flex-wrap">
-																				<p className="fs-14 mb-0 text-body"> 2 days ago </p>
-																				<i className="fa-solid fa-circle text-body"></i>
-																				<div className="d-flex align-items-center justify-content-center">
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star_half</i>
-																				</div>
-																				<p className="fs-14 mb-0 text-body">Unforgettable Stay!</p>
-																			</div>
-																		</div>
-																	</div>
-																	<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
-																	<div className="d-flex align-items-center gap-3">
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 21</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 50</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 45</p>
-																	</div>
-																</div>
-															</div>
-
-
-															<div className="card shadow-none review-items">
-																<div className="card-body">
-																	<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
-																		<div className="d-flex align-center gap-2 flex-wrap">
+																<div className="card shadow-none review-items">
+																	<div className="card-body">
+																		<div className="mb-2 d-flex align-center gap-2 flex-wrap">
 																			<div className="avatar avatar-lg">
-																				<img src="/assets/img/users/user-08.jpg" alt="" className="img-fluid rounded-circle" />
+																				<img src="/assets/img/users/user-06.jpg" alt="" className="img-fluid rounded-circle" />
 																			</div>
-																			<div className="flex-wrap">
-																				<h6 className="fs-16 fw-medium mb-1">Jeffrey Jones</h6>
+																			<div className="">
+																				<h6 className="fs-16 fw-medium mb-1">Joseph Massey</h6>
 																				<div className="d-flex align-items-center gap-2 flex-wrap">
 																					<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																					<i className="fa-solid fa-circle text-body"></i>
@@ -1137,32 +1148,29 @@ const BuyDetails = () => {
 																						<i className="material-icons-outlined text-warning">star</i>
 																						<i className="material-icons-outlined text-warning">star_half</i>
 																					</div>
-																					<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																					<p className="fs-14 mb-0 text-body">Unforgettable Stay!</p>
 																				</div>
 																			</div>
 																		</div>
-																		<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
-																	</div>
-																	<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
-																	<div className="d-flex align-items-center gap-3">
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 41</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 70</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 95</p>
+																		<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
+																		<div className="d-flex align-items-center gap-3">
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 21</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 50</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 45</p>
+																		</div>
 																	</div>
 																</div>
-															</div>
 
 
-															<div className="card shadow-none review-items mb-4">
-																<div className="card-body">
-																	<div className="mb-4">
+																<div className="card shadow-none review-items">
+																	<div className="card-body">
 																		<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
 																			<div className="d-flex align-center gap-2 flex-wrap">
 																				<div className="avatar avatar-lg">
-																					<img src="/assets/img/users/user-07.jpg" alt="" className="img-fluid rounded-circle" />
+																					<img src="/assets/img/users/user-08.jpg" alt="" className="img-fluid rounded-circle" />
 																				</div>
-																				<div className="">
-																					<h6 className="fs-16 fw-medium mb-1">Jessie Alves</h6>
+																				<div className="flex-wrap">
+																					<h6 className="fs-16 fw-medium mb-1">Jeffrey Jones</h6>
 																					<div className="d-flex align-items-center gap-2 flex-wrap">
 																						<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																						<i className="fa-solid fa-circle text-body"></i>
@@ -1171,32 +1179,34 @@ const BuyDetails = () => {
 																							<i className="material-icons-outlined text-warning">star</i>
 																							<i className="material-icons-outlined text-warning">star</i>
 																							<i className="material-icons-outlined text-warning">star</i>
-																							<i className="material-icons-outlined text-warning">star</i>
+																							<i className="material-icons-outlined text-warning">star_half</i>
 																						</div>
-																						<p className="fs-14 mb-0 text-body">Convenient Location!</p>
+																						<p className="fs-14 mb-0 text-body">Excellent service!</p>
 																					</div>
 																				</div>
 																			</div>
 																			<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
 																		</div>
-																		<p className="mb-2 text-body"> The location was perfect for exploring the city, and the views from our room were breathtaking. It made our trip so much more enjoyable to stay somewhere central and scenic. </p>
+																		<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
 																		<div className="d-flex align-items-center gap-3">
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 11</p>
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 60</p>
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 35</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 41</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 70</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 95</p>
 																		</div>
 																	</div>
+																</div>
 
 
-																	<div className="card shadow-none review-items bg-light border-0 mb-0 ms-lg-5 ms-md-5 ms-3">
-																		<div className="card-body">
+																<div className="card shadow-none review-items mb-4">
+																	<div className="card-body">
+																		<div className="mb-4">
 																			<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
 																				<div className="d-flex align-center gap-2 flex-wrap">
 																					<div className="avatar avatar-lg">
-																						<img src="/assets/img/users/user-01.jpg" alt="" className="img-fluid rounded-circle" />
+																						<img src="/assets/img/users/user-07.jpg" alt="" className="img-fluid rounded-circle" />
 																					</div>
 																					<div className="">
-																						<h6 className="fs-16 fw-medium mb-1">Adrian Hendriques</h6>
+																						<h6 className="fs-16 fw-medium mb-1">Jessie Alves</h6>
 																						<div className="d-flex align-items-center gap-2 flex-wrap">
 																							<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																							<i className="fa-solid fa-circle text-body"></i>
@@ -1207,26 +1217,60 @@ const BuyDetails = () => {
 																								<i className="material-icons-outlined text-warning">star</i>
 																								<i className="material-icons-outlined text-warning">star</i>
 																							</div>
-																							<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																							<p className="fs-14 mb-0 text-body">Convenient Location!</p>
 																						</div>
 																					</div>
 																				</div>
 																				<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
 																			</div>
-																			<p className="mb-2 text-body"> Thank you so much for your kind words! We're thrilled to hear that our location and views made your trip even more enjoyable.  We hope to welcome you back soon for another scenic stay! </p>
+																			<p className="mb-2 text-body"> The location was perfect for exploring the city, and the views from our room were breathtaking. It made our trip so much more enjoyable to stay somewhere central and scenic. </p>
 																			<div className="d-flex align-items-center gap-3">
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 10</p>
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 21</p>
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 46</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 11</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 60</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 35</p>
+																			</div>
+																		</div>
+
+
+																		<div className="card shadow-none review-items bg-light border-0 mb-0 ms-lg-5 ms-md-5 ms-3">
+																			<div className="card-body">
+																				<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
+																					<div className="d-flex align-center gap-2 flex-wrap">
+																						<div className="avatar avatar-lg">
+																							<img src="/assets/img/users/user-01.jpg" alt="" className="img-fluid rounded-circle" />
+																						</div>
+																						<div className="">
+																							<h6 className="fs-16 fw-medium mb-1">Adrian Hendriques</h6>
+																							<div className="d-flex align-items-center gap-2 flex-wrap">
+																								<p className="fs-14 mb-0 text-body"> 2 days ago </p>
+																								<i className="fa-solid fa-circle text-body"></i>
+																								<div className="d-flex align-items-center justify-content-center">
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																								</div>
+																								<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																							</div>
+																						</div>
+																					</div>
+																					<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
+																				</div>
+																				<p className="mb-2 text-body"> Thank you so much for your kind words! We're thrilled to hear that our location and views made your trip even more enjoyable.  We hope to welcome you back soon for another scenic stay! </p>
+																				<div className="d-flex align-items-center gap-3">
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 10</p>
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 21</p>
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 46</p>
+																				</div>
 																			</div>
 																		</div>
 																	</div>
 																</div>
-															</div>
 
-															<div className="text-center">
-																<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
-															</div>
+																<div className="text-center">
+																	<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
+																</div>
 															</>)}
 
 														</div>
@@ -1275,44 +1319,44 @@ const BuyDetails = () => {
 																</div>
 															</div>
 
-																				{blockingSale && (
-																					<div className="alert alert-warning py-2 small mb-3" role="alert">
-																						You already have an active purchase request for this property (status:{' '}
-																						<strong>{blockingSale.status}</strong>). You can submit a new offer only after it is
-																						cancelled or completed.
-																					</div>
-																				)}
-																				<div className="mb-3">
-																					<label className="form-label fw-semibold"> Offer Price </label>
-																					<input
-																						type="number"
-																						className="form-control"
-																						placeholder="Your offer"
-																						value={enquiryForm.offerPrice}
-																						onChange={handleEnquiryFieldChange('offerPrice')}
-																						disabled={Boolean(blockingSale)}
-																					/>
-																				</div>
-																				<div className="mb-4">
-																					<label className="form-label fw-semibold"> Note to Owner (optional) </label>
-																					<textarea
-																						className="form-control"
-																						rows="3"
-																						value={enquiryForm.note}
-																						onChange={handleEnquiryFieldChange('note')}
-																						disabled={Boolean(blockingSale)}
-																					></textarea>
-																				</div>
-																				<div>
-																					<button
-																						type="button"
-																						className="btn btn-dark w-100 py-2 fs-14"
-																						onClick={handleEnquirySubmit}
-																						disabled={isEnquirySubmitting || Boolean(blockingSale)}
-																					>
-																						{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
-																					</button>
-																				</div>
+															{blockingSale && (
+																<div className="alert alert-warning py-2 small mb-3" role="alert">
+																	You already have an active purchase request for this property (status:{' '}
+																	<strong>{blockingSale.status}</strong>). You can submit a new offer only after it is
+																	cancelled or completed.
+																</div>
+															)}
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> Offer Price </label>
+																<input
+																	type="number"
+																	className="form-control"
+																	placeholder="Your offer"
+																	value={enquiryForm.offerPrice}
+																	onChange={handleEnquiryFieldChange('offerPrice')}
+																	disabled={Boolean(blockingSale)}
+																/>
+															</div>
+															<div className="mb-4">
+																<label className="form-label fw-semibold"> Note to Owner (optional) </label>
+																<textarea
+																	className="form-control"
+																	rows="3"
+																	value={enquiryForm.note}
+																	onChange={handleEnquiryFieldChange('note')}
+																	disabled={Boolean(blockingSale)}
+																></textarea>
+															</div>
+															<div>
+																<button
+																	type="button"
+																	className="btn btn-dark w-100 py-2 fs-14"
+																	onClick={handleEnquirySubmit}
+																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
+																>
+																	{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
+																</button>
+															</div>
 														</div>
 														<div className="tab-pane fade" id="listing-2" role="tabpanel">
 															<div className="card bg-light border-0 rounded shadow-none custom-btn">
@@ -1328,70 +1372,70 @@ const BuyDetails = () => {
 																	</div>
 																</div>
 															</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Name </label>
-												<input
-													type="text"
-													className="form-control"
-													placeholder="Your Name"
-													value={enquiryForm.name}
-													onChange={handleEnquiryFieldChange('name')}
-												/>
-											</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Email </label>
-												<input
-													type="email"
-													className="form-control"
-													placeholder="Your Email"
-													value={enquiryForm.email}
-													onChange={handleEnquiryFieldChange('email')}
-												/>
-											</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Phone </label>
-												<input
-													type="text"
-													className="form-control"
-													placeholder="Your Phone Number"
-													value={enquiryForm.phone}
-													onChange={handleEnquiryFieldChange('phone')}
-												/>
-											</div>
-											<div className="mb-4">
-												<label className="form-label fw-semibold"> Description </label>
-												<textarea
-													className="form-control"
-													rows="3"
-													value={enquiryForm.description}
-													onChange={handleEnquiryFieldChange('description')}
-												></textarea>
-											</div>
-											<div>
-												<button
-													type="button"
-													className="btn btn-dark w-100 py-2 fs-14"
-													onClick={handleEnquirySubmit}
-													disabled={isEnquirySubmitting || Boolean(blockingSale)}
-												>
-													{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
-												</button>
-											</div>
-										</div>
-										<div className="tab-pane fade" id="listing-2" role="tabpanel">
-											<div className="card bg-light border-0 rounded shadow-none custom-btn">
-												<div className="card-body">
-													<div  className="d-flex align-items-center gap-2">
-														<div className="avatar avatar-lg">
-															<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> Name </label>
+																<input
+																	type="text"
+																	className="form-control"
+																	placeholder="Your Name"
+																	value={enquiryForm.name}
+																	onChange={handleEnquiryFieldChange('name')}
+																/>
+															</div>
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> Email </label>
+																<input
+																	type="email"
+																	className="form-control"
+																	placeholder="Your Email"
+																	value={enquiryForm.email}
+																	onChange={handleEnquiryFieldChange('email')}
+																/>
+															</div>
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> Phone </label>
+																<input
+																	type="text"
+																	className="form-control"
+																	placeholder="Your Phone Number"
+																	value={enquiryForm.phone}
+																	onChange={handleEnquiryFieldChange('phone')}
+																/>
+															</div>
+															<div className="mb-4">
+																<label className="form-label fw-semibold"> Description </label>
+																<textarea
+																	className="form-control"
+																	rows="3"
+																	value={enquiryForm.description}
+																	onChange={handleEnquiryFieldChange('description')}
+																></textarea>
+															</div>
+															<div>
+																<button
+																	type="button"
+																	className="btn btn-dark w-100 py-2 fs-14"
+																	onClick={handleEnquirySubmit}
+																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
+																>
+																	{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
+																</button>
+															</div>
 														</div>
-														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-															<p className="mb-0 fs-14 text-body"> Company Agent </p>
-														</div>
-													</div>
-												</div>
-											</div> 
+														<div className="tab-pane fade" id="listing-2" role="tabpanel">
+															<div className="card bg-light border-0 rounded shadow-none custom-btn">
+																<div className="card-body">
+																	<div className="d-flex align-items-center gap-2">
+																		<div className="avatar avatar-lg">
+																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+																		</div>
+																		<div>
+																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
+																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																		</div>
+																	</div>
+																</div>
+															</div>
 
 															<div className="select-date-item">
 																<h6 className="fs-16 fw-semibold mb-2"> Select Day </h6>
