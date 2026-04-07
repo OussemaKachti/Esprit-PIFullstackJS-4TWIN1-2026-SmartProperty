@@ -519,7 +519,7 @@ exports.updatePropertyPanoramas = async (req, res, next) => {
 
 // @desc    Delete property
 // @route   DELETE /api/properties/:id
-// @access  Private (Admin)
+// @access  Private (Admin/Agency/Owner)
 exports.deleteProperty = async (req, res, next) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -527,6 +527,14 @@ exports.deleteProperty = async (req, res, next) => {
     if (!property) {
       return res.status(404).json(
         apiResponse(false, 'Property not found')
+      );
+    }
+
+    const userRole = String(req.user?.role || '').toUpperCase();
+    const isOwner = String(property.createdBy || '') === String(req.user?._id || '');
+    if (userRole !== 'ADMIN' && !isOwner) {
+      return res.status(403).json(
+        apiResponse(false, 'Forbidden: insufficient permissions')
       );
     }
 
