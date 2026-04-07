@@ -2,6 +2,17 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const AboutUs = () => {
+	const tunisianPartners = [
+		{ name: 'Amen Bank', logo: '/assets/img/about/amen bank.jfif' },
+		{ name: 'Attijari Bank Tunisie', logo: '/assets/img/about/attijari.jfif' },
+		{ name: 'BIAT', logo: '/assets/img/about/biaattttt.png' },
+		{ name: 'Ooredoo Tunisie', logo: '/assets/img/about/ooredoo.png' },
+		{ name: 'Orange Tunisie', logo: '/assets/img/about/orange.png' },
+		{ name: 'Sotetel', logo: '/assets/img/about/sotetel.png' },
+		{ name: 'Telnet Holding', logo: '/assets/img/about/telnet.jfif' },
+		{ name: 'Vermeg', logo: '/assets/img/about/vermeg.png' },
+	];
+
   useEffect(() => {
     // Force enable scrolling
     const enableScrolling = () => {
@@ -91,8 +102,8 @@ const AboutUs = () => {
 						<div className="col-lg-12 mx-auto">
 								
 							<div className="about-us-item-01">
-								<h2>We Connect Building With People</h2>
-								<p className="mb-0">We believe in more than just property transactionsÃ¢â‚¬â€we believe in creating meaningful connections. "We Connect Building With People" represents our mission to bridge the gap between spaces and those who bring them to life. Whether you're searching for a dream home, an office space, or a real estate investment, our platform makes it easier to discover the right fit. With trusted listings, expert support, and seamless technology, we help you turn structures into stories, and buildings into belonging.</p>
+								<h2>Smart Property, Built For Tunisia</h2>
+								<p className="mb-0">Smart Property is a modern real estate solution designed to simplify how people buy, rent, and manage property. We connect property owners, agencies, and clients on one trusted platform with verified listings, clear information, and a smooth digital experience. From first search to final decision, our mission is to make real estate in Tunisia faster, safer, and more transparent.</p>
 							</div>
 
 							
@@ -116,8 +127,8 @@ const AboutUs = () => {
 										<div className="d-flex align-items-center">
 											<img src="/assets/img/about-us/listing.svg" alt="" className="img-fluid me-3" />
 											<div>
-												<h4 className="mb-1">50K</h4>
-												<p className="mb-0">Listings Added</p>
+												<h4 className="mb-1">18K+</h4>
+												<p className="mb-0">Verified Listings</p>
 											</div>
 										</div>
 									</div>
@@ -127,8 +138,8 @@ const AboutUs = () => {
 										<div className="d-flex align-items-center">
 											<img src="/assets/img/about-us/agents.svg" alt="" className="img-fluid me-3" />
 											<div>
-												<h4 className="mb-1">3000+</h4>
-												<p className="mb-0">Agents Listed</p>
+												<h4 className="mb-1">1.2K+</h4>
+												<p className="mb-0">Agencies & Agents</p>
 											</div>
 										</div>
 									</div>
@@ -138,8 +149,8 @@ const AboutUs = () => {
 										<div className="d-flex align-items-center">
 											<img src="/assets/img/about-us/sales.svg" alt="" className="img-fluid me-3" />
 											<div>
-												<h4 className="mb-1">2000+</h4>
-												<p className="mb-0">Sales Completed</p>
+												<h4 className="mb-1">9.5K+</h4>
+												<p className="mb-0">Deals Facilitated</p>
 											</div>
 										</div>
 									</div>
@@ -149,8 +160,8 @@ const AboutUs = () => {
 										<div className="d-flex align-items-center">
 											<img src="/assets/img/about-us/users.svg" alt="" className="img-fluid me-3" />
 											<div>
-												<h4 className="mb-1">5000+</h4>
-												<p className="mb-0">Users Joined</p>
+												<h4 className="mb-1">65K+</h4>
+												<p className="mb-0">Monthly Visitors</p>
 											</div>
 										</div>
 									</div>
@@ -174,14 +185,14 @@ const AboutUs = () => {
 					<div className="row align-items-center row-gap-4 position-relative z-2">
 						<div className="col-xl-5">
 							<div className="me-3">
-								<h2 className="mb-4">Ready to Book a Place?</h2>
+								<h2 className="mb-4">Ready to Find, List, or Invest?</h2>
 								<img src="/assets/img/about-us/about-us-04.jpg" alt="" className="img-fluid rounded w-100" />
 							</div>
 						</div>
 						<div className="col-xl-7">
-							<h5 className="mb-4">Discover your dream property and secure your ideal space effortlessly with our seamless, fast, and hassle-free booking process today.</h5>
-							<p>Explore a wide range of verified property listings tailored to match your lifestyle and budget. Whether you're seeking a luxurious apartment in the city or a cozy family home in the suburbs, our platform provides a seamless and reliable booking experience. Benefit from secure transactions, instant booking confirmations. With user-friendly features and trustworthy listings, Dreams Estate makes it easy to find and secure your perfect space.</p>
-							<p className="mb-0">With Dreams Estate, you gain access to premium properties and a user-friendly platform designed for convenience. Filter options help narrow your search by location, price, and amenities. Stay informed with real-time updates and notifications. Whether renting or buying, experience confidence and ease throughout your property booking journey with us.</p>
+							<h5 className="mb-4">Smart tools, real market data, and trusted support to help you move faster with confidence.</h5>
+							<p>Our platform is designed for every profile in the property journey: buyers, tenants, owners, agencies, and investors. With advanced filters, map-based discovery, high-quality media, and transparent pricing, Smart Property helps users compare opportunities quickly and make better decisions.</p>
+							<p className="mb-0">For professionals, Smart Property offers powerful backoffice features to publish listings, manage leads, monitor performance, and streamline operations in one place. We combine local market understanding with modern technology to deliver a reliable real estate experience across Tunisia.</p>
 						</div>
 					</div>
 					
@@ -196,54 +207,29 @@ const AboutUs = () => {
 					<div className="row">
 						<div className="col-lg-11 mx-auto">
 							<div className="text-center about-us-item-05">
-								<h2 className="mb-3">Hundreds of Partners Around  the World</h2>
-								<p className="mb-0">Every day, we build trust through  communication, transparency, and results.</p>
+								<h2 className="mb-3">Trusted Tunisian Partners</h2>
+								<p className="mb-0">Our ecosystem is powered by trusted Tunisian technology and finance partners.</p>
 							</div>
 
 							
 							<div className="row align-items-center row-gap-4">
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/livechat.svg" alt="" className="img-fluid" />
+								{tunisianPartners.map((partner) => (
+									<div className="col-md-6 col-lg-3 d-flex" key={partner.name}>
+										<div className="card border-0 bg-light shadow-none flex-fill mb-0">
+											<div className="card-body text-center py-4 px-3">
+												<div className="d-flex align-items-center justify-content-center mb-3" style={{ height: '72px' }}>
+													<img
+														src={partner.logo}
+														alt={partner.name}
+														className="img-fluid"
+														style={{ maxHeight: '72px', objectFit: 'contain' }}
+													/>
+												</div>
+												<h6 className="mb-0">{partner.name}</h6>
+											</div>
 										</div>
 									</div>
-								</div>
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/headspace.svg" alt="" className="img-fluid" />
-										</div>
-									</div>
-								</div>
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/payehere.svg" alt="" className="img-fluid" />
-										</div>
-									</div>
-								</div>
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/scapic.svg" alt="" className="img-fluid" />
-										</div>
-									</div>
-								</div>
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/livechat.svg" alt="" className="img-fluid" />
-										</div>
-									</div>
-								</div>
-								<div className="col-md-6 col-lg-2 d-flex">
-									<div className="card border-0 bg-light shadow-none flex-fill mb-0">
-										<div className="card-body text-center">
-											<img src="/assets/img/about-us/memberstack.svg" alt="" className="img-fluid" />
-										</div>
-									</div>
-								</div>
+								))}
 							</div>
 							
 
@@ -263,7 +249,7 @@ const AboutUs = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">
