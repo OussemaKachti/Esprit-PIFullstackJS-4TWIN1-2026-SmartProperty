@@ -6,6 +6,10 @@ const { UserRole } = require('../models/User');
 
 router.post('/register', userController.register);
 
+// Public: list agencies (OWNER / AGENCY role users)
+router.get('/agencies', userController.getAgencies);
+router.get('/agency-filters', userController.getAgencyFilters);
+
 router.post('/login', userController.login);
 
 router.post('/forgot-password', userController.forgotPassword);
