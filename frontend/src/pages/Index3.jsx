@@ -1,5 +1,6 @@
-﻿import React, { useEffect } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getFeaturedProperties, getImageUrl } from '../services/propertyService';
 
 const Index3 = () => {
   useEffect(() => {
@@ -41,9 +42,19 @@ const Index3 = () => {
         });
       }
     };
-    const timer = setTimeout(initializePlugins, 300);
-    return () => clearTimeout(timer);
+		const timer = setTimeout(initializePlugins, 300);
+		return () => clearTimeout(timer);
   }, []);
+
+	const [featuredProperties, setFeaturedProperties] = useState([]);
+	const [featuredLoading, setFeaturedLoading] = useState(true);
+
+	useEffect(() => {
+		getFeaturedProperties(6)
+			.then(data => setFeaturedProperties(data || []))
+			.catch(err => console.error('Error fetching featured properties:', err))
+			.finally(() => setFeaturedLoading(false));
+	}, []);
 
   return (
     <div style={{ 
@@ -76,40 +87,52 @@ const Index3 = () => {
 
 						<div className="col-xxl-4 col-lg-5">
 							<div className="banner-right-content">
-								<div className="banner-card">
-									<div className="me-3 card-img">
-										<Link to="/buy-details"><img src="/assets/img/home-3/banner-01.png" className="rounded" alt="" /></Link>
+								{featuredProperties && featuredProperties.length > 0 ? (
+									<div className="d-flex flex-column gap-3">
+										{featuredProperties.slice(0, 3).map((prop) => (
+											<div className="banner-card position-relative" key={prop._id}>
+												<div className="me-3 card-img">
+													<Link to={prop.listingType === 'FOR_RENT' ? `/rent-details/${prop._id}` : `/buy-details/${prop._id}`}>
+														<img src={prop.images && prop.images.length > 0 ? getImageUrl(prop.images[0]) : '/assets/img/home-3/banner-01.png'} className="rounded" alt={prop.title} />
+													</Link>
+												</div>
+												<div>
+													<h6 className="text-white"><Link to={prop.listingType === 'FOR_RENT' ? `/rent-details/${prop._id}` : `/buy-details/${prop._id}`} className="text-white">{prop.title}</Link></h6>
+													<span className="text-white mb-1 d-block">{prop.city}, {prop.country}</span>
+													<p className="rate-info mb-3"><span>${prop.price?.toLocaleString?.() ?? prop.price}</span> {prop.listingType === 'FOR_RENT' ? '/ Month' : ''}</p>
+													<div className="d-flex align-items-center card-info">
+														<p className="me-3"><span className="me-2"><i className="material-icons-outlined">bed</i></span>{prop.rooms || 0} Bedroom</p>
+														<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>{prop.bathrooms || 0} Bath</p>
+													</div>
+												</div>
+												{prop.avgRating > 0 && (
+													<div className="position-absolute bottom-0 end-0 m-3 bg-white px-2 py-1 rounded shadow-sm d-flex align-items-center">
+														<i className="material-icons text-warning fs-18">star</i>
+														<span className="ms-1 fw-bold">{prop.avgRating.toFixed(1)}</span>
+														<span className="ms-1 text-muted fs-12">({prop.reviewCount || 0})</span>
+													</div>
+												)}
+											</div>
+										))}
 									</div>
-									<div>
-										<h6 className="text-white"><Link to="/buy-details" className="text-white">Beautiful Condo Room</Link></h6>
-										<span className="text-white mb-1 d-block">Willow Crest Apartment</span>
-										<p className="rate-info mb-3"><span>$400 </span> / Month</p>
-										<div className="d-flex align-items-center card-info">
-											<p className="me-3"><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bedroom</p>
-											<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>2 Bath</p>
+								) : (
+									<div className="banner-card">
+										<div className="me-3 card-img">
+											<Link to="/buy-details"><img src="/assets/img/home-3/banner-01.png" className="rounded" alt="" /></Link>
+										</div>
+										<div>
+											<h6 className="text-white"><Link to="/buy-details" className="text-white">Beautiful Condo Room</Link></h6>
+											<span className="text-white mb-1 d-block">Willow Crest Apartment</span>
+											<p className="rate-info mb-3"><span>$400 </span> / Month</p>
+											<div className="d-flex align-items-center card-info">
+												<p className="me-3"><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bedroom</p>
+												<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>2 Bath</p>
+											</div>
 										</div>
 									</div>
-								</div>
-								<div className="banner-users d-flex align-items-center flex-wrap gap-2 mb-3">
-									<div className="avatar-list-stacked"> 
-										<span className="avatar avatar-md rounded-circle border-0"><img src="/assets/img/users/user-01.jpg" className="img-fluid rounded-circle" alt="Img" /></span>
-										<span className="avatar avatar-md rounded-circle border-0"><img src="/assets/img/users/user-02.jpg" className="img-fluid rounded-circle" alt="Img" /></span>
-										<span className="avatar avatar-md rounded-circle border-0"><img src="/assets/img/users/user-03.jpg" className="img-fluid rounded-circle" alt="Img" /></span>
-										<span className="avatar avatar-md rounded-circle border-0"><img src="/assets/img/users/user-04.jpg" className="img-fluid rounded-circle" alt="Img" /></span>
-									</div>
-									<div>
-										<div className="d-flex align-items-center mb-1">
-											<h6 className="mb-0 me-2 text-white fw-semibold fs-14">Ratings 5.0</h6>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-										</div>
-										<p className="mb-0 text-white fs-13">Trusted By Client around the World</p>
-									</div>
-								</div>
+								)}
 							</div>
+						</div>
 						</div> 
 
 					</div>

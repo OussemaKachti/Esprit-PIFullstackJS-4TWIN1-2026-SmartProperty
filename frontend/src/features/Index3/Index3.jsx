@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import LocalizedLink from '../../components/LocalizedLink';
 import { getUserData, canListPropertyFromHomepage } from '../../utils/auth';
 import { localizeRoute } from '../../routes/routeConfig';
+import { getFeaturedProperties, getImageUrl } from '../../services/propertyService';
 import './index3-banner.css';
 
 const Index3 = () => {
@@ -150,6 +151,16 @@ const Index3 = () => {
       clearTimeout(timer);
       clearTimeout(scrollCheckTimer);
     };
+  }, []);
+
+  const [featuredProperties, setFeaturedProperties] = useState([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+
+  useEffect(() => {
+    getFeaturedProperties(4)
+      .then(data => setFeaturedProperties(data || []))
+      .catch(err => console.error('Error fetching featured properties:', err))
+      .finally(() => setFeaturedLoading(false));
   }, []);
 
   const PROPERTY_TYPES = [
@@ -749,207 +760,67 @@ const Index3 = () => {
 
 					
 					<div className="row justify-content-center gy-4">
-
-						<div className="col-xl-3 col-lg-4 col-md-6 d-flex">
-							<div className="rent-property-item flex-fill">
-								<div className="property-img">
-									<Link to="/rent-details">
-										<img src="/assets/img/home-3/property/property-09.jpg" alt="" />
-									</Link>
-									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
-									</div>
-									<div className="d-flex align-items-center token-top">
-										<span className="token bg-danger me-1">
-											<i className="material-icons-outlined text-warning">generating_tokens</i>
-										</span>
-										<span className="token bg-orange">
-											<i className="material-icons-outlined text-warning">loyalty</i>
-										</span>
-									</div>
-									<span className="avatar avatar-md rounded-circle border-0 avatar-bottom">
-										<img src="/assets/img/users/user-01.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-									</span>
-								</div>
-								<div className="rental-content">
-									<div className="d-flex align-items-center justify-content-between mb-3">
-										<span className="badge bg-secondary">Condo</span>
-										<span className="date">Listed on : 25 May 2025</span>
-									</div>
-									<div className="mb-3">
-										<h5><Link to="/rent-details">Beautiful Condo Room</Link></h5>
-										<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>25, Willow Crest Apartment</p>
-									</div>
-									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info mb-0"><span>$400 </span> / Month</p>
-										<div className="d-flex align-items-center gap-1">
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											5.0
-										</div>
-									</div>
-									<div className="card-info d-flex align-items-center justify-content-between">
-										<p><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bed</p>
-										<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>2 Bath</p>
-										<p><span className="me-2"><i className="material-icons-outlined">straighten</i></span>350 Sq Ft</p>
-									</div>
+						{featuredLoading ? (
+							<div className="col-12 text-center">
+								<div className="spinner-border" role="status">
+									<span className="visually-hidden">Loading...</span>
 								</div>
 							</div>
-						</div> 
-
-						<div className="col-xl-3 col-lg-4 col-md-6 d-flex">
-							<div className="rent-property-item flex-fill">
-								<div className="property-img">
-									<Link to="/rent-details">
-										<img src="/assets/img/home-3/property/property-10.jpg" alt="" />
-									</Link>
-									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
-									</div>
-									<div className="d-flex align-items-center token-top">
-										<span className="token bg-danger me-1">
-											<i className="material-icons-outlined text-warning">generating_tokens</i>
-										</span>
-										<span className="token bg-orange">
-											<i className="material-icons-outlined text-warning">loyalty</i>
-										</span>
-									</div>
-									<span className="avatar avatar-md rounded-circle border-0 avatar-bottom">
-										<img src="/assets/img/users/user-02.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-									</span>
-								</div>
-								<div className="rental-content">
-									<div className="d-flex align-items-center justify-content-between mb-3">
-										<span className="badge bg-pink">Suite</span>
-										<span className="date">Listed on : 18 Apr 2025</span>
-									</div>
-									<div className="mb-3">
-										<h5><Link to="/rent-details">Serenity Condo Suite</Link></h5>
-										<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>17, Grove Towers, New York</p>
-									</div>
-									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info mb-0"><span>$500 </span> / Month</p>
-										<div className="d-flex align-items-center gap-1">
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											5.0
+						) : featuredProperties && featuredProperties.length > 0 ? (
+							featuredProperties.map((prop) => (
+								<div key={prop._id} className="col-xl-3 col-lg-4 col-md-6 d-flex">
+									<div className="rent-property-item flex-fill">
+										<div className="property-img">
+											<Link to={prop.listingType === 'FOR_RENT' ? `/rent-details/${prop._id}` : `/buy-details/${prop._id}`}>
+												<img src={prop.images?.[0] ? getImageUrl(prop.images[0]) : '/assets/img/home-3/property/property-09.jpg'} alt={prop.title || 'Property'} onError={(e) => { e.target.src = '/assets/img/home-3/property/property-09.jpg'; }} />
+											</Link>
+											<div className="favourite">
+												<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+											</div>
+											<div className="d-flex align-items-center token-top">
+												<span className="token bg-danger me-1">
+													<i className="material-icons-outlined text-warning">generating_tokens</i>
+												</span>
+												<span className="token bg-orange">
+													<i className="material-icons-outlined text-warning">loyalty</i>
+												</span>
+											</div>
+											<span className="avatar avatar-md rounded-circle border-0 avatar-bottom">
+												<img src="/assets/img/users/user-01.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
+											</span>
+										</div>
+										<div className="rental-content">
+											<div className="d-flex align-items-center justify-content-between mb-3">
+												<span className="badge bg-secondary">{prop.type || 'Property'}</span>
+												<span className="date">Listed on : {new Date(prop.createdAt).toLocaleDateString()}</span>
+											</div>
+											<div className="mb-3">
+												<h5><Link to={prop.listingType === 'FOR_RENT' ? `/rent-details/${prop._id}` : `/buy-details/${prop._id}`}>{prop.title || 'Property'}</Link></h5>
+												<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>{prop.address || `${prop.city}, ${prop.country}`}</p>
+											</div>
+											<div className="d-flex align-items-center justify-content-between">
+												<p className="rate-info mb-0"><span>${prop.price?.toLocaleString() || '0'} </span> {prop.listingType === 'FOR_RENT' ? '/ Month' : ''}</p>
+												<div className="d-flex align-items-center gap-1">
+													{[...Array(5)].map((_, i) => (
+														<i key={i} className={`material-icons-outlined ${i < Math.round(prop.avgRating || 0) ? 'text-warning' : 'text-secondary'}`}>star</i>
+													))}
+													{prop.avgRating?.toFixed(1) || '0.0'}
+												</div>
+											</div>
+											<div className="card-info d-flex align-items-center justify-content-between">
+												<p><span className="me-2"><i className="material-icons-outlined">bed</i></span>{prop.rooms || '0'} Bed</p>
+												<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>{prop.bathrooms || '0'} Bath</p>
+												<p><span className="me-2"><i className="material-icons-outlined">straighten</i></span>{prop.surface || '0'} Sq Ft</p>
+											</div>
 										</div>
 									</div>
-									<div className="card-info d-flex align-items-center justify-content-between">
-										<p><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bed</p>
-										<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>1 Bath</p>
-										<p><span className="me-2"><i className="material-icons-outlined">straighten</i></span>400 Sq Ft</p>
-									</div>
 								</div>
+							))
+						) : (
+							<div className="col-12 text-center">
+								<p>No featured properties available.</p>
 							</div>
-						</div> 
-
-						<div className="col-xl-3 col-lg-4 col-md-6 d-flex">
-							<div className="rent-property-item flex-fill">
-								<div className="property-img">
-									<Link to="/rent-details">
-										<img src="/assets/img/home-3/property/property-11.jpg" alt="" />
-									</Link>
-									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
-									</div>
-									<div className="d-flex align-items-center token-top">
-										<span className="token bg-danger me-1">
-											<i className="material-icons-outlined text-warning">generating_tokens</i>
-										</span>
-										<span className="token bg-orange">
-											<i className="material-icons-outlined text-warning">loyalty</i>
-										</span>
-									</div>
-									<span className="avatar avatar-md rounded-circle border-0 avatar-bottom">
-										<img src="/assets/img/users/user-03.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-									</span>
-								</div>
-								<div className="rental-content">
-									<div className="d-flex align-items-center justify-content-between mb-3">
-										<span className="badge bg-purple">Luxe</span>
-										<span className="date">Listed on : 12 Apr 2025</span>
-									</div>
-									<div className="mb-3">
-										<h5><Link to="/rent-details">Downtown Luxe Room</Link></h5>
-										<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>88, Springs Lane, Austin</p>
-									</div>
-									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info mb-0"><span>$450 </span> / Month</p>
-										<div className="d-flex align-items-center gap-1">
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											5.0
-										</div>
-									</div>
-									<div className="card-info d-flex align-items-center justify-content-between">
-										<p><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bed</p>
-										<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>1 Bath</p>
-										<p><span className="me-2"><i className="material-icons-outlined">straighten</i></span>460 Sq Ft</p>
-									</div>
-								</div>
-							</div>
-						</div> 
-
-						<div className="col-xl-3 col-lg-4 col-md-6 d-flex">
-							<div className="rent-property-item flex-fill">
-								<div className="property-img">
-									<Link to="/rent-details">
-										<img src="/assets/img/home-3/property/property-12.jpg" alt="" />
-									</Link>
-									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
-									</div>
-									<div className="d-flex align-items-center token-top">
-										<span className="token bg-danger me-1">
-											<i className="material-icons-outlined text-warning">generating_tokens</i>
-										</span>
-										<span className="token bg-orange">
-											<i className="material-icons-outlined text-warning">loyalty</i>
-										</span>
-									</div>
-									<span className="avatar avatar-md rounded-circle border-0 avatar-bottom">
-										<img src="/assets/img/users/user-04.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-									</span>
-								</div>
-								<div className="rental-content">
-									<div className="d-flex align-items-center justify-content-between mb-3">
-										<span className="badge bg-pink">Suite</span>
-										<span className="date">Listed on : 27 Mar 2025</span>
-									</div>
-									<div className="mb-3">
-										<h5><Link to="/rent-details">Modern Haven Suite</Link></h5>
-										<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>42, Hill Residence, Los Angeles</p>
-									</div>
-									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info mb-0"><span>$600 </span> / Month</p>
-										<div className="d-flex align-items-center gap-1">
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											<i className="material-icons-outlined text-warning">star</i>
-											5.0
-										</div>
-									</div>
-									<div className="card-info d-flex align-items-center justify-content-between">
-										<p><span className="me-2"><i className="material-icons-outlined">bed</i></span>2 Bed</p>
-										<p><span className="me-2"><i className="material-icons-outlined">bathtub</i></span>1 Bath</p>
-										<p><span className="me-2"><i className="material-icons-outlined">straighten</i></span>460 Sq Ft</p>
-									</div>
-								</div>
-							</div>
-						</div> 
-
+						)}
 					</div>
 					
 

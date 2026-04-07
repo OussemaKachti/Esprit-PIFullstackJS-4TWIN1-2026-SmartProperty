@@ -6,6 +6,7 @@ const { validateProperty, validatePropertyUpdate } = require('../middleware/vali
 const auth = require('../middleware/auth.middleware');
 
 // Property CRUD routes (specific routes before /:id)
+router.get('/featured', propertyController.getFeaturedProperties);
 router.get('/', propertyController.getAllProperties);
 router.get(
   '/dashboard/stats',

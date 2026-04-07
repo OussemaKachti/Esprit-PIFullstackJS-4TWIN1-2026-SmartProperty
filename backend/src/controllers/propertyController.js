@@ -1,8 +1,94 @@
 const mongoose = require('mongoose');
-const { Property } = require('../models');
+const { Property, Feedback } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
 const { getDashboardStatsForUser } = require('../services/dashboardStats.service');
+
+// @desc    Get featured properties based on smart algorithm (reviews, popularity, recency)
+// @route   GET /api/properties/featured
+// @access  Public
+exports.getFeaturedProperties = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+
+    const featuredProperties = await Property.aggregate([
+      {
+        $match: {
+          status: 'AVAILABLE'
+        }
+      },
+      {
+        $lookup: {
+          from: 'feedbacks', // Mongoose pluralizes Feedback to feedbacks
+          localField: '_id',
+          foreignField: 'propertyId',
+          as: 'reviews'
+        }
+      },
+      {
+        $addFields: {
+          reviewCount: { $size: '$reviews' },
+          avgRating: { $avg: '$reviews.rating' }
+        }
+      },
+      {
+        $addFields: {
+          // Smart Score Algorithm: (avgRating * 10) + (reviewCount * 5) + (isNew ? 10 : 0)
+          smartScore: {
+            $add: [
+              { $multiply: [{ $ifNull: ['$avgRating', 0] }, 10] },
+              { $multiply: ['$reviewCount', 5] },
+              {
+                $cond: [
+                  { $gt: ['$createdAt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
+                  10,
+                  0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $sort: {
+          smartScore: -1,
+          createdAt: -1
+        }
+      },
+      {
+        $limit: limit
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'createdBy'
+        }
+      },
+      {
+        $unwind: {
+          path: '$createdBy',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          'createdBy.password': 0,
+          'createdBy.twoFactorSecret': 0,
+          'createdBy.twoFactorBackupCodes': 0,
+          reviews: 0
+        }
+      }
+    ]);
+
+    res.status(200).json(
+      apiResponse(true, 'Featured properties retrieved successfully', featuredProperties)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Dashboard stats for backoffice (scoped to user or full platform for admin)
 // @route   GET /api/properties/dashboard/stats
