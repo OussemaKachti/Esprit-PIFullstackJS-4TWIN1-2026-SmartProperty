@@ -18,6 +18,7 @@ const filterRentProperties = (list) =>
     const tx = p.latestRentTransaction;
     if (!tx) return p.status === 'AVAILABLE';
     return (
+            tx.status === 'CANCELLED' ||
       tx.status === 'PENDING' ||
       tx.status === 'CONFIRMED' ||
       tx.status === 'COMPLETED'

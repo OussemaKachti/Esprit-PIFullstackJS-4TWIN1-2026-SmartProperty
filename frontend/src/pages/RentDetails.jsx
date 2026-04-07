@@ -39,6 +39,15 @@ const FALLBACK_HERO_SLIDES = [
 
 const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
+const toDateInputValue = (value) => {
+	const date = value instanceof Date ? new Date(value) : new Date(value);
+	if (Number.isNaN(date.getTime())) return '';
+	date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+	return date.toISOString().slice(0, 10);
+};
+
+const TODAY_DATE_INPUT = toDateInputValue(new Date());
+
 /** Same rules as backend: block if pending, or non-cancelled lease whose end date is today or later. */
 function pickBlockingLease(leases) {
 	if (!Array.isArray(leases)) return null;
@@ -73,6 +82,10 @@ const RentDetails = () => {
 		const params = new URLSearchParams(location.search);
 		return routeId || params.get('propertyId') || params.get('id') || '';
 	}, [routeId, location.search]);
+
+	const startDateMin = TODAY_DATE_INPUT;
+	const endDateMin = bookingForm.startDate || TODAY_DATE_INPUT;
+	const isBookingBlocked = Boolean(blockingLease && blockingLease.status !== 'CANCELLED');
 
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(false);
@@ -338,7 +351,14 @@ const RentDetails = () => {
 	}, [isTourModalOpen, closeTourModal]);
 
 	const handleBookingChange = (field) => (event) => {
-		setBookingForm((prev) => ({ ...prev, [field]: event.target.value }));
+		const value = event.target.value;
+		setBookingForm((prev) => {
+			const next = { ...prev, [field]: value };
+			if (field === 'startDate' && next.endDate && next.endDate < value) {
+				next.endDate = '';
+			}
+			return next;
+		});
 	};
 
 	const handleSendBooking = async () => {
@@ -359,6 +379,22 @@ const RentDetails = () => {
 
 		if (!bookingForm.startDate || !bookingForm.endDate || !bookingForm.rentAmount) {
 			setErrorMessage(t('propertyDetails.chooseDatesBudget'));
+			return;
+		}
+
+		if (bookingForm.startDate < TODAY_DATE_INPUT) {
+			setErrorMessage('Start date cannot be earlier than today.');
+			return;
+		}
+
+		if (bookingForm.endDate <= bookingForm.startDate) {
+			setErrorMessage('End date must be after the start date.');
+			return;
+		}
+
+		const offerPrice = Number(bookingForm.rentAmount);
+		if (!Number.isFinite(offerPrice) || offerPrice <= 0) {
+			setErrorMessage('Offer price must be greater than 0.');
 			return;
 		}
 
@@ -1240,10 +1276,9 @@ const RentDetails = () => {
 												<div className="card-body">
 													<div className="alert alert-info py-2 mb-3">
 														<div className="fw-semibold">{t('propertyDetails.notifyOwnerInstantly')}</div>
-														<div className="small text-body">{t('propertyDetails.notifyOwnerDetail')}</div>
 													</div>
 
-													{blockingLease && (
+													{isBookingBlocked && (
 														<div className="alert alert-warning py-2 mb-3 small" role="alert">
 															{blockingLease.status === 'PENDING' ? (
 																<>
@@ -1270,9 +1305,10 @@ const RentDetails = () => {
 														<input
 															type="date"
 															className="form-control"
+															min={startDateMin}
 															value={bookingForm.startDate}
 															onChange={handleBookingChange('startDate')}
-															disabled={Boolean(blockingLease)}
+															disabled={isBookingBlocked}
 														/>
 													</div>
 
@@ -1281,9 +1317,10 @@ const RentDetails = () => {
 														<input
 															type="date"
 															className="form-control"
+															min={endDateMin}
 															value={bookingForm.endDate}
 															onChange={handleBookingChange('endDate')}
-															disabled={Boolean(blockingLease)}
+															disabled={isBookingBlocked}
 														/>
 													</div>
 
@@ -1292,11 +1329,12 @@ const RentDetails = () => {
 														<input
 															type="number"
 															min="0"
+															step="1"
 															className="form-control"
 															placeholder={t('propertyDetails.budgetPlaceholder')}
 															value={bookingForm.rentAmount}
 															onChange={handleBookingChange('rentAmount')}
-															disabled={Boolean(blockingLease)}
+															disabled={isBookingBlocked}
 														/>
 													</div>
 
@@ -1307,7 +1345,7 @@ const RentDetails = () => {
 															rows="3"
 															value={bookingForm.note}
 															onChange={handleBookingChange('note')}
-															disabled={Boolean(blockingLease)}
+															disabled={isBookingBlocked}
 														/>
 													</div>
 
@@ -1319,12 +1357,13 @@ const RentDetails = () => {
 													)}
 
 													<button
-														className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-center justify-content-center"
+														type="button"
+														className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-left justify-content-center gap-2 text-center"
+														aria-busy={isSending}
 														onClick={handleSendBooking}
-														disabled={isSending || Boolean(blockingLease)}
+														disabled={isSending || isBookingBlocked}
 													>
-														<i className="material-icons-outlined me-2">rocket_launch</i>
-														{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}
+														<span>{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}</span>
 													</button>
 													{!propertyId && (
 														<p className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>

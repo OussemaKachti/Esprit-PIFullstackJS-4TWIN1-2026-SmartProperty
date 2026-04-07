@@ -23,7 +23,7 @@ const filterRentProperties = (list) =>
 	(list || []).filter((p) => {
 		const tx = p.latestRentTransaction;
 		if (!tx) return p.status === 'AVAILABLE';
-		return tx.status === 'PENDING' || tx.status === 'CONFIRMED' || tx.status === 'COMPLETED';
+		return tx.status === 'CANCELLED' || tx.status === 'PENDING' || tx.status === 'CONFIRMED' || tx.status === 'COMPLETED';
 	});
 
 const RentPropertyList = () => {
