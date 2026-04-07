@@ -459,7 +459,7 @@ const AppSidebar: React.FC = () => {
         </nav>
         {/* Bottom: user profile + logout */}
         <div className="flex-shrink-0 space-y-2 border-t border-gray-200 pb-6 pt-4 dark:border-gray-800">
-          {/* <button
+          { <button
             type="button"
             onClick={handleGoToFrontend}
             title="Marketplace"
@@ -476,7 +476,7 @@ const AppSidebar: React.FC = () => {
             {(isExpanded || isHovered || isMobileOpen) && (
               <span className="menu-item-text">Marketplace</span>
             )}
-          </button> */}
+          </button> }
           <Link
             to="/profile"
             title="User Profile"
