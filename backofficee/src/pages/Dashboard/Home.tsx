@@ -1,39 +1,230 @@
+import { useEffect, useState } from "react";
+import BuyerTenantHome from "./BuyerTenantHome";
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import MonthlySalesChart from "../../components/ecommerce/MonthlySalesChart";
 import StatisticsChart from "../../components/ecommerce/StatisticsChart";
 import MonthlyTarget from "../../components/ecommerce/MonthlyTarget";
-import RecentOrders from "../../components/ecommerce/RecentOrders";
-import DemographicCard from "../../components/ecommerce/DemographicCard";
+import RecentOrders, {
+  RecentPropertyRow,
+} from "../../components/ecommerce/RecentOrders";
+import DemographicCard, {
+  CitySlice,
+} from "../../components/ecommerce/DemographicCard";
 import PageMeta from "../../components/common/PageMeta";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+type DashboardStats = {
+  currency: string;
+  scope: string;
+  metrics: {
+    primary: {
+      label: string;
+      sublabel?: string;
+      value: number;
+      changePercent: number;
+      trend: "up" | "down";
+    };
+    secondary: {
+      label: string;
+      sublabel?: string;
+      value: number;
+      changePercent: number;
+      trend: "up" | "down";
+    };
+  };
+  charts: {
+    monthlyNewListings: number[];
+    statistics: { series: { name: string; data: number[] }[] };
+  };
+  monthlyTarget: {
+    activePercent: number;
+    totalPortfolioValue: number;
+    revenueThisMonth: number;
+    newListingsThisMonth: number;
+    newListingsToday: number;
+    revenueMomPct: number;
+    revenueTrend: "up" | "down";
+  };
+  topCities: CitySlice[];
+  recentProperties: RecentPropertyRow[];
+};
+
 export default function Home() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      setError("Not signed in");
+      return;
+    }
+
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        const storedRole = String(parsedUser.role || "").toUpperCase();
+        if (storedRole) {
+          setUserRole(storedRole);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through to profile lookup if stored user data is malformed.
+      }
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+
+        if (!res.ok) {
+          throw new Error(json.message || "Failed to load profile");
+        }
+
+        const profileUser = json.user || null;
+        const resolvedRole = String(profileUser?.role || "").toUpperCase();
+
+        if (cancelled) return;
+
+        if (profileUser) {
+          localStorage.setItem("user", JSON.stringify(profileUser));
+        }
+        setUserRole(resolvedRole || null);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load profile");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userRole) return;
+
+    if (userRole === "BUYER" || userRole === "TENANT") {
+      setLoading(false);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      setError("Not signed in");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/properties/dashboard/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.message || "Failed to load dashboard");
+        }
+        if (json.success && json.data && !cancelled) {
+          setStats(json.data as DashboardStats);
+        } else if (!cancelled) {
+          setError(json.message || "Failed to load dashboard");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e instanceof Error ? e.message : "Failed to load dashboard"
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole]);
+
+  const currency = stats?.currency ?? "TND";
+
+  if (userRole === "BUYER" || userRole === "TENANT") {
+    return <BuyerTenantHome />;
+  }
+
   return (
     <>
       <PageMeta
-        title="React.js Ecommerce Dashboard | TailAdmin - React.js Admin Dashboard Template"
-        description="This is React.js Ecommerce Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="Dashboard | Smart Property"
+        description="Your portfolio overview — listings, transactions, and insights."
       />
+      {error && !stats && (
+        <div className="mb-4 rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+          {error}
+        </div>
+      )}
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12 space-y-6 xl:col-span-7">
-          <EcommerceMetrics />
+          <EcommerceMetrics
+            loading={loading}
+            primary={stats?.metrics.primary}
+            secondary={stats?.metrics.secondary}
+          />
 
-          <MonthlySalesChart />
+          <MonthlySalesChart
+            loading={loading}
+            title="New listings"
+            seriesName="Listings"
+            data={stats?.charts.monthlyNewListings}
+          />
         </div>
 
         <div className="col-span-12 xl:col-span-5">
-          <MonthlyTarget />
+          <MonthlyTarget
+            loading={loading}
+            activePercent={stats?.monthlyTarget.activePercent}
+            totalPortfolioValue={stats?.monthlyTarget.totalPortfolioValue}
+            revenueThisMonth={stats?.monthlyTarget.revenueThisMonth}
+            newListingsToday={stats?.monthlyTarget.newListingsToday}
+            revenueMomPct={stats?.monthlyTarget.revenueMomPct}
+            revenueTrend={stats?.monthlyTarget.revenueTrend}
+            currency={currency}
+          />
         </div>
 
         <div className="col-span-12">
-          <StatisticsChart />
+          <StatisticsChart
+            loading={loading}
+            series={stats?.charts.statistics.series}
+          />
         </div>
 
         <div className="col-span-12 xl:col-span-5">
-          <DemographicCard />
+          <DemographicCard loading={loading} topCities={stats?.topCities} />
         </div>
 
         <div className="col-span-12 xl:col-span-7">
-          <RecentOrders />
+          <RecentOrders
+            loading={loading}
+            rows={stats?.recentProperties}
+            currency={currency}
+          />
         </div>
       </div>
     </>

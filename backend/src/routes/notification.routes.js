@@ -7,5 +7,7 @@ const router = express.Router();
 
 router.post('/enquiry', notificationController.createEnquiryNotification);
 router.get('/owner', auth.protect, notificationController.getOwnerNotifications);
+router.patch('/owner/read', auth.protect, notificationController.markOwnerNotificationsRead);
+router.get('/admin', auth.protect, auth.authorize('ADMIN'), notificationController.getAdminNotifications);
 
 module.exports = router;

@@ -365,6 +365,20 @@ exports.createSale = async (req, res, next) => {
 
     const owner = property.createdBy ? await User.findById(property.createdBy) : null;
 
+    const activeExisting = await Sale.findOne({
+      propertyId,
+      buyerId,
+      status: { $ne: SaleStatus.CANCELLED },
+    });
+    if (activeExisting) {
+      return res.status(409).json(
+        apiResponse(
+          false,
+          'You already have an active purchase request for this property. Wait for it to complete or cancel it before submitting a new one.'
+        )
+      );
+    }
+
     const initialStatus = adminish && status && Object.values(SaleStatus).includes(status)
       ? status
       : SaleStatus.PENDING;

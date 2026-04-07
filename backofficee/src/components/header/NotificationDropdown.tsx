@@ -12,6 +12,7 @@ const PUSHER_CLUSTER =
 type EnquiryNotification = {
   id: string;
   type: "ENQUIRY" | "RENT_REQUEST";
+  isRead?: boolean;
   propertyId: string;
   propertyTitle: string;
   authorName: string;
@@ -97,7 +98,7 @@ export default function NotificationDropdown() {
 
         if (isMounted) {
           setNotifications(list);
-          setUnreadCount(list.length);
+          setUnreadCount(list.filter((item) => !item.isRead).length);
         }
       } catch (error) {
         console.error("Failed to fetch owner notifications:", error);
@@ -155,6 +156,26 @@ export default function NotificationDropdown() {
     };
   }, []);
 
+  const markAllRead = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      await fetch(`${API_URL}/notifications/owner/read`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark notifications as read:", error);
+    }
+  };
+
   function toggleDropdown() {
     setIsOpen(!isOpen);
   }
@@ -166,7 +187,7 @@ export default function NotificationDropdown() {
   const handleNotificationOpen = (notificationId: string) => {
     setIsOpen(false);
     setNotifying(false);
-    setUnreadCount(0);
+    void markAllRead();
     navigate("/enquiries", {
       state: {
         selectedId: notificationId,
@@ -178,7 +199,7 @@ export default function NotificationDropdown() {
     toggleDropdown();
     if (!isOpen) {
       setNotifying(false);
-      setUnreadCount(0);
+      void markAllRead();
     }
   };
 
@@ -224,7 +245,7 @@ export default function NotificationDropdown() {
       >
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-700">
           <h5 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Notification
+            Notifications
             {unreadCount > 0 && (
               <span className="inline-flex items-center justify-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300">
                 {unreadLabel} new
@@ -258,7 +279,7 @@ export default function NotificationDropdown() {
             </li>
           ) : topNotifications.length === 0 ? (
             <li className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">
-              No new enquiries yet.
+              No new notifications yet.
             </li>
           ) : (
             topNotifications.map((notification) => (
@@ -290,14 +311,14 @@ export default function NotificationDropdown() {
                       <span className="font-medium text-gray-800 dark:text-white/90">
                         {notification.authorName}
                       </span>{" "}
-                      {notification.type === "RENT_REQUEST" ? "requested to rent" : "sent an enquiry for"}{" "}
+                      {notification.type === "RENT_REQUEST" ? "requested to rent" : "sent a notification for"}{" "}
                       <span className="font-medium text-gray-800 dark:text-white/90">
                         {notification.propertyTitle}
                       </span>
                     </span>
 
                     <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                      <span>{notification.type === "RENT_REQUEST" ? "Rent Request" : "Enquiry"}</span>
+                      <span>{notification.type === "RENT_REQUEST" ? "Rent Request" : "Notification"}</span>
                       <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
                       <span>{formatRelativeTime(notification.createdAt)}</span>
                     </span>
@@ -308,7 +329,7 @@ export default function NotificationDropdown() {
           )}
         </ul>
         <Link
-          to="/"
+          to="/enquiries"
           className="block px-4 py-2 mt-3 text-sm font-medium text-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
         >
           View All Notifications

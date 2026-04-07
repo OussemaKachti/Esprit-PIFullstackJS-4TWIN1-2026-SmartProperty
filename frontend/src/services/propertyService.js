@@ -12,26 +12,17 @@ export const API_URL = `${API_BASE_URL}/api`;
  */
 export const getImageUrl = (image) => {
   if (!image?.url) {
-    console.log('❌ No image URL found');
     return null;
   }
-  
-  console.log('📥 Raw image URL from DB:', image.url);
-  
-  // Handle different path formats
+
   let imagePath = image.url;
-  
-  // Replace backslashes with forward slashes (Windows paths)
   imagePath = imagePath.replace(/\\/g, '/');
-  
-  // If path doesn't start with 'uploads/', add it
+
   if (!imagePath.startsWith('uploads/')) {
     imagePath = `uploads/${imagePath}`;
   }
-  
-  const fullUrl = `${API_BASE_URL}/${imagePath}`;
-  console.log('🖼️ Final image URL:', fullUrl);
-  return fullUrl;
+
+  return `${API_BASE_URL}/${imagePath}`;
 };
 
 /**
@@ -41,9 +32,8 @@ export const getImageUrl = (image) => {
  */
 export const getProperties = async (filters = {}) => {
   try {
-    // Build query string from filters
     const params = new URLSearchParams();
-    
+
     if (filters.type) params.append('type', filters.type);
     if (filters.city) params.append('city', filters.city);
     if (filters.listingType) params.append('listingType', filters.listingType);
@@ -53,14 +43,13 @@ export const getProperties = async (filters = {}) => {
     if (filters.rooms) params.append('rooms', filters.rooms);
     if (filters.bathrooms) params.append('bathrooms', filters.bathrooms);
     if (filters.minSurface) params.append('minSurface', filters.minSurface);
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
     if (filters.page) params.append('page', filters.page);
-    
-    // Default to 20 items per page for better display
+
     params.append('limit', filters.limit || 20);
 
     const apiUrl = `${API_URL}/properties?${params.toString()}`;
-    console.log('🔗 API Request URL:', apiUrl);
-    
     const response = await fetch(apiUrl);
     const data = await response.json();
 
@@ -71,6 +60,27 @@ export const getProperties = async (filters = {}) => {
     }
   } catch (error) {
     console.error('Error fetching properties:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch featured properties based on smart algorithm
+ * @param {Number} limit - Number of properties to fetch
+ * @returns {Promise} - Promise with featured properties data
+ */
+export const getFeaturedProperties = async (limit = 6) => {
+  try {
+    const response = await fetch(`${API_URL}/properties/featured?limit=${limit}`);
+    const data = await response.json();
+
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.message || 'Failed to fetch featured properties');
+    }
+  } catch (error) {
+    console.error('Error fetching featured properties:', error);
     throw error;
   }
 };

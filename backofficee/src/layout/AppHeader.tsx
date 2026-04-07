@@ -8,6 +8,16 @@ import UserDropdown from "../components/header/UserDropdown";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
+  const [userRole] = useState(() => {
+    try {
+      const rawUser = localStorage.getItem("user");
+      if (!rawUser) return "";
+      const parsedUser = JSON.parse(rawUser);
+      return String(parsedUser.role || "").toUpperCase();
+    } catch {
+      return "";
+    }
+  });
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
@@ -85,7 +95,7 @@ const AppHeader: React.FC = () => {
 
           <Link to="/" className="lg:hidden flex items-center">
             <img
-              src="./images/logo/Smart.png"
+              src="./images/logo/logo-removebg-preview.png"
               alt="Smart Property"
               className="h-8 w-auto max-w-[140px] object-contain"
             />
@@ -111,7 +121,7 @@ const AppHeader: React.FC = () => {
             </svg>
           </button>
 
-          <div className="hidden lg:block">
+          {/* <div className="hidden lg:block">
             <form>
               <div className="relative">
                 <span className="absolute -translate-y-1/2 pointer-events-none left-4 top-1/2">
@@ -144,7 +154,7 @@ const AppHeader: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
+          </div> */}
         </div>
         <div
           className={`${
@@ -155,7 +165,7 @@ const AppHeader: React.FC = () => {
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
-            <NotificationDropdown />
+            {userRole !== "ADMIN" && <NotificationDropdown />}
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}

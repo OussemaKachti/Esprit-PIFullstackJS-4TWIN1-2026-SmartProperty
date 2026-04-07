@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || "http://127.0.0.1:8000";
 
 type Match = {
   rank?: number;
@@ -31,16 +32,18 @@ const recBadge: Record<string, string> = {
   ACCEPT: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
   GUARANTEE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   REFUSE: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+  PENDING: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 
 const formatMoney = (value?: number) =>
   typeof value === "number" ? `${Math.round(value).toLocaleString("fr-TN")} TND` : "N/A";
 
-const formatScore = (value?: number) => (typeof value === "number" ? `${value.toFixed(0)} / 100` : "–");
+const formatScore = (value?: number) => (typeof value === "number" ? `${value.toFixed(0)} / 100` : "Not scored");
 
 export default function AdminCandidates() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<"fastapi" | "backend">("backend");
 
   const summary = useMemo(() => {
     const total = candidates.length;
@@ -63,6 +66,35 @@ export default function AdminCandidates() {
   const loadCandidates = async () => {
     setLoading(true);
     try {
+      // Preferred source: FastAPI (contains AI scoring + top match)
+      try {
+        const aiRes = await fetch(`${FASTAPI_URL}/admin/candidates`);
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          const aiCandidates = Array.isArray(aiData?.candidates) ? aiData.candidates : [];
+          if (aiCandidates.length > 0) {
+            const mappedAi: Candidate[] = aiCandidates.map((c: any, idx: number) => ({
+              id: c.id || idx + 1,
+              name: c.name || c.email || `Candidate ${idx + 1}`,
+              email: c.email || "",
+              city: c.city || "",
+              credit_score: typeof c.credit_score === "number" ? c.credit_score : undefined,
+              recommendation: c.recommendation || "PENDING",
+              debt_ratio: typeof c.debt_ratio === "number" ? c.debt_ratio : undefined,
+              explanation: c.explanation,
+              top_match: c.top_match || null,
+            }));
+
+            setCandidates(mappedAi);
+            setDataSource("fastapi");
+            return;
+          }
+        }
+      } catch {
+        // FastAPI is optional; fallback to backend users list.
+      }
+
+      // Fallback source: backend users (without AI scoring fields)
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/users/all`, {
         headers: {
@@ -81,15 +113,17 @@ export default function AdminCandidates() {
           name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.login || u.email,
           email: u.email,
           city: u.city || "",
-          // Real credit/match data not stored in backend yet
-          credit_score: u.creditScore,
-          recommendation: u.recommendation,
-          debt_ratio: u.debt_ratio,
-          explanation: u.creditExplanation,
+          credit_score: typeof u.creditScore === "number" ? u.creditScore : undefined,
+          recommendation: u.recommendation || "PENDING",
+          debt_ratio: typeof u.debt_ratio === "number" ? u.debt_ratio : undefined,
+          explanation:
+            u.creditExplanation ||
+            "Candidate profile is loaded, but AI scoring is not available. Start FastAPI service to see score and top match.",
           top_match: u.top_match || null,
         }));
 
       setCandidates(tenants);
+      setDataSource("backend");
     } catch (error) {
       console.error(error);
       toast.error("Unable to load candidates from backend");
@@ -132,6 +166,9 @@ export default function AdminCandidates() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Candidates</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Credit scores, recommendations, and best matched property per candidate.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Source: {dataSource === "fastapi" ? "AI service" : "Backend users"}
             </p>
           </div>
           <button
@@ -201,7 +238,7 @@ export default function AdminCandidates() {
                       <td className="px-3 py-4 text-sm text-gray-900 dark:text-gray-100 font-semibold">
                         {formatScore(candidate.credit_score)}
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Debt ratio: {candidate.debt_ratio ? `${(candidate.debt_ratio * 100).toFixed(0)}%` : "–"}
+                          Debt ratio: {typeof candidate.debt_ratio === "number" ? `${(candidate.debt_ratio * 100).toFixed(0)}%` : "Not available"}
                         </p>
                       </td>
                       <td className="px-3 py-4">

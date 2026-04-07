@@ -96,6 +96,7 @@ exports.getOwnerNotifications = async (req, res, next) => {
       return {
         id: String(item._id),
         type: item.type,
+        isRead: Boolean(item.isRead),
         propertyId: property._id ? String(property._id) : String(item.propertyId),
         propertyTitle: property.title || property.reference || 'your property',
         authorName: item.senderName,
@@ -108,6 +109,89 @@ exports.getOwnerNotifications = async (req, res, next) => {
     return res.status(200).json(
       apiResponse(true, 'Notifications retrieved successfully', {
         notifications: mapped,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// @desc    Mark owner notifications as read
+// @route   PATCH /api/notifications/owner/read
+// @access  Private
+exports.markOwnerNotificationsRead = async (req, res, next) => {
+  try {
+    const { notificationIds } = req.body || {};
+
+    const filter = { recipientId: req.user._id, isRead: false };
+    if (Array.isArray(notificationIds) && notificationIds.length > 0) {
+      filter._id = { $in: notificationIds };
+    }
+
+    const result = await Notification.updateMany(filter, {
+      $set: { isRead: true },
+    });
+
+    return res.status(200).json(
+      apiResponse(true, 'Notifications marked as read', {
+        updated: result.modifiedCount || 0,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// @desc    Get platform notifications for admin dashboard
+// @route   GET /api/notifications/admin
+// @access  Private (Admin)
+exports.getAdminNotifications = async (req, res, next) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const skip = (page - 1) * limit;
+
+    const total = await Notification.countDocuments({});
+
+    const notifications = await Notification.find({})
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('recipientId', 'firstName lastName login email role')
+      .populate('propertyId', 'title reference city type listingType status price')
+      .lean();
+
+    const unread = await Notification.countDocuments({ isRead: false });
+
+    const mapped = notifications.map((item) => {
+      const property = item.propertyId || {};
+      const recipient = item.recipientId || {};
+
+      return {
+        id: String(item._id),
+        type: item.type,
+        isRead: Boolean(item.isRead),
+        propertyId: property._id ? String(property._id) : String(item.propertyId),
+        propertyTitle: property.title || property.reference || 'Property',
+        propertyCity: property.city || '',
+        propertyStatus: property.status || '',
+        recipientName: [recipient.firstName, recipient.lastName].filter(Boolean).join(' ') || recipient.login || recipient.email || 'User',
+        recipientRole: recipient.role || '',
+        authorName: item.senderName,
+        authorEmail: item.senderEmail || null,
+        message: item.message,
+        createdAt: item.createdAt,
+      };
+    });
+
+    return res.status(200).json(
+      apiResponse(true, 'Admin notifications retrieved successfully', {
+        notifications: mapped,
+        total,
+        unread,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       })
     );
   } catch (error) {

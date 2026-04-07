@@ -1,8 +1,12 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getImageUrl, getPropertyById, API_BASE_URL, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import { apiRequest } from '../api/client';
 import { getUserData } from '../utils/auth';
@@ -10,25 +14,59 @@ import { normalizePanoramas } from '../utils/panoramaUtils';
 import PanoViewer from '../components/PanoViewer';
 import ReviewSection from '../components/ReviewSection';
 
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+	iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+	iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+	shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+function BuyDetailsMapFlyTo({ lat, lng }) {
+	const map = useMap();
+	const mapRef = useRef(map);
+	useEffect(() => {
+		mapRef.current.flyTo([lat, lng], 15, { duration: 1.5 });
+	}, [lat, lng]);
+	return null;
+}
+
+const FALLBACK_HERO_SLIDES = [
+	'/assets/img/buy/buy-slide-img-1.jpg',
+	'/assets/img/buy/buy-slide-img-2.jpg',
+	'/assets/img/buy/buy-slide-img-3.jpg',
+	'/assets/img/buy/buy-slide-img-4.jpg',
+	'/assets/img/buy/buy-slide-img-5.jpg',
+	'/assets/img/buy/buy-slide-img-6.jpg',
+];
+
+const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
+
+/** Long listing text: show preview + working Read more / Read less */
+const DESCRIPTION_PREVIEW_MAX = 320;
+
 const BuyDetails = () => {
 	const { id } = useParams();
+	const { t } = useTranslation();
 	const [currentUser] = useState(() => getUserData());
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
 	const [ratingSummary, setRatingSummary] = useState({ averageRating: '0.0', totalReviews: 0 });
+	const [mapPosition, setMapPosition] = useState(null);
 
 	// Virtual Staging states
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
-  // Virtual Staging states
-  const [showStagingModal, setShowStagingModal] = useState(false);
-  const [isStagingLoading, setIsStagingLoading] = useState(false);
-  const [stagedResultUrl, setStagedResultUrl] = useState(null);
-  const [selectedStyle, setSelectedStyle] = useState('modern');
+	// Virtual Staging states
+	const [showStagingModal, setShowStagingModal] = useState(false);
+	const [isStagingLoading, setIsStagingLoading] = useState(false);
+	const [stagedResultUrl, setStagedResultUrl] = useState(null);
+	const [selectedStyle, setSelectedStyle] = useState('modern');
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
+	const [blockingSale, setBlockingSale] = useState(null);
+	const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 	const [enquiryForm, setEnquiryForm] = useState({
 		offerPrice: '',
-		note: 'I would like to proceed with a purchase request.',
+		note: t('propertyDetails.purchaseRequestDefaultNote'),
 	});
 
 	const handleEnquiryFieldChange = (field) => (event) => {
@@ -40,18 +78,18 @@ const BuyDetails = () => {
 
 	const handleEnquirySubmit = async () => {
 		if (!property?._id) {
-			toast.error('Property not ready yet. Please wait a moment.');
+			toast.error(t('propertyDetails.propertyNotReady'));
 			return;
 		}
 
 		const buyerId = currentUser?._id || currentUser?.id;
 		if (!buyerId) {
-			toast.error('Please sign in to submit an offer.');
+			toast.error(t('propertyDetails.signInToSubmitOffer'));
 			return;
 		}
 
 		if (!enquiryForm.offerPrice || Number.isNaN(Number(enquiryForm.offerPrice))) {
-			toast.error('Please enter your offer price.');
+			toast.error(t('propertyDetails.enterOfferPrice'));
 			return;
 		}
 
@@ -68,13 +106,14 @@ const BuyDetails = () => {
 				}),
 			});
 
-		toast.success('Your purchase request was sent to the property owner.');
+			toast.success(t('propertyDetails.purchaseRequestSent'));
 			setEnquiryForm({
-			offerPrice: '',
-			note: 'I would like to proceed with a purchase request.',
+				offerPrice: '',
+				note: t('propertyDetails.purchaseRequestDefaultNote'),
 			});
+			setBlockingSale({ status: 'PENDING' });
 		} catch (submitError) {
-			toast.error(submitError?.response?.data?.message || 'Failed to send request.');
+			toast.error(submitError?.message || submitError?.response?.data?.message || t('propertyDetails.failedToSendRequest'));
 		} finally {
 			setIsEnquirySubmitting(false);
 		}
@@ -85,6 +124,32 @@ const BuyDetails = () => {
 			setEnquiryForm((prev) => ({ ...prev, offerPrice: property.price }));
 		}
 	}, [property?.price, enquiryForm.offerPrice]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const buyerId = currentUser?._id || currentUser?.id;
+		if (!property?._id || !buyerId) {
+			setBlockingSale(null);
+			return () => {
+				cancelled = true;
+			};
+		}
+		(async () => {
+			try {
+				const data = await apiRequest(
+					`/api/sales?propertyId=${encodeURIComponent(property._id)}&buyerId=${encodeURIComponent(buyerId)}&limit=50`
+				);
+				const sales = data?.data?.sales || [];
+				const active = sales.find((s) => s.status !== 'CANCELLED');
+				if (!cancelled) setBlockingSale(active || null);
+			} catch {
+				if (!cancelled) setBlockingSale(null);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [property?._id, currentUser]);
 
 	const handleStagingSubmit = async () => {
 		setIsStagingLoading(true);
@@ -101,7 +166,7 @@ const BuyDetails = () => {
 			const eligibleImage = updatedProperty?.images?.find(img => img.isEligibleForStaging);
 
 			if (!eligibleImage) {
-				toast.error("Vision Analysis failed to verify this room. Please upload a clear photo of an empty interior.", { duration: 5000 });
+				toast.error(t('propertyDetails.visionAnalysisFailed'), { duration: 5000 });
 				setIsStagingLoading(false);
 				return;
 			}
@@ -119,14 +184,14 @@ const BuyDetails = () => {
 				const rawUrl = stageResponse.data.data.stagedImageUrl;
 				const finalUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}/${rawUrl}`;
 				setStagedResultUrl(finalUrl);
-				toast.success("✨ Room staged successfully!", { duration: 3000 });
+				toast.success(t('propertyDetails.roomStagedSuccess'), { duration: 3000 });
 			} else {
-				toast.error("Failed to generate staging.");
+				toast.error(t('propertyDetails.failedToGenerateStaging'));
 			}
 
 		} catch (err) {
 			console.error(err);
-			toast.error(err.response?.data?.message || "AI Analysis or Staging failed due to an error.", { duration: 5000 });
+			toast.error(err.response?.data?.message || t('propertyDetails.aiAnalysisFailed'), { duration: 5000 });
 		} finally {
 			setIsStagingLoading(false);
 		}
@@ -139,9 +204,9 @@ const BuyDetails = () => {
 	};
 
 	const listingLabel = useMemo(() => {
-		if (!property?.listingType) return 'For Sale';
-		return property.listingType === 'FOR_RENT' ? 'For Rent' : 'For Sale';
-	}, [property?.listingType]);
+		if (!property?.listingType) return t('propertyDetails.forSale');
+		return property.listingType === 'FOR_RENT' ? t('propertyDetails.forRent') : t('propertyDetails.forSale');
+	}, [property?.listingType, t]);
 
 	const addressLabel = useMemo(() => {
 		if (!property) return '';
@@ -159,9 +224,9 @@ const BuyDetails = () => {
 
 	const formattedPrice = useMemo(() => {
 		const price = property?.price;
-		if (price === undefined || price === null || Number.isNaN(Number(price))) return 'N/A';
+		if (price === undefined || price === null || Number.isNaN(Number(price))) return t('propertyPages.notAvailable');
 		return `${Number(price).toLocaleString('en-US').replace(/,/g, ' ')} TND`;
-	}, [property?.price]);
+	}, [property?.price, t]);
 
 	const tourPanoramas = useMemo(
 		() => normalizePanoramas(property?.panoramas),
@@ -176,7 +241,171 @@ const BuyDetails = () => {
 			.filter(Boolean);
 	}, [property?.images]);
 
+	const [heroImageIndex, setHeroImageIndex] = useState(0);
+
+	const heroSlides = useMemo(
+		() => (propertyImages.length > 0 ? propertyImages : FALLBACK_HERO_SLIDES),
+		[propertyImages]
+	);
+
+	useEffect(() => {
+		setHeroImageIndex(0);
+	}, [id, property?._id, propertyImages.length]);
+
+	useEffect(() => {
+		if (heroImageIndex >= heroSlides.length) {
+			setHeroImageIndex(0);
+		}
+	}, [heroSlides.length, heroImageIndex]);
+
+	const ownerProfile = useMemo(() => {
+		const o = property?.createdBy;
+		if (!o || typeof o !== 'object') {
+			return {
+				displayName: t('propertyDetails.listingOwner'),
+				email: null,
+				phone: null,
+				whatsappDigits: '',
+				memberSince: null,
+				initials: '?',
+			};
+		}
+		const name = [o.firstName, o.lastName].filter(Boolean).join(' ').trim();
+		const displayName = name || o.login || o.email || t('propertyDetails.listingOwner');
+		const initials = (name || o.login || o.email || '?')
+			.split(/\s+/)
+			.map((p) => p[0])
+			.join('')
+			.slice(0, 2)
+			.toUpperCase();
+		let memberSince = null;
+		if (o.createdAt) {
+			const d = new Date(o.createdAt);
+			if (!Number.isNaN(d.getTime())) {
+				memberSince = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+			}
+		}
+		const wa = String(o.phone || '').replace(/\D/g, '');
+		return {
+			displayName,
+			email: o.email || null,
+			phone: o.phone || null,
+			whatsappDigits: wa,
+			memberSince,
+			initials,
+		};
+	}, [property?.createdBy]);
+
+	const goHeroPrev = useCallback(() => {
+		setHeroImageIndex((i) => (heroSlides.length ? (i - 1 + heroSlides.length) % heroSlides.length : 0));
+	}, [heroSlides.length]);
+
+	const goHeroNext = useCallback(() => {
+		setHeroImageIndex((i) => (heroSlides.length ? (i + 1) % heroSlides.length : 0));
+	}, [heroSlides.length]);
+
+	const safeHeroIndex = Math.min(heroImageIndex, Math.max(0, heroSlides.length - 1));
+	const canNavigateHero = heroSlides.length > 1;
+	const typeDisplayLabel = useMemo(
+		() => (property?.type ? String(property.type).replace(/_/g, ' ') : ''),
+		[property?.type]
+	);
+
+	const descriptionText = (property?.description || '').trim();
+	const descriptionNeedsTruncate = descriptionText.length > DESCRIPTION_PREVIEW_MAX;
+	const descriptionShown =
+		!descriptionText
+			? ''
+			: !descriptionNeedsTruncate || descriptionExpanded
+				? descriptionText
+				: (() => {
+					let cut = descriptionText.slice(0, DESCRIPTION_PREVIEW_MAX);
+					const lastSpace = cut.lastIndexOf(' ');
+					if (lastSpace > DESCRIPTION_PREVIEW_MAX * 0.55) cut = cut.slice(0, lastSpace);
+					return `${cut.trim()}…`;
+				})();
+
+	const displayAddressForMap = useMemo(() => {
+		if (!property) return '';
+		const addr = property.address?.trim();
+		if (addr) return addr;
+		return [property.city, property.region, property.country || t('propertyPages.countryFallback')].filter(Boolean).join(', ');
+	}, [property, t]);
+
+	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
+	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
+	const mapKey = mapPosition ? `${mapPosition[0]}-${mapPosition[1]}` : 'default';
+
+	useEffect(() => {
+		setMapPosition(null);
+	}, [id]);
+
+	useEffect(() => {
+		setDescriptionExpanded(false);
+	}, [id]);
+
+	useEffect(() => {
+		if (!property) {
+			setMapPosition(null);
+			return;
+		}
+		const addressParts = [
+			property.address,
+			property.city,
+			property.region,
+			property.country || t('propertyPages.countryFallback'),
+		].filter(Boolean);
+
+		if (addressParts.length === 0) {
+			const coords = property.location?.coordinates;
+			if (coords && Array.isArray(coords) && coords.length === 2) {
+				const [lon, lat] = coords;
+				if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
+					setMapPosition([lat, lon]);
+					return;
+				}
+			}
+			setMapPosition([...DEFAULT_MAP_CENTER]);
+			return;
+		}
+
+		const query = addressParts.join(', ');
+		const geocodeTimer = setTimeout(async () => {
+			try {
+				let res = await fetch(
+					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
+					{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+				);
+				let data = await res.json();
+				if (!data || data.length === 0) {
+					const simple = [property.address, property.city].filter(Boolean).join(', ');
+					res = await fetch(
+						`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simple)}&limit=1&addressdetails=1&countrycodes=tn`,
+						{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+					);
+					data = await res.json();
+				}
+				if (data && data.length > 0) {
+					const lat = parseFloat(data[0].lat);
+					const lon = parseFloat(data[0].lon);
+					if (Number.isFinite(lat) && Number.isFinite(lon)) {
+						setMapPosition([lat, lon]);
+						return;
+					}
+				}
+				setMapPosition([...DEFAULT_MAP_CENTER]);
+			} catch {
+				setMapPosition([...DEFAULT_MAP_CENTER]);
+			}
+		}, 500);
+		return () => clearTimeout(geocodeTimer);
+	}, [property, t]);
+
 	// Image check removed; button will always show now.
+
+	useEffect(() => {
+		setEnquiryForm((prev) => ({ ...prev, note: t('propertyDetails.purchaseRequestDefaultNote') }));
+	}, [t]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -195,7 +424,7 @@ const BuyDetails = () => {
 					setRatingSummary(summary?.[id] || { averageRating: '0.0', totalReviews: 0 });
 				}
 			} catch (e) {
-				if (!cancelled) setError('Failed to load property. Please try again.');
+				if (!cancelled) setError(t('propertyDetails.failedToLoadProperty'));
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -204,7 +433,7 @@ const BuyDetails = () => {
 		return () => {
 			cancelled = true;
 		};
-	}, [id]);
+	}, [id, t]);
 
 	useEffect(() => {
 		// Force enable scrolling
@@ -291,10 +520,10 @@ const BuyDetails = () => {
 								<div className="row align-items-center text-center position-relative z-1">
 									<div className="col-xl-8">
 										<div className="d-flex align-center gap-2 mb-2">
-											<span className="badge bg-primary">{property?.type || 'Property'}</span>
+											<span className="badge bg-primary">{property?.type || t('propertyDetails.propertyFallback')}</span>
 											<span className="badge bg-secondary">{listingLabel}</span>
 										</div>
-										<h1 className="breadcrumb-title text-start ">{property?.title || 'Property'}</h1>
+										<h1 className="breadcrumb-title text-start ">{property?.title || t('propertyDetails.propertyFallback')}</h1>
 										<div className="d-flex align-items-center gap-2 flex-wrap gap-1 mb-xl-0 mb-4">
 											<div className="d-flex align-items-center justify-content-center">
 												<i className="material-icons-outlined text-warning">star</i>
@@ -307,7 +536,7 @@ const BuyDetails = () => {
 											<i className="fa-solid fa-circle text-body"></i>
 											<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item"><i className="material-icons-outlined text-white me-1">location_on</i>{addressLabel || '—'} <Link to="/buy-grid-map" className="text-primary fs-14 text-decoration-underline ms-1"> View Location</Link></div>
 											<i className="fa-solid fa-circle text-body"></i>
-											<p className="fs-14 mb-0 text-white">Last Updated on : {formattedUpdatedAt || '—'}</p>
+											<p className="fs-14 mb-0 text-white">{t('propertyDetails.lastUpdatedOn')} {formattedUpdatedAt || '—'}</p>
 										</div>
 									</div>
 									<div className="col-xl-4 d-flex d-xl-block align-items-center flex-wrap gap-3">
@@ -330,10 +559,10 @@ const BuyDetails = () => {
 						<div className="container">
 							{loading && (
 								<div className="text-center py-5">
-									<div className="spinner-border text-primary" role="status">
-										<span className="visually-hidden">Loading...</span>
+											<div className="spinner-border text-primary" role="status">
+												<span className="visually-hidden">{t('common.loading')}</span>
 									</div>
-									<p className="mt-3">Loading property...</p>
+											<p className="mt-3">{t('propertyDetails.loadingProperty')}</p>
 								</div>
 							)}
 							{!loading && error && (
@@ -350,15 +579,15 @@ const BuyDetails = () => {
 
 											<div className="mb-4 d-inline-flex align-center justify-content-between w-100 flex-wrap gap-1">
 												<div className="d-inline-flex align-center gap-2">
-													<span className="badge bg-danger d-flex align-items-center"> <i className="material-icons-outlined fs-14 me-1">generating_tokens</i> Trending </span>
-													<span className="badge bg-orange d-flex align-items-center"> <i className="material-icons-outlined  fs-14 me-1">loyalty</i> Featured </span>
+													<span className="badge bg-danger d-flex align-items-center"> <i className="material-icons-outlined fs-14 me-1">generating_tokens</i> {t('propertyDetails.trending')} </span>
+													<span className="badge bg-orange d-flex align-items-center"> <i className="material-icons-outlined  fs-14 me-1">loyalty</i> {t('propertyDetails.featured')} </span>
 													<button
 														className="btn btn-sm btn-primary d-flex align-items-center text-white border-0 shadow-sm px-3"
 														onClick={() => setShowStagingModal(true)}
 														style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)' }}
-														title="Use AI to virtually stage eligible empty rooms"
+														title={t('propertyDetails.magicStagingTitle')}
 													>
-														<i className="material-icons-outlined fs-14 me-1">auto_awesome</i> Magic Staging
+														<i className="material-icons-outlined fs-14 me-1">auto_awesome</i> {t('propertyDetails.magicStaging')}
 													</button>
 													{hasPanoramas && (
 														<button
@@ -366,96 +595,139 @@ const BuyDetails = () => {
 															className="btn btn-sm d-flex align-items-center text-white border-0 shadow-sm px-3"
 															onClick={() => setIsTourModalOpen(true)}
 															style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
-															title="Open immersive 360° virtual tour"
+															title={t('propertyDetails.openImmersiveTour')}
 														>
 															<i className="material-icons-outlined fs-14 me-1">panorama</i>
-															View 360° tour
+															{t('propertyDetails.view360Tour')}
 														</button>
 													)}
 												</div>
 												<p className="mb-0 text-dark">
-													Total No of Visits : 45
+													{t('propertyDetails.totalVisits', { count: 45 })}
 												</p>
 											</div>
 
 
-											<div className="slider-card service-slider-card mb-4">
-												{propertyImages.length > 0 ? (
-													<>
-														<div className="slide-part mb-4 position-relative">
-															<div className="slider service-slider">
-																{propertyImages.map((src) => (
-																	<div key={src} className="service-img-wrap">
-																		<img src={src} className="img-fluid" alt="Slider Img" />
-																	</div>
-																))}
+											<div className="slider-card service-slider-card mb-4 overflow-hidden bg-white border rounded-4 shadow-sm">
+												<div className="position-relative">
+													<img
+														src={heroSlides[safeHeroIndex] || heroSlides[0]}
+														className="w-100 d-block bg-light"
+																												alt={property?.title || t('propertyDetails.propertyFallback')}
+														style={{
+															objectFit: 'contain',
+															height: 'clamp(220px, 52vw, 384px)',
+														}}
+													/>
+													{canNavigateHero && (
+														<>
+															<button
+																type="button"
+																className="position-absolute top-50 start-0 translate-middle-y ms-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
+																style={{
+																	width: 40,
+																	height: 40,
+																	zIndex: 6,
+																	background: 'rgba(0,0,0,0.5)',
+																}}
+																onClick={goHeroPrev}
+																														aria-label={t('propertyDetails.previousPhoto')}
+															>
+																<i className="material-icons-outlined">chevron_left</i>
+															</button>
+															<button
+																type="button"
+																className="position-absolute top-50 end-0 translate-middle-y me-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
+																style={{
+																	width: 40,
+																	height: 40,
+																	zIndex: 6,
+																	background: 'rgba(0,0,0,0.5)',
+																}}
+																onClick={goHeroNext}
+																														aria-label={t('propertyDetails.nextPhoto')}
+															>
+																<i className="material-icons-outlined">chevron_right</i>
+															</button>
+															<div
+																className="position-absolute top-0 end-0 m-3 px-3 py-1 rounded-pill text-white small fw-semibold"
+																style={{ zIndex: 6, background: 'rgba(0,0,0,0.5)', fontSize: '11px' }}
+															>
+																{safeHeroIndex + 1}/{heroSlides.length}
 															</div>
-															{hasPanoramas && (
+														</>
+													)}
+													<div
+														className="position-absolute start-0 end-0 bottom-0 d-flex align-items-end justify-content-between px-3 py-3 text-white"
+														style={{
+															zIndex: 5,
+															background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 55%, transparent 100%)',
+														}}
+													>
+														<div>
+															<div className="fw-semibold fs-5">{formattedPrice}</div>
+															<p className="mb-0 small text-white-50">
+																{property?.city}
+																														{property?.country ? `, ${property.country}` : `, ${t('propertyPages.countryFallback')}`}
+															</p>
+														</div>
+														{typeDisplayLabel && (
+															<span
+																className="px-3 py-1 small fw-semibold text-white rounded-pill text-uppercase"
+																style={{ background: 'rgba(79, 70, 229, 0.92)' }}
+															>
+																{typeDisplayLabel}
+															</span>
+														)}
+													</div>
+													{hasPanoramas && (
+														<button
+															type="button"
+															className="btn btn-sm text-white border-0 shadow position-absolute d-flex align-items-center gap-1"
+															style={{
+																bottom: '72px',
+																left: '12px',
+																zIndex: 7,
+																background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+																padding: '8px 14px',
+																borderRadius: '999px',
+																fontWeight: 600,
+															}}
+															onClick={() => setIsTourModalOpen(true)}
+																													aria-label={t('propertyDetails.open360Aria')}
+														>
+															<i className="material-icons-outlined" style={{ fontSize: '18px' }}>panorama</i>
+																													{t('propertyDetails.short360Tour')}
+														</button>
+													)}
+												</div>
+												{heroSlides.length > 1 && (
+													<div
+														className="row g-1 p-3 border-top"
+														style={{ marginLeft: 0, marginRight: 0 }}
+													>
+														{heroSlides.slice(0, 8).map((url, index) => (
+															<div className="col-3" key={`thumb-${index}-${url}`}>
 																<button
 																	type="button"
-																	className="btn btn-sm text-white border-0 shadow position-absolute d-flex align-items-center gap-1"
-																	style={{
-																		bottom: '16px',
-																		right: '16px',
-																		zIndex: 5,
-																		background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-																		padding: '10px 16px',
-																		borderRadius: '999px',
-																		fontWeight: 600,
-																	}}
-																	onClick={() => setIsTourModalOpen(true)}
-																	aria-label="Open 360 degree virtual tour"
+																	className={`w-100 p-0 border rounded-3 overflow-hidden bg-light ${index === safeHeroIndex
+																			? 'border-primary border-2 shadow-sm'
+																			: 'border'
+																		}`}
+																	style={{ maxHeight: 88 }}
+																	onClick={() => setHeroImageIndex(index)}
+																															aria-label={t('propertyDetails.showPhotoAria', { index: index + 1 })}
 																>
-																	<i className="material-icons-outlined" style={{ fontSize: '20px' }}>panorama</i>
-																	360° Tour
+																	<img
+																		src={url}
+																		alt=""
+																		className="w-100 h-100"
+																		style={{ objectFit: 'cover' }}
+																	/>
 																</button>
-															)}
-														</div>
-														<div className="slider slider-nav-thumbnails">
-															{propertyImages.map((src) => (
-																<div key={src} className="slide-img">
-																	<img src={src} className="img-fluid" alt="Slider Img" />
-																</div>
-															))}
-														</div>
-													</>
-												) : (
-													<>
-														<div className="slide-part mb-4">
-															<div className="slider service-slider">
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-1.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-3.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-4.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-5.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-6.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
-																<div className="service-img-wrap">
-																	<img src="/assets/img/buy/buy-slide-img-2.jpg" className="img-fluid" alt="Slider Img" />
-																</div>
 															</div>
-														</div>
-														<div className="slider slider-nav-thumbnails">
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-1.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-3.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-4.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-5.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-6.jpg" className="img-fluid" alt="Slider Img" /></div>
-															<div className="slide-img"><img src="/assets/img/buy/buy-details-img-2.jpg" className="img-fluid" alt="Slider Img" /></div>
-														</div>
-													</>
+														))}
+													</div>
 												)}
 											</div>
 
@@ -467,28 +739,83 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-1" aria-expanded="true">
-															Description
+																													{t('propertyDetails.descriptionTitle')}
 														</button>
 													</div>
 													<div id="accordion-1" className="accordion-collapse collapse show">
 														<div className="accordion-body">
-															<p>{property?.description || '—'}</p>
-															<div className="more-menu">
-																<p>{property?.description || '—'}</p>
-															</div>
-															<div className="view-all d-inline-flex align-items-center">
-																<a href="#" className="viewall-button fs-14">Read More </a>
-																<i className="material-icons-outlined">keyboard_arrow_down</i>
-															</div>
+															<p className="mb-0 text-body" style={{ whiteSpace: 'pre-wrap' }}>
+																{descriptionText ? descriptionShown : '—'}
+															</p>
+															{descriptionNeedsTruncate && (
+																<div className="mt-2 d-inline-flex align-items-center gap-1">
+																	<button
+																		type="button"
+																		className="btn btn-link p-0 fs-14 text-decoration-none viewall-button"
+																		onClick={() => setDescriptionExpanded((v) => !v)}
+																		aria-expanded={descriptionExpanded}
+																	>
+																		{descriptionExpanded ? t('propertyDetails.readLess') : t('propertyDetails.readMore')}
+																	</button>
+																	<i className="material-icons-outlined" style={{ fontSize: '18px' }}>
+																		{descriptionExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+																	</i>
+																</div>
+															)}
 														</div>
 													</div>
 												</div>
 
 
+												{property?.detectedFeatures && Object.keys(property.detectedFeatures).length > 0 && (
+													<div className="accordion-item border-primary" style={{ borderWidth: '2px', backgroundColor: '#f8f9fa' }}>
+														<div className="accordion-header">
+															<button className="accordion-button text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-ai-buy" aria-expanded="true">
+																														<i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyDetails.aiDetectedFeatures')}
+															</button>
+														</div>
+														<div id="accordion-ai-buy" className="accordion-collapse collapse show">
+															<div className="accordion-body">
+																<div className="row g-3">
+																	<div className="col-12">
+																		<p className="mb-2 d-flex align-items-start gap-2">
+																			<i className="material-icons-outlined text-success mt-1">category</i>
+																			<span>
+																				<strong>{t('propertyDetails.detectedObjects')}: </strong>
+																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : t('propertyDetails.none')}</span>
+																			</span>
+																		</p>
+																	</div>
+																	{property.detectedFeatures.roomVotes && Object.keys(property.detectedFeatures.roomVotes).length > 0 && (
+																		<div className="col-12">
+																			<p className="mb-2 fw-semibold d-flex align-items-center gap-2">
+																				<i className="material-icons-outlined text-success">sensor_window</i>
+																																					{t('propertyDetails.detectedRooms')}:
+																			</p>
+																			<div className="d-flex flex-wrap gap-2">
+																				{Object.entries(property.detectedFeatures.roomVotes)
+																					.sort((a, b) => b[1] - a[1])
+																					.map(([room, votes]) => (
+																						<span key={room} className={`badge rounded-pill px-3 py-2 ${room === property.detectedFeatures.inferredRoom ? 'bg-primary' : 'bg-secondary'}`} style={{ fontSize: '13px' }}>
+																							<i className="material-icons-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>meeting_room</i>
+																							{room.replace(/_/g, ' ')}
+																							<span className="ms-1 opacity-75 small">({votes})</span>
+																						</span>
+																					))}
+																			</div>
+																																			<small className="text-muted mt-1 d-block">{t('propertyDetails.primaryRoomHint')}</small>
+																		</div>
+																	)}
+																</div>
+															</div>
+														</div>
+													</div>
+												)}
+
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-2" aria-expanded="true">
-															Property Features
+																													{t('propertyDetails.propertyFeaturesTitle')}
 														</button>
 													</div>
 													<div id="accordion-2" className="accordion-collapse collapse show">
@@ -533,18 +860,38 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-3" aria-expanded="true">
-															About Property
+																													{t('propertyDetails.aboutPropertyTitle')}
 														</button>
 													</div>
 													<div id="accordion-3" className="accordion-collapse collapse show">
 														<div className="accordion-body">
-															<p className="mb-2">This property is mostly wooded and sits high on a hilltop overlooking the Mohawk River Valley.</p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> 100 meters from school. 3km away from bypass.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> First floor - 2 large bedrooms with attached bathrooms.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Spacious and well-Equipped kitchen.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Inviting living room with balcony.  </p>
-															<p className="mb-2"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Terrace with breathtaking views.  </p>
-															<p className="mb-0"> <i className="fa-solid fa-circle-check text-success me-2 fs-18"></i> Independent electric and water connections.  </p>
+															<p className="mb-2 text-body">
+																This property offers a practical mix of comfort, accessibility, and neighborhood amenities — consistent with the
+																description and photos in this listing.
+															</p>
+															<p className="mb-2 text-body">
+																Located in <strong>{property?.city || '—'}</strong>
+																{property?.country ? `, ${property.country}` : ', Tunisia'}
+																{property?.listingType === 'FOR_RENT'
+																	? ', it is offered for rent on Smart Property.'
+																	: ', it is offered for sale on Smart Property.'}
+															</p>
+															<p className="mb-2 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" />
+																{property?.surface != null
+																	? `Interior surface around ${property.surface} m² (as listed).`
+																	: 'See property features for size and room counts.'}
+															</p>
+															<p className="mb-2 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" />
+																Type: <strong>{typeDisplayLabel || '—'}</strong>
+																{property?.rooms != null ? ` · ${property.rooms} rooms` : ''}
+																{property?.bathrooms != null ? ` · ${property.bathrooms} bathrooms` : ''}
+															</p>
+															<p className="mb-0 text-body">
+																<i className="fa-solid fa-circle-check text-success me-2" />
+																Contact the listing owner for visits, paperwork, and any questions specific to this home.
+															</p>
 														</div>
 													</div>
 												</div>
@@ -553,7 +900,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-4" aria-expanded="true">
-															Amenities
+																													{t('propertyDetails.amenitiesTitle')}
 														</button>
 													</div>
 													<div id="accordion-4" className="accordion-collapse collapse show">
@@ -597,6 +944,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-5" aria-expanded="true">
 															Floor Plan
+																													{t('propertyDetails.floorPlanTitle')}
 														</button>
 													</div>
 													<div id="accordion-5" className="accordion-collapse collapse show">
@@ -639,6 +987,7 @@ const BuyDetails = () => {
 														<div className="accordion-header">
 															<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-360" aria-expanded="true">
 																360° Virtual Tour
+																														{t('propertyDetails.virtualTourTitle')}
 															</button>
 														</div>
 														<div id="accordion-360" className="accordion-collapse collapse show">
@@ -653,45 +1002,29 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-6" aria-expanded="true">
 															Gallery
+																													{t('propertyDetails.galleryTitle')}
 														</button>
 													</div>
 													<div id="accordion-6" className="accordion-collapse collapse show">
 														<div className="accordion-body gallery-body">
 															<div className="gallery-slider">
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-1.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-1.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-2.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-2.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-3.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-3.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-4.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-4.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-5.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-5.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-6.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-6.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
-
-																<div className="gallery-card">
-																	<a href="/assets/img/buy/buy-details-img-2.jpg" data-fancybox="gallery" className="gallery-item rounded"> <img src="/assets/img/buy/buy-details-img-2.jpg" alt="" className="rounded img-fluid" /> </a>
-																</div>
+																{propertyImages.length > 0 ? (
+																	propertyImages.map((src, idx) => (
+																		<div key={`g-${idx}-${src}`} className="gallery-card">
+																			<a href={src} data-fancybox="property-gallery" data-caption={property?.title || ''} className="gallery-item rounded">
+																				<img src={src} alt="" className="rounded img-fluid" />
+																			</a>
+																		</div>
+																	))
+																) : (																															<p className="text-body mb-0">{t('propertyDetails.noPhotos')}</p>
+																)}
 															</div>
 														</div>
 													</div>
 												</div>
 
 
-												<div className="accordion-item">
+												{/* <div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-7" aria-expanded="true">
 															Video
@@ -707,206 +1040,113 @@ const BuyDetails = () => {
 															</div>
 														</div>
 													</div>
-												</div>
+												</div> */}
 
 
+												{/* FAQ section hidden — template copy was not property-specific
 												<div className="accordion-item">
-													<div className="accordion-header">
-														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-8" aria-expanded="true">
-															Frequently Asked Questions
-														</button>
-													</div>
-													<div id="accordion-8" className="accordion-collapse collapse show">
-														<div className="accordion-body">
-															<div className="faq-items">
-
-																<div className="faq-card mb">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Does offer free cancellation for a full refund?</Link>
-																	</h4>
-																	<div id="faqone" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Does have fully refundable room rates available to book on our site. If youÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ve booked a fully refundable room rate, this can be cancelled up to a few days before check-in depending on the property's cancellation policy. Just make sure to check this property's cancellation policy for the exact terms and conditions.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Is there a pool?</Link>
-																	</h4>
-																	<div id="faqtwo" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, there is a pool available for guests, providing a perfect place to relax, unwind, and enjoy some leisure time during their stay.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Are pets allowed?</Link>
-																	</h4>
-																	<div id="faqthree" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, pets are allowed, and we welcome your furry friends to stay with you, ensuring a comfortable experience for both you and your pets.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">Is airport shuttle service offered?</Link>
-																	</h4>
-																	<div id="faqfour" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Yes, airport shuttle service is offered to provide convenient and reliable transportation for our guests between the airport and their destination, ensuring a smooth and stress-free travel experience.</p>
-																		</div>
-																	</div>
-																</div>
-																<div className="faq-card mb-0">
-																	<h4 className="faq-title">
-																		<Link className="collapsed" data-bs-toggle="collapse" to="/buy-details" aria-expanded="false">What are the check-in and check-out times? </Link>
-																	</h4>
-																	<div id="faqfive" className="card-collapse collapse">
-																		<div className="faq-content">
-																			<p>Check-in is typically from 12:00 PM, and check-out is usually by 11:00 AM to ensure a smooth transition for all guests.</p>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-
-														</div>
-													</div>
+													...
 												</div>
+												*/}
 
 
 												<div className="accordion-item mb-xl-0">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-9" aria-expanded="true">
 															Reviews
+																													{t('propertyDetails.reviewsTitle')}
 														</button>
 													</div>
 													<div id="accordion-9" className="accordion-collapse collapse show">
 														<div className="accordion-body">
 															<ReviewSection propertyId={id} currentUser={currentUser} />
 															{false && (<>
-															<div className="sub-head d-flex align-items-center justify-content-between mb-4">
-																<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
-																<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
-															</div>
+																<div className="sub-head d-flex align-items-center justify-content-between mb-4">
+																	<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
+																	<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
+																</div>
 
 
-															<div className="row mb-3  gap-xl-0 gap-lg-0 gap-3">
-																<div className="col-lg-6 d-flex">
-																	<div className="p-4 bg-light rounded text-center d-flex align-items-center justify-content-center flex-column flex-fill">
-																		<h6 className="fs-16 fw-medium mb-3"> Customer Reviews & Ratings </h6>
-																		<div className="mb-3">
-																			<h2 className="mb-1"> 4.9 <span className="fs-16 text-body fw-normal"> / 5.0</span> </h2>
-																			<div className="d-flex align-items-center justify-content-center gap-1">
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
-																				<i className="material-icons-outlined fs-14 text-warning">star</i>
+																<div className="row mb-3  gap-xl-0 gap-lg-0 gap-3">
+																	<div className="col-lg-6 d-flex">
+																		<div className="p-4 bg-light rounded text-center d-flex align-items-center justify-content-center flex-column flex-fill">
+																			<h6 className="fs-16 fw-medium mb-3"> Customer Reviews & Ratings </h6>
+																			<div className="mb-3">
+																				<h2 className="mb-1"> 4.9 <span className="fs-16 text-body fw-normal"> / 5.0</span> </h2>
+																				<div className="d-flex align-items-center justify-content-center gap-1">
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																					<i className="material-icons-outlined fs-14 text-warning">star</i>
+																				</div>
+																			</div>
+																			<p className="mb-0 fs-14"> Based On 2,459 Reviews </p>
+																		</div>
+																	</div>
+
+																	<div className="col-lg-6 d-flex">
+																		<div className="card shadow-none review-progress flex-fill mb-0">
+																			<div className="card-body ">
+
+																				<div className="progress-lvl mb-2">
+																					<p>5 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning five-star" role="progressbar" aria-label="Success example" style={{ width: '95%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>247</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>4 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '65%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>145</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>3 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '55%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>600</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-2">
+																					<p>2 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '45%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p>560</p>
+																				</div>
+
+
+																				<div className="progress-lvl mb-0">
+																					<p className="mb-0">1 Star Ratings</p>
+																					<div className="progress">
+																						<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '25%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+																					</div>
+																					<p className="mb-0">400</p>
+																				</div>
 																			</div>
 																		</div>
-																		<p className="mb-0 fs-14"> Based On 2,459 Reviews </p>
 																	</div>
 																</div>
 
-																<div className="col-lg-6 d-flex">
-																	<div className="card shadow-none review-progress flex-fill mb-0">
-																		<div className="card-body ">
-
-																			<div className="progress-lvl mb-2">
-																				<p>5 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning five-star" role="progressbar" aria-label="Success example" style={{ width: '95%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>247</p>
-																			</div>
 
 
-																			<div className="progress-lvl mb-2">
-																				<p>4 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '65%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>145</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-2">
-																				<p>3 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '55%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>600</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-2">
-																				<p>2 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '45%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p>560</p>
-																			</div>
-
-
-																			<div className="progress-lvl mb-0">
-																				<p className="mb-0">1 Star Ratings</p>
-																				<div className="progress">
-																					<div className="progress-bar bg-warning" role="progressbar" aria-label="Success example" style={{ width: '25%' }} aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-																				</div>
-																				<p className="mb-0">400</p>
-																			</div>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-
-
-															<div className="card shadow-none review-items">
-																<div className="card-body">
-																	<div className="mb-2 d-flex align-center gap-2 flex-wrap">
-																		<div className="avatar avatar-lg">
-																			<img src="/assets/img/users/user-06.jpg" alt="" className="img-fluid rounded-circle" />
-																		</div>
-																		<div className="">
-																			<h6 className="fs-16 fw-medium mb-1">Joseph Massey</h6>
-																			<div className="d-flex align-items-center gap-2 flex-wrap">
-																				<p className="fs-14 mb-0 text-body"> 2 days ago </p>
-																				<i className="fa-solid fa-circle text-body"></i>
-																				<div className="d-flex align-items-center justify-content-center">
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star</i>
-																					<i className="material-icons-outlined text-warning">star_half</i>
-																				</div>
-																				<p className="fs-14 mb-0 text-body">Unforgettable Stay!</p>
-																			</div>
-																		</div>
-																	</div>
-																	<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
-																	<div className="d-flex align-items-center gap-3">
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 21</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 50</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 45</p>
-																	</div>
-																</div>
-															</div>
-
-
-															<div className="card shadow-none review-items">
-																<div className="card-body">
-																	<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
-																		<div className="d-flex align-center gap-2 flex-wrap">
+																<div className="card shadow-none review-items">
+																	<div className="card-body">
+																		<div className="mb-2 d-flex align-center gap-2 flex-wrap">
 																			<div className="avatar avatar-lg">
-																				<img src="/assets/img/users/user-08.jpg" alt="" className="img-fluid rounded-circle" />
+																				<img src="/assets/img/users/user-06.jpg" alt="" className="img-fluid rounded-circle" />
 																			</div>
-																			<div className="flex-wrap">
-																				<h6 className="fs-16 fw-medium mb-1">Jeffrey Jones</h6>
+																			<div className="">
+																				<h6 className="fs-16 fw-medium mb-1">Joseph Massey</h6>
 																				<div className="d-flex align-items-center gap-2 flex-wrap">
 																					<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																					<i className="fa-solid fa-circle text-body"></i>
@@ -917,32 +1157,29 @@ const BuyDetails = () => {
 																						<i className="material-icons-outlined text-warning">star</i>
 																						<i className="material-icons-outlined text-warning">star_half</i>
 																					</div>
-																					<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																					<p className="fs-14 mb-0 text-body">Unforgettable Stay!</p>
 																				</div>
 																			</div>
 																		</div>
-																		<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
-																	</div>
-																	<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
-																	<div className="d-flex align-items-center gap-3">
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 41</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 70</p>
-																		<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 95</p>
+																		<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
+																		<div className="d-flex align-items-center gap-3">
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 21</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 50</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 45</p>
+																		</div>
 																	</div>
 																</div>
-															</div>
 
 
-															<div className="card shadow-none review-items mb-4">
-																<div className="card-body">
-																	<div className="mb-4">
+																<div className="card shadow-none review-items">
+																	<div className="card-body">
 																		<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
 																			<div className="d-flex align-center gap-2 flex-wrap">
 																				<div className="avatar avatar-lg">
-																					<img src="/assets/img/users/user-07.jpg" alt="" className="img-fluid rounded-circle" />
+																					<img src="/assets/img/users/user-08.jpg" alt="" className="img-fluid rounded-circle" />
 																				</div>
-																				<div className="">
-																					<h6 className="fs-16 fw-medium mb-1">Jessie Alves</h6>
+																				<div className="flex-wrap">
+																					<h6 className="fs-16 fw-medium mb-1">Jeffrey Jones</h6>
 																					<div className="d-flex align-items-center gap-2 flex-wrap">
 																						<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																						<i className="fa-solid fa-circle text-body"></i>
@@ -951,32 +1188,34 @@ const BuyDetails = () => {
 																							<i className="material-icons-outlined text-warning">star</i>
 																							<i className="material-icons-outlined text-warning">star</i>
 																							<i className="material-icons-outlined text-warning">star</i>
-																							<i className="material-icons-outlined text-warning">star</i>
+																							<i className="material-icons-outlined text-warning">star_half</i>
 																						</div>
-																						<p className="fs-14 mb-0 text-body">Convenient Location!</p>
+																						<p className="fs-14 mb-0 text-body">Excellent service!</p>
 																					</div>
 																				</div>
 																			</div>
 																			<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
 																		</div>
-																		<p className="mb-2 text-body"> The location was perfect for exploring the city, and the views from our room were breathtaking. It made our trip so much more enjoyable to stay somewhere central and scenic. </p>
+																		<p className="mb-2 text-body"> This hotel exceeded my expectations! The pool, spa, and dining options were top-notch, and the room had every amenity I could ask for. It felt like a true getaway. </p>
 																		<div className="d-flex align-items-center gap-3">
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 11</p>
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 60</p>
-																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 35</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 41</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 70</p>
+																			<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 95</p>
 																		</div>
 																	</div>
+																</div>
 
 
-																	<div className="card shadow-none review-items bg-light border-0 mb-0 ms-lg-5 ms-md-5 ms-3">
-																		<div className="card-body">
+																<div className="card shadow-none review-items mb-4">
+																	<div className="card-body">
+																		<div className="mb-4">
 																			<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
 																				<div className="d-flex align-center gap-2 flex-wrap">
 																					<div className="avatar avatar-lg">
-																						<img src="/assets/img/users/user-01.jpg" alt="" className="img-fluid rounded-circle" />
+																						<img src="/assets/img/users/user-07.jpg" alt="" className="img-fluid rounded-circle" />
 																					</div>
 																					<div className="">
-																						<h6 className="fs-16 fw-medium mb-1">Adrian Hendriques</h6>
+																						<h6 className="fs-16 fw-medium mb-1">Jessie Alves</h6>
 																						<div className="d-flex align-items-center gap-2 flex-wrap">
 																							<p className="fs-14 mb-0 text-body"> 2 days ago </p>
 																							<i className="fa-solid fa-circle text-body"></i>
@@ -987,26 +1226,60 @@ const BuyDetails = () => {
 																								<i className="material-icons-outlined text-warning">star</i>
 																								<i className="material-icons-outlined text-warning">star</i>
 																							</div>
-																							<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																							<p className="fs-14 mb-0 text-body">Convenient Location!</p>
 																						</div>
 																					</div>
 																				</div>
 																				<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
 																			</div>
-																			<p className="mb-2 text-body"> Thank you so much for your kind words! We're thrilled to hear that our location and views made your trip even more enjoyable.  We hope to welcome you back soon for another scenic stay! </p>
+																			<p className="mb-2 text-body"> The location was perfect for exploring the city, and the views from our room were breathtaking. It made our trip so much more enjoyable to stay somewhere central and scenic. </p>
 																			<div className="d-flex align-items-center gap-3">
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 10</p>
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 21</p>
-																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 46</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 11</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 60</p>
+																				<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 35</p>
+																			</div>
+																		</div>
+
+
+																		<div className="card shadow-none review-items bg-light border-0 mb-0 ms-lg-5 ms-md-5 ms-3">
+																			<div className="card-body">
+																				<div className="d-flex align-center flex-wrap justify-content-between gap-1 mb-2">
+																					<div className="d-flex align-center gap-2 flex-wrap">
+																						<div className="avatar avatar-lg">
+																							<img src="/assets/img/users/user-01.jpg" alt="" className="img-fluid rounded-circle" />
+																						</div>
+																						<div className="">
+																							<h6 className="fs-16 fw-medium mb-1">Adrian Hendriques</h6>
+																							<div className="d-flex align-items-center gap-2 flex-wrap">
+																								<p className="fs-14 mb-0 text-body"> 2 days ago </p>
+																								<i className="fa-solid fa-circle text-body"></i>
+																								<div className="d-flex align-items-center justify-content-center">
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																									<i className="material-icons-outlined text-warning">star</i>
+																								</div>
+																								<p className="fs-14 mb-0 text-body">Excellent service!</p>
+																							</div>
+																						</div>
+																					</div>
+																					<a href="#" className="btn d-inline-flex align-items-center fs-13 fw-semibold reply-btn"><i className="material-icons-outlined text-dark me-1">repeat</i>Reply</a>
+																				</div>
+																				<p className="mb-2 text-body"> Thank you so much for your kind words! We're thrilled to hear that our location and views made your trip even more enjoyable.  We hope to welcome you back soon for another scenic stay! </p>
+																				<div className="d-flex align-items-center gap-3">
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_up</i> 10</p>
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-body me-1 fs-14">thumb_down</i> 21</p>
+																					<p className="mb-0 d-flex align-items-center fs-14"> <i className="material-icons-outlined text-danger me-1 fs-14">favorite</i> 46</p>
+																				</div>
 																			</div>
 																		</div>
 																	</div>
 																</div>
-															</div>
 
-															<div className="text-center">
-																<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
-															</div>
+																<div className="text-center">
+																	<a href="#" className="btn btn-dark d-inline-flex align-center gap-1 review-btn">See All Reviews</a>
+																</div>
 															</>)}
 
 														</div>
@@ -1020,7 +1293,7 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Enquiry</h5>
+													<h5 className="mb-0">{t('propertyDetails.enquiryTitle')}</h5>
 												</div>
 
 												<div className="card-body">
@@ -1028,12 +1301,12 @@ const BuyDetails = () => {
 													<ul className="nav nav-pills listing-nav flex-nowrap" role="tablist">
 														<li className="nav-item me-2 w-100" role="presentation">
 															<Link className="nav-link active fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-1" aria-selected="true">
-																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>Request Info
+																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>{t('propertyDetails.requestInfo')}
 															</Link>
 														</li>
 														<li className="nav-item w-100" role="presentation">
 															<Link className="nav-link fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
-																<i className="material-icons-outlined fs-14 me-1">videocam</i>Schedule a Visit
+																<i className="material-icons-outlined fs-14 me-1">videocam</i>{t('propertyDetails.scheduleVisit')}
 															</Link>
 														</li>
 													</ul>
@@ -1048,42 +1321,49 @@ const BuyDetails = () => {
 																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 																		</div>
 																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
 																		</div>
 																	</div>
 																</div>
 															</div>
 
-																				<div className="mb-3">
-																					<label className="form-label fw-semibold"> Offer Price </label>
-																					<input
-																						type="number"
-																						className="form-control"
-																						placeholder="Your offer"
-																						value={enquiryForm.offerPrice}
-																						onChange={handleEnquiryFieldChange('offerPrice')}
-																					/>
-																				</div>
-																				<div className="mb-4">
-																					<label className="form-label fw-semibold"> Note to Owner (optional) </label>
-																					<textarea
-																						className="form-control"
-																						rows="3"
-																						value={enquiryForm.note}
-																						onChange={handleEnquiryFieldChange('note')}
-																					></textarea>
-																				</div>
-																				<div>
-																					<button
-																						type="button"
-																						className="btn btn-dark w-100 py-2 fs-14"
-																						onClick={handleEnquirySubmit}
-																						disabled={isEnquirySubmitting}
-																					>
-																						{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
-																					</button>
-																				</div>
+															{blockingSale && (
+																<div className="alert alert-warning py-2 small mb-3" role="alert">
+																	{t('propertyDetails.activePurchaseRequestWarning', { status: blockingSale.status })}
+																</div>
+															)}
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> {t('propertyDetails.offerPriceLabel')} </label>
+																<input
+																	type="number"
+																	className="form-control"
+																	placeholder={t('propertyDetails.offerPricePlaceholder')}
+																	value={enquiryForm.offerPrice}
+																	onChange={handleEnquiryFieldChange('offerPrice')}
+																	disabled={Boolean(blockingSale)}
+																/>
+															</div>
+															<div className="mb-4">
+																<label className="form-label fw-semibold"> {t('propertyDetails.noteToOwnerOptional')} </label>
+																<textarea
+																	className="form-control"
+																	rows="3"
+																	value={enquiryForm.note}
+																	onChange={handleEnquiryFieldChange('note')}
+																	disabled={Boolean(blockingSale)}
+																></textarea>
+															</div>
+															<div>
+																<button
+																	type="button"
+																	className="btn btn-dark w-100 py-2 fs-14"
+																	onClick={handleEnquirySubmit}
+																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
+																>
+																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submitPurchaseRequest')}
+																</button>
+															</div>
 														</div>
 														<div className="tab-pane fade" id="listing-2" role="tabpanel">
 															<div className="card bg-light border-0 rounded shadow-none custom-btn">
@@ -1093,79 +1373,79 @@ const BuyDetails = () => {
 																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 																		</div>
 																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
 																		</div>
 																	</div>
 																</div>
 															</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Name </label>
-												<input
-													type="text"
-													className="form-control"
-													placeholder="Your Name"
-													value={enquiryForm.name}
-													onChange={handleEnquiryFieldChange('name')}
-												/>
-											</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Email </label>
-												<input
-													type="email"
-													className="form-control"
-													placeholder="Your Email"
-													value={enquiryForm.email}
-													onChange={handleEnquiryFieldChange('email')}
-												/>
-											</div>
-											<div className="mb-3">
-												<label className="form-label fw-semibold"> Phone </label>
-												<input
-													type="text"
-													className="form-control"
-													placeholder="Your Phone Number"
-													value={enquiryForm.phone}
-													onChange={handleEnquiryFieldChange('phone')}
-												/>
-											</div>
-											<div className="mb-4">
-												<label className="form-label fw-semibold"> Description </label>
-												<textarea
-													className="form-control"
-													rows="3"
-													value={enquiryForm.description}
-													onChange={handleEnquiryFieldChange('description')}
-												></textarea>
-											</div>
-											<div>
-												<button
-													type="button"
-													className="btn btn-dark w-100 py-2 fs-14"
-													onClick={handleEnquirySubmit}
-													disabled={isEnquirySubmitting}
-												>
-													{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
-												</button>
-											</div>
-										</div>
-										<div className="tab-pane fade" id="listing-2" role="tabpanel">
-											<div className="card bg-light border-0 rounded shadow-none custom-btn">
-												<div className="card-body">
-													<div  className="d-flex align-items-center gap-2">
-														<div className="avatar avatar-lg">
-															<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
+																<input
+																	type="text"
+																	className="form-control"
+																	placeholder={t('propertyDetails.yourNamePlaceholder')}
+																	value={enquiryForm.name}
+																	onChange={handleEnquiryFieldChange('name')}
+																/>
+															</div>
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
+																<input
+																	type="email"
+																	className="form-control"
+																	placeholder={t('propertyDetails.yourEmailPlaceholder')}
+																	value={enquiryForm.email}
+																	onChange={handleEnquiryFieldChange('email')}
+																/>
+															</div>
+															<div className="mb-3">
+																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
+																<input
+																	type="text"
+																	className="form-control"
+																	placeholder={t('propertyDetails.yourPhonePlaceholder')}
+																	value={enquiryForm.phone}
+																	onChange={handleEnquiryFieldChange('phone')}
+																/>
+															</div>
+															<div className="mb-4">
+																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
+																<textarea
+																	className="form-control"
+																	rows="3"
+																	value={enquiryForm.description}
+																	onChange={handleEnquiryFieldChange('description')}
+																></textarea>
+															</div>
+															<div>
+																<button
+																	type="button"
+																	className="btn btn-dark w-100 py-2 fs-14"
+																	onClick={handleEnquirySubmit}
+																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
+																>
+																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submit')}
+																</button>
+															</div>
 														</div>
-														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-															<p className="mb-0 fs-14 text-body"> Company Agent </p>
-														</div>
-													</div>
-												</div>
-											</div> 
+														<div className="tab-pane fade" id="listing-2" role="tabpanel">
+															<div className="card bg-light border-0 rounded shadow-none custom-btn">
+																<div className="card-body">
+																	<div className="d-flex align-items-center gap-2">
+																		<div className="avatar avatar-lg">
+																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+																		</div>
+																		<div>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
+																		</div>
+																	</div>
+																</div>
+															</div>
 
 															<div className="select-date-item">
-																<h6 className="fs-16 fw-semibold mb-2"> Select Day </h6>
+																<h6 className="fs-16 fw-semibold mb-2"> {t('propertyDetails.selectDay')} </h6>
 																<div className="d-flex align-items-center justify-content-between gap-1 flex-wrap">
 																	<div className="d-flex flex-column gap-1 border">
 																		<p className="mb-0"> Mon </p>
@@ -1196,7 +1476,7 @@ const BuyDetails = () => {
 															</div>
 
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Select Time </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.selectTime')} </label>
 																<div className="input-group w-auto input-group-flat">
 																	<input type="text" className="form-control bg-light timepicker" placeholder="-- : --" />
 																	<span className="input-group-text">
@@ -1206,23 +1486,23 @@ const BuyDetails = () => {
 															</div>
 
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Name </label>
-																<input type="text" className="form-control" placeholder="Your Name" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourNamePlaceholder')} />
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Email </label>
-																<input type="text" className="form-control" placeholder="Your Email" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourEmailPlaceholder')} />
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Phone </label>
-																<input type="text" className="form-control" placeholder="Your Phone Number" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourPhonePlaceholder')} />
 															</div>
 															<div className="mb-4">
-																<label className="form-label fw-semibold"> Description </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
 																<textarea className="form-control" rows="3"></textarea>
 															</div>
 															<div>
-																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">Submit</Link>
+																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">{t('propertyDetails.submit')}</Link>
 															</div>
 														</div>
 													</div>
@@ -1233,38 +1513,77 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Listing Owner Details</h5>
+																									<h5 className="mb-0">{t('propertyDetails.listingOwnerDetails')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="d-flex align-items-center gap-2 mb-3">
-														<div className="avatar avatar-lg">
-															<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
+														<div
+															className="avatar avatar-lg rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-semibold fs-18"
+															style={{ width: 56, height: 56, minWidth: 56 }}
+															aria-hidden
+														>
+															{ownerProfile.initials}
 														</div>
 														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">John Carter</h6>
-															<div className="review-icons d-flex align-items-center">
-																<div className="me-1">
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																	<i className="material-icons-outlined fs-14 text-warning">star</i>
-																</div>
-																<p className="mb-0 fs-14 text-body">5.0 (12 Reviews) </p>
-															</div>
+															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+															<p className="mb-0 fs-14 text-body">
+																{t('propertyDetails.thisListingRating', {
+																	rating: ratingSummary.averageRating || '0.0',
+																	total: ratingSummary.totalReviews || 0,
+																})}
+															</p>
 														</div>
 													</div>
-													<ul className="mb-3">
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body"> Phone</span> Call Us : +1 12545 45548</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">Email</span></li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">No of Listings</span>05</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">No of Bookings</span>225</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3"><span className="text-body">Member on</span>15 Jan2014</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0"><span className="text-body">Verification</span> <div className="badge bg-success text-white">Verified</div></li>
+													<ul className="mb-3 list-unstyled">
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+																														<span className="text-body">{t('propertyDetails.phone')}</span>
+															<span className="text-end">{ownerProfile.phone || '—'}</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+																														<span className="text-body">{t('propertyDetails.email')}</span>
+															<span className="text-end text-break">
+																{ownerProfile.email ? (
+																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
+																		{ownerProfile.email}
+																	</a>
+																) : (
+																	'—'
+																)}
+															</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
+																														<span className="text-body">{t('propertyDetails.memberSince')}</span>
+															<span>{ownerProfile.memberSince || '—'}</span>
+														</li>
+														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
+															<span className="text-body">{t('propertyDetails.account')}</span>
+															<div className="badge bg-success text-white">{t('propertyDetails.registered')}</div>
+														</li>
 													</ul>
 													<div className="d-flex align-items-center justify-content-between gap-3">
-														<a href="#" className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center">Whatsapp</a>
-														<a href="#" className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center">Chat Now</a>
+														{ownerProfile.whatsappDigits ? (
+															<a
+																href={`https://wa.me/${ownerProfile.whatsappDigits}`}
+																target="_blank"
+																rel="noopener noreferrer"
+																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
+															>
+																														{t('propertyDetails.whatsapp')}
+															</a>
+														) : (
+																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.whatsapp')}</span>
+														)}
+														{ownerProfile.email ? (
+															<a
+																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
+																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
+															>
+																
+																														{t('propertyDetails.emailOwner')}
+															</a>
+														) : (
+																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.emailOwner')}</span>
+														)}
 													</div>
 												</div>
 											</div>
@@ -1272,7 +1591,7 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Share Property</h5>
+																									<h5 className="mb-0">{t('propertyDetails.shareProperty')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="buy-social-icons-items d-flex align-center gap-2 flex-wrap">
@@ -1318,15 +1637,61 @@ const BuyDetails = () => {
 											</div>
 
 
-											<div className="card mb-0">
+											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">
+												<div className="card-header bg-white border-bottom py-3">
+													<h5 className="mb-0 fs-6 fw-semibold">{t('propertyDetails.nearbyTitle')}</h5>
+												</div>
 												<div className="card-body">
-													<div className="custom-map position-relative rounded overflow-hidden">
-														<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d9582106.12236644!2d-15.012343587457918!3d54.10244278649341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x25a3b1142c791a9%3A0xc4f8a0433288257a!2sUnited%20Kingdom!5e0!3m2!1sen!2sin!4v1747587865989!5m2!1sen!2sin" width="100" height="100" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="rounded"></iframe>
+													<div className="rounded-4 border overflow-hidden mb-3" style={{ height: 176 }}>
+														{mapPosition ? (
+															<MapContainer
+																key={mapKey}
+																center={[mapLat, mapLng]}
+																zoom={15}
+																scrollWheelZoom={false}
+																style={{ height: '100%', width: '100%' }}
+																className="z-0"
+															>
+																<BuyDetailsMapFlyTo lat={mapLat} lng={mapLng} />
+																<TileLayer
+																	attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+																	url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+																/>
+																<Marker position={[mapLat, mapLng]}>
+																	<Popup>
+																		<div className="small">
+																			<div className="fw-semibold">{property?.title}</div>
+																			<div className="text-muted">{displayAddressForMap}</div>
+																		</div>
+																	</Popup>
+																</Marker>
+															</MapContainer>
+														) : (
+															<div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted small">
+																{t('propertyDetails.loadingMap')}
+															</div>
+														)}
 													</div>
-													<h6 className="mb-3 fs-16"> Nearby Landmarks & Visits </h6>
-													<p className="mb-2 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i>  Near By Statue of Liberty </p>
-													<p className="mb-2 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i> The Metropolitan Museum of Art </p>
-													<p className="mb-0 text-body"><i className="fa-regular fa-circle-check fs-16 me-2 text-primary"></i> Yellowstone National Park </p>
+													<div className="px-3 py-2 border rounded-4 bg-light mb-3">
+														<p className="mb-0 text-uppercase fw-semibold text-muted" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
+																													{t('propertyDetails.propertyAddress')}
+														</p>
+														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || t('propertyDetails.noDescription')}</p>
+													</div>
+													<ul className="list-unstyled small text-body mb-0">
+														<li className="d-flex align-items-center gap-2 mb-2">
+															<span className="text-success">✔</span>
+																													{t('propertyDetails.nearAttractions')}
+														</li>
+														<li className="d-flex align-items-center gap-2 mb-2">
+															<span className="text-success">✔</span>
+																													{t('propertyDetails.easyTransport')}
+														</li>
+														<li className="d-flex align-items-center gap-2 mb-0">
+															<span className="text-success">✔</span>
+																													{t('propertyDetails.shopsNearby')}
+														</li>
+													</ul>
 												</div>
 											</div>
 
@@ -1643,16 +2008,18 @@ const BuyDetails = () => {
 							<div className="modal-body search-wrap">
 								<form className="search-form" id="search-form" action="rent-property-grid.html">
 									<div className="d-flex align-items-center justify-content-between mb-4">
-										<h5>What Are You Looking for?</h5>
+										<h5>{t('propertyPages.whatLookingFor')}</h5>
 										<a href="#" className="close" data-bs-dismiss="modal"><i className="material-icons-outlined">close</i></a>
 									</div>
 									<div className="input-group input-group-flat">
 										<input type="text" className="form-control" placeholder="Type a Keyword...." />
+																					<input type="text" className="form-control" placeholder={t('propertyPages.typeKeywordPlaceholder')} />
 										<span className="input-group-text">
 											<i className="material-icons-outlined">search</i>
 										</span>
 									</div>
 									<h6>Popular Properties</h6>
+																			<h6>{t('propertyPages.popularProperties')}</h6>
 									<div className="search-list">
 										<p><Link to="/rent-property-grid">Beautiful Condo Room</Link></p>
 										<p><Link to="/rent-property-grid">Royal Apartment</Link></p>
@@ -1674,12 +2041,13 @@ const BuyDetails = () => {
 							<div className="modal-content border-0 shadow-lg">
 								<div className="modal-header border-0 pb-0">
 									<h5 className="modal-title d-flex align-items-center gap-2 fw-semibold">
-										<span style={{ fontSize: '1.5rem' }}>✨</span> AI Virtual Staging
+										<span style={{ fontSize: '1.5rem' }}>✨</span> {t('propertyDetails.aiVirtualStaging')}
 									</h5>
 									<button type="button" className="btn-close" onClick={closeStagingModal}></button>
 								</div>
 								<div className="modal-body p-4">
 									<p className="text-muted mb-4">Transform this empty room into a beautifully furnished space using AI.</p>
+									<p className="text-muted mb-4">{t('propertyDetails.stagingDescription')}</p>
 
 									<div className="row">
 										<div className="col-md-8">
@@ -1688,23 +2056,26 @@ const BuyDetails = () => {
 													<div className="text-center p-4">
 														<div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status"></div>
 														<h6 className="mb-1 text-primary fw-bold">Analyzing Room Depth...</h6>
-														<p className="text-muted fs-14">Applying {selectedStyle} aesthetics</p>
+														<h6 className="mb-1 text-primary fw-bold">{t('propertyDetails.analyzingRoomDepth')}</h6>
+														<p className="text-muted fs-14">{t('propertyDetails.applyingStyle', { style: selectedStyle })}</p>
 													</div>
 												) : stagedResultUrl ? (
-													<img src={stagedResultUrl} alt="Staged Room" className="img-fluid w-100 h-100 object-fit-cover" />
+													<img src={stagedResultUrl} alt={t('propertyDetails.stagedRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover" />
 												) : (
-													<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt="Original Room" className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
+													<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt={t('propertyDetails.originalRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
 												)}
 
 												{stagedResultUrl && !isStagingLoading && (
 													<div className="position-absolute top-0 start-0 m-3">
 														<span className="badge bg-success shadow-sm px-3 py-2 fs-13">VIRTUAL STAGING</span>
+																											<span className="badge bg-success shadow-sm px-3 py-2 fs-13">{t('propertyDetails.virtualStagingBadge')}</span>
 													</div>
 												)}
 											</div>
 										</div>
 										<div className="col-md-4 mt-4 mt-md-0 d-flex flex-column">
 											<h6 className="fw-bold mb-3">Select Style</h6>
+																						<h6 className="fw-bold mb-3">{t('propertyDetails.selectStyle')}</h6>
 											<div className="d-flex flex-column gap-3 mb-4">
 												{['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
 													<label key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
@@ -1730,11 +2101,11 @@ const BuyDetails = () => {
 													style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', border: 'none' }}
 												>
 													{isStagingLoading ? (
-														<>Generating...</>
+														<>{t('propertyDetails.generating')}</>
 													) : stagedResultUrl ? (
-														<><i className="material-icons-outlined">refresh</i> Regenerate</>
+														<><i className="material-icons-outlined">refresh</i> {t('propertyDetails.regenerate')}</>
 													) : (
-														<><span>✨</span> Apply Magic Staging</>
+														<><span>✨</span> {t('propertyDetails.applyMagicStaging')}</>
 													)}
 												</button>
 											</div>
@@ -1759,7 +2130,7 @@ const BuyDetails = () => {
 						}}
 						role="dialog"
 						aria-modal="true"
-						aria-label="360 virtual tour"
+						aria-label={t('propertyDetails.virtualTourAria')}
 					>
 						<div
 							className="d-flex align-items-center justify-content-between flex-shrink-0 px-3 py-2 border-bottom border-secondary"
@@ -1767,10 +2138,10 @@ const BuyDetails = () => {
 						>
 							<span className="text-white fw-semibold d-flex align-items-center gap-2 mb-0">
 								<i className="material-icons-outlined text-white">panorama</i>
-								360° Virtual Tour
+								{t('propertyDetails.virtualTourTitle')}
 							</span>
 							<button type="button" className="btn btn-sm btn-outline-light" onClick={closeTourModal}>
-								Close
+								{t('common.close')}
 							</button>
 						</div>
 						<div className="flex-grow-1 position-relative" style={{ minHeight: 0, background: '#000' }}>

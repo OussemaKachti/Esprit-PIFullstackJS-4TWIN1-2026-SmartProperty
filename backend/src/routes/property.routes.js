@@ -6,7 +6,14 @@ const { validateProperty, validatePropertyUpdate } = require('../middleware/vali
 const auth = require('../middleware/auth.middleware');
 
 // Property CRUD routes (specific routes before /:id)
+router.get('/featured', propertyController.getFeaturedProperties);
 router.get('/', propertyController.getAllProperties);
+router.get(
+  '/dashboard/stats',
+  auth.protect,
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
+  propertyController.getDashboardStats
+);
 router.get('/my', auth.protect, propertyController.getMyProperties);
 router.get('/user/:userId', propertyController.getPropertiesByUser);
 router.get('/:id', propertyController.getPropertyById);
@@ -32,7 +39,7 @@ router.patch(
   auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   propertyController.updateProperty
 );
-router.delete('/:id', auth.protect, auth.authorize('ADMIN'), propertyController.deleteProperty);
+router.delete('/:id', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deleteProperty);
 
 // Image management (protected)
 router.delete('/:id/images/:imageId', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deletePropertyImage);

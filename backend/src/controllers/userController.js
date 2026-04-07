@@ -1,4 +1,7 @@
 const { User } = require('../models/User');
+const { Property } = require('../models/Property');
+const { Sale, Lease } = require('../models');
+const { apiResponse } = require('../utils/apiResponse');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -10,21 +13,21 @@ const emailService = require('../services/email.service');
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required.' });
     }
 
     // Find user by email
     const user = await User.findOne({ email }).select('+password');
-    
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
-    
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
@@ -110,17 +113,17 @@ exports.completeOnboarding = async (req, res) => {
 exports.register = async (req, res) => {
   try {
     const { login, email, password, firstName, lastName, phone, role } = req.body;
-    
+
     if (!login || !email || !password) {
       return res.status(400).json({ message: 'Login, email, and password are required.' });
     }
-    
+
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { login }] });
     if (existingUser) {
       return res.status(409).json({ message: 'User with this email or login already exists.' });
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
@@ -133,7 +136,7 @@ exports.register = async (req, res) => {
       role
     });
     await user.save();
-    
+
     res.status(201).json({ message: 'User registered successfully.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -144,14 +147,14 @@ exports.register = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Email requis' 
+        message: 'Email requis'
       });
     }
-    
+
     const user = await User.findOne({ email });
 
     // Sécurité : ne pas divulguer si l'email existe ou non
@@ -161,7 +164,7 @@ exports.forgotPassword = async (req, res) => {
         message: 'Si cet email est enregistré, un lien de réinitialisation vous a été envoyé.'
       });
     }
-    
+
     // Générer le reset token
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
@@ -183,12 +186,12 @@ exports.forgotPassword = async (req, res) => {
         error: emailError.message
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Si cet email est enregistré, un lien de réinitialisation vous a été envoyé.'
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -202,42 +205,42 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { password } = req.body;
-    
+
     if (!password) {
       return res.status(400).json({
         success: false,
         message: 'Nouveau mot de passe requis'
       });
     }
-    
+
     const resetPasswordToken = crypto
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
-    
+
     const user = await User.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() }
     }).select('+password');
-    
+
     if (!user) {
       return res.status(400).json({
         success: false,
         message: 'Token invalide ou expiré'
       });
     }
-    
+
     const hashedPassword = await bcrypt.hash(password, 10);
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save({ validateBeforeSave: false });
-    
+
     res.status(200).json({
       success: true,
       message: 'Mot de passe réinitialisé avec succès'
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -254,25 +257,25 @@ exports.verifyResetToken = async (req, res) => {
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
-    
+
     const user = await User.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() }
     });
-    
+
     if (!user) {
       return res.status(400).json({
         success: false,
         message: 'Token invalide ou expiré'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Token valide',
       email: user.email
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -288,34 +291,34 @@ exports.verifyResetToken = async (req, res) => {
 exports.setup2FA = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('+twoFactorSecret');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
       });
     }
-    
+
     if (user.twoFactorEnabled) {
       return res.status(400).json({
         success: false,
         message: '2FA déjà activé'
       });
     }
-    
+
     // Générer un secret
     const secret = speakeasy.generateSecret({
       name: `SmartProperty (${user.email})`,
       length: 32
     });
-    
+
     // Sauvegarder le secret (temporairement, pas encore activé)
     user.twoFactorSecret = secret.base32;
     await user.save();
-    
+
     // Générer le QR code
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
-    
+
     res.status(200).json({
       success: true,
       message: 'Secret 2FA généré',
@@ -323,7 +326,7 @@ exports.setup2FA = async (req, res) => {
       qrCode: qrCodeUrl,
       manualEntry: secret.base32
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -337,23 +340,23 @@ exports.setup2FA = async (req, res) => {
 exports.verify2FA = async (req, res) => {
   try {
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
         message: 'Code 2FA requis'
       });
     }
-    
+
     const user = await User.findById(req.user._id).select('+twoFactorSecret +twoFactorBackupCodes');
-    
+
     if (!user || !user.twoFactorSecret) {
       return res.status(400).json({
         success: false,
         message: 'Setup 2FA non effectué'
       });
     }
-    
+
     // Vérifier le token
     const verified = speakeasy.totp.verify({
       secret: user.twoFactorSecret,
@@ -361,32 +364,32 @@ exports.verify2FA = async (req, res) => {
       token: token,
       window: 2
     });
-    
+
     if (!verified) {
       return res.status(401).json({
         success: false,
         message: 'Code 2FA invalide'
       });
     }
-    
+
     // Générer des codes de backup
     const backupCodes = [];
     for (let i = 0; i < 10; i++) {
       const code = crypto.randomBytes(4).toString('hex').toUpperCase();
       backupCodes.push(code);
     }
-    
+
     // Activer le 2FA
     user.twoFactorEnabled = true;
     user.twoFactorBackupCodes = backupCodes;
     await user.save();
-    
+
     res.status(200).json({
       success: true,
       message: '2FA activé avec succès',
       backupCodes: backupCodes
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -400,23 +403,23 @@ exports.verify2FA = async (req, res) => {
 exports.disable2FA = async (req, res) => {
   try {
     const { password } = req.body;
-    
+
     if (!password) {
       return res.status(400).json({
         success: false,
         message: 'Mot de passe requis pour désactiver le 2FA'
       });
     }
-    
+
     const user = await User.findById(req.user._id).select('+password +twoFactorSecret +twoFactorBackupCodes');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
       });
     }
-    
+
     // Vérifier le mot de passe
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -425,18 +428,18 @@ exports.disable2FA = async (req, res) => {
         message: 'Mot de passe incorrect'
       });
     }
-    
+
     // Désactiver le 2FA
     user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
     user.twoFactorBackupCodes = [];
     await user.save();
-    
+
     res.status(200).json({
       success: true,
       message: '2FA désactivé avec succès'
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -450,25 +453,25 @@ exports.disable2FA = async (req, res) => {
 exports.validate2FAToken = async (req, res) => {
   try {
     const { email, token, isBackupCode } = req.body;
-    
+
     if (!email || !token) {
       return res.status(400).json({
         success: false,
         message: 'Email et code requis'
       });
     }
-    
+
     const user = await User.findOne({ email }).select('+twoFactorSecret +twoFactorBackupCodes');
-    
+
     if (!user || !user.twoFactorEnabled) {
       return res.status(400).json({
         success: false,
         message: '2FA non activé pour cet utilisateur'
       });
     }
-    
+
     let isValid = false;
-    
+
     if (isBackupCode) {
       // Vérifier le backup code
       const codeIndex = user.twoFactorBackupCodes.indexOf(token.toUpperCase());
@@ -487,21 +490,21 @@ exports.validate2FAToken = async (req, res) => {
         window: 2
       });
     }
-    
+
     if (!isValid) {
       return res.status(401).json({
         success: false,
         message: 'Code 2FA invalide'
       });
     }
-    
+
     // Générer JWT
     const jwtToken = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'your_jwt_secret',
       { expiresIn: '7d' }
     );
-    
+
     res.status(200).json({
       success: true,
       message: '2FA validé',
@@ -518,7 +521,7 @@ exports.validate2FAToken = async (req, res) => {
         hasCompletedOnboarding: user.hasCompletedOnboarding,
       }
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -528,11 +531,49 @@ exports.validate2FAToken = async (req, res) => {
   }
 };
 
+// @desc    Current user's purchase offers (sales) and rental bookings (leases)
+// @route   GET /api/users/me/offers?kind=all|sale|lease
+// @access  Private (BUYER, TENANT)
+exports.getMyOffers = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const kind = String(req.query.kind || 'all').toLowerCase();
+
+    const propertySelect = 'reference title city type price status listingType images';
+    const userSelect = 'login email firstName lastName phone';
+
+    let sales = [];
+    let leases = [];
+
+    if (kind === 'all' || kind === 'sale' || kind === 'sales') {
+      sales = await Sale.find({ buyerId: userId })
+        .sort({ saleDate: -1 })
+        .populate('propertyId', propertySelect)
+        .populate('buyerId', userSelect)
+        .populate('transactionId');
+    }
+
+    if (kind === 'all' || kind === 'lease' || kind === 'leases' || kind === 'rent') {
+      leases = await Lease.find({ tenantId: userId })
+        .sort({ createdAt: -1 })
+        .populate('propertyId', propertySelect)
+        .populate('tenantId', userSelect)
+        .populate('transactionId');
+    }
+
+    return res.status(200).json(
+      apiResponse(true, 'Offers retrieved successfully', { sales, leases })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get current user profile
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password -twoFactorSecret -twoFactorBackupCodes');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -692,6 +733,93 @@ exports.updateUser = async (req, res) => {
     });
   }
 };
+
+exports.getAgencies = async (req, res) => {
+  try {
+    const { city, role } = req.query;
+
+    let userQuery = { isActive: true };
+
+    if (role && role !== 'Select') {
+      userQuery.role = role;
+    } else {
+      userQuery.role = 'AGENCY';
+    }
+
+    // If filtering by property attributes (city), find relevant user IDs first
+    if (city && city !== 'Select') {
+      const propertyFilter = { city: new RegExp(city, 'i') };
+      const userIds = await Property.distinct('createdBy', propertyFilter);
+      userQuery._id = { $in: userIds };
+    }
+
+    const agencies = await User.find(userQuery)
+      .select('-password -twoFactorSecret -twoFactorBackupCodes')
+      .sort({ createdAt: -1 });
+
+    // For each agency, count their matching listings
+    const agenciesWithCount = await Promise.all(
+      agencies.map(async (agency) => {
+        const countFilter = { createdBy: agency._id };
+        if (city && city !== 'Select') countFilter.city = new RegExp(city, 'i');
+
+        const listingsCount = await Property.countDocuments(countFilter);
+        return {
+          id: agency._id,
+          login: agency.login,
+          firstName: agency.firstName,
+          lastName: agency.lastName,
+          email: agency.email,
+          phone: agency.phone,
+          role: agency.role,
+          createdAt: agency.createdAt,
+          listingsCount,
+        };
+      })
+    );
+
+    // If city filter was applied, only return agencies that have at least one matching property
+    const result = (city && city !== 'Select')
+      ? agenciesWithCount.filter(a => a.listingsCount > 0)
+      : agenciesWithCount;
+
+    res.status(200).json({
+      success: true,
+      message: 'Agencies retrieved successfully',
+      data: result,
+      total: result.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+// Get available filter options for agencies
+exports.getAgencyFilters = async (req, res) => {
+  try {
+    const cities = await Property.distinct('city');
+    const roles = ['AGENCY', 'OWNER'];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        cities: cities.filter(Boolean).sort(),
+        roles
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 
 // Delete user by ID (Admin only)
 exports.deleteUser = async (req, res) => {

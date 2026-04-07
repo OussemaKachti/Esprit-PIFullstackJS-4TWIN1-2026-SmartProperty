@@ -6,6 +6,10 @@ const { UserRole } = require('../models/User');
 
 router.post('/register', userController.register);
 
+// Public: list agencies (OWNER / AGENCY role users)
+router.get('/agencies', userController.getAgencies);
+router.get('/agency-filters', userController.getAgencyFilters);
+
 router.post('/login', userController.login);
 
 router.post('/forgot-password', userController.forgotPassword);
@@ -46,6 +50,13 @@ router.put(
     UserRole.BUYER
   ),
   userController.updateProfile
+);
+
+router.get(
+  '/me/offers',
+  protect,
+  authorize(UserRole.BUYER, UserRole.TENANT),
+  userController.getMyOffers
 );
 
 router.post('/complete-onboarding', protect, userController.completeOnboarding);

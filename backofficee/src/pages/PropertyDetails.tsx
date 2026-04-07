@@ -52,6 +52,21 @@ type PropertyDetails = {
   updatedAt: string;
 };
 
+type FeedbackAuthor = {
+  firstName?: string;
+  lastName?: string;
+  login?: string;
+  email?: string;
+};
+
+type PropertyFeedback = {
+  _id: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  authorId?: FeedbackAuthor | string;
+};
+
 const formattedPrice = (price: number | undefined | null) => {
   if (price == null) return "—";
   try {
@@ -59,6 +74,24 @@ const formattedPrice = (price: number | undefined | null) => {
   } catch {
     return `${price} TND`;
   }
+};
+
+const feedbackAuthorLabel = (author: FeedbackAuthor | string | undefined) => {
+  if (!author || typeof author === "string") return "Visitor";
+  const name = `${author.firstName || ""} ${author.lastName || ""}`.trim();
+  return name || author.login || author.email || "Visitor";
+};
+
+const feedbackAuthorInitials = (author: FeedbackAuthor | string | undefined) => {
+  const label = feedbackAuthorLabel(author);
+  const parts = label.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return label.slice(0, 2).toUpperCase() || "?";
+};
+
+const starsForRating = (rating: number) => {
+  const r = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
+  return "★".repeat(r) + "☆".repeat(5 - r);
 };
 
 export default function PropertyDetailsPage() {
@@ -75,6 +108,10 @@ export default function PropertyDetailsPage() {
     location: false,
     reviews: true,
   });
+  const [reviewList, setReviewList] = useState<PropertyFeedback[]>([]);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [reviewAvg, setReviewAvg] = useState<string | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -114,6 +151,50 @@ export default function PropertyDetailsPage() {
     };
 
     loadProperty();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      setReviewsLoading(true);
+      try {
+        const [sumRes, listRes] = await Promise.all([
+          fetch(`${API_URL}/feedbacks/summary?propertyId=${encodeURIComponent(id)}`),
+          fetch(`${API_URL}/feedbacks?propertyId=${encodeURIComponent(id)}&limit=100`),
+        ]);
+        const sumJ = await sumRes.json();
+        const listJ = await listRes.json();
+        if (cancelled) return;
+        const list = (listJ?.data?.feedbacks as PropertyFeedback[]) || [];
+        setReviewList(list);
+        const byProp = sumJ?.data?.byProperty || {};
+        const summary = byProp[id];
+        if (summary?.totalReviews) {
+          setReviewAvg(String(summary.averageRating ?? "0"));
+          setReviewTotal(Number(summary.totalReviews));
+        } else if (list.length > 0) {
+          const avg =
+            list.reduce((s, f) => s + (Number(f.rating) || 0), 0) / list.length;
+          setReviewAvg(avg.toFixed(1));
+          setReviewTotal(list.length);
+        } else {
+          setReviewAvg(null);
+          setReviewTotal(0);
+        }
+      } catch {
+        if (!cancelled) {
+          setReviewList([]);
+          setReviewTotal(0);
+          setReviewAvg(null);
+        }
+      } finally {
+        if (!cancelled) setReviewsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -587,114 +668,75 @@ export default function PropertyDetailsPage() {
                     <div className="px-5 py-4 text-sm text-gray-600 space-y-4 dark:text-gray-300">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          Reviews (45)
+                          Reviews ({reviewTotal})
                         </h3>
-                        <button className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900">
-                          ✏️ Write a Review
-                        </button>
                       </div>
 
-                      {/* Summary + rating distribution */}
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            Customer Reviews &amp; Ratings
-                          </p>
-                          <div className="text-center">
-                            <p className="text-3xl font-semibold text-gray-900 dark:text-white">
-                              4.9{" "}
-                              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                                / 5.0
-                              </span>
+                      {reviewsLoading ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Loading reviews…</p>
+                      ) : reviewTotal === 0 ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
+                          No reviews yet for this property.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              Average rating
                             </p>
-                            <div className="flex items-center justify-center gap-1 text-amber-400 text-sm">
-                              ★★★★★
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Based on 2,459 reviews
-                          </p>
-                        </div>
-                        <div className="p-4 border border-gray-100 rounded-2xl bg-white dark:bg-gray-900 dark:border-gray-800">
-                          {[
-                            { label: "5 Star Ratings", value: 85, count: 247 },
-                            { label: "4 Star Ratings", value: 75, count: 145 },
-                            { label: "3 Star Ratings", value: 65, count: 600 },
-                            { label: "2 Star Ratings", value: 55, count: 560 },
-                            { label: "1 Star Ratings", value: 25, count: 400 },
-                          ].map((row) => (
-                            <div
-                              key={row.label}
-                              className="flex items-center gap-2 mb-2 last:mb-0"
-                            >
-                              <span className="w-28 text-xs text-gray-600 dark:text-gray-300">
-                                {row.label}
-                              </span>
-                              <div className="flex-1 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                                <div
-                                  className="h-2 rounded-full bg-amber-400"
-                                  style={{ width: `${row.value}%` }}
-                                />
+                            <div className="text-center">
+                              <p className="text-3xl font-semibold text-gray-900 dark:text-white">
+                                {reviewAvg ?? "—"}{" "}
+                                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                                  / 5.0
+                                </span>
+                              </p>
+                              <div className="flex items-center justify-center gap-1 text-amber-400 text-sm tracking-tight">
+                                {reviewAvg ? starsForRating(Number(reviewAvg)) : ""}
                               </div>
-                              <span className="w-10 text-xs text-right text-gray-600 dark:text-gray-300">
-                                {row.count}
-                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Based on {reviewTotal}{" "}
+                              {reviewTotal === 1 ? "review" : "reviews"}
+                            </p>
+                          </div>
+
+                          {reviewList.map((fb) => (
+                            <div
+                              key={fb._id}
+                              className="border border-gray-100 rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-gray-900 dark:border-gray-800"
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="flex items-center justify-center w-9 h-9 text-xs font-semibold text-white rounded-full bg-emerald-500">
+                                  {feedbackAuthorInitials(fb.authorId)}
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {feedbackAuthorLabel(fb.authorId)}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>
+                                      {fb.createdAt
+                                        ? new Date(fb.createdAt).toLocaleDateString()
+                                        : ""}
+                                    </span>
+                                    <span className="text-amber-400 tracking-tight">
+                                      {starsForRating(fb.rating)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              {fb.comment ? (
+                                <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+                                  {fb.comment}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-gray-400 italic">No comment</p>
+                              )}
                             </div>
                           ))}
-                        </div>
-                      </div>
-
-                      {/* Individual reviews (static examples) */}
-                      {[
-                        {
-                          name: "Joseph Massey",
-                          title: "Unforgettable stay!",
-                          text: "This property exceeded my expectations. The location, comfort and amenities were all top-notch. It felt like a true getaway.",
-                        },
-                        {
-                          name: "Jeffrey Jones",
-                          title: "Excellent service",
-                          text: "Very smooth experience from booking to check-out. The team was responsive and professional throughout.",
-                        },
-                      ].map((review) => (
-                        <div
-                          key={review.name}
-                          className="border border-gray-100 rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-gray-900 dark:border-gray-800"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="flex items-center justify-center w-9 h-9 text-xs font-semibold text-white rounded-full bg-emerald-500">
-                              {review.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {review.name}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                <span>2 days ago</span>
-                                <span className="text-amber-400">★★★★★</span>
-                                <span>{review.title}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <p className="mb-2 text-sm text-gray-700 dark:text-gray-200">
-                            {review.text}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              👍 <span>21</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              👎 <span>5</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              ❤ <span>12</span>
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

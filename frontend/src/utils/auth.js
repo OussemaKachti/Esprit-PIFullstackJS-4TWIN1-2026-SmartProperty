@@ -2,16 +2,38 @@
  * Authentication utilities for role-based routing and user management
  */
 
-const BACKOFFICE_ROLES = ['AGENCY', 'OWNER', 'ADMIN'];
+/** Roles that see the Backoffice entry in the header and can open the backoffice app */
+const BACKOFFICE_LINK_ROLES = ['AGENCY', 'OWNER', 'ADMIN', 'BUYER', 'TENANT'];
+
+/** Roles redirected straight to the backoffice after a normal login (not buyer/tenant) */
+const BACKOFFICE_AUTO_LOGIN_REDIRECT_ROLES = ['AGENCY', 'OWNER', 'ADMIN'];
+
 const FRONTEND_ROLES = ['TENANT', 'BUYER'];
 
+const normalizeRole = (role) => String(role || '').toUpperCase();
+
+/** Only agency & property owners can start the “list your property” flow from the homepage */
+export const canListPropertyFromHomepage = (role) => {
+  const r = normalizeRole(role);
+  return r === 'AGENCY' || r === 'OWNER';
+};
+
 /**
- * Check if user role should access backoffice
+ * Check if user role should see Backoffice in the menu and may open the backoffice URL
  * @param {string} role - User role
  * @returns {boolean}
  */
 export const shouldAccessBackoffice = (role) => {
-  return BACKOFFICE_ROLES.includes(role);
+  return BACKOFFICE_LINK_ROLES.includes(normalizeRole(role));
+};
+
+/**
+ * After login on the public site: only owner/agency/admin jump to backoffice; buyers/tenants stay on marketplace.
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const shouldAutoRedirectToBackofficeOnLogin = (role) => {
+  return BACKOFFICE_AUTO_LOGIN_REDIRECT_ROLES.includes(normalizeRole(role));
 };
 
 /**
@@ -20,7 +42,7 @@ export const shouldAccessBackoffice = (role) => {
  * @returns {boolean}
  */
 export const shouldAccessFrontend = (role) => {
-  return FRONTEND_ROLES.includes(role);
+  return FRONTEND_ROLES.includes(normalizeRole(role));
 };
 
 /**
@@ -30,11 +52,8 @@ export const shouldAccessFrontend = (role) => {
  */
 export const getRedirectUrl = (role) => {
   if (shouldAccessBackoffice(role)) {
-    // Backofficee (new admin) URL – force this host for OWNER/AGENCY/ADMIN
-    // REACT_APP_BACKOFFICEE_URL can override the default if needed.
     return process.env.REACT_APP_BACKOFFICEE_URL || 'http://localhost:5173';
   }
-  // Default frontend route for TENANT/BUYER
   return '/';
 };
 

@@ -1,7 +1,106 @@
 const mongoose = require('mongoose');
-const { Property } = require('../models');
+const { Property, Feedback } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
+const { getDashboardStatsForUser } = require('../services/dashboardStats.service');
+
+// @desc    Get featured properties based on smart algorithm (reviews, popularity, recency)
+// @route   GET /api/properties/featured
+// @access  Public
+exports.getFeaturedProperties = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+
+    const featuredProperties = await Property.aggregate([
+      {
+        $match: {
+          status: 'AVAILABLE'
+        }
+      },
+      {
+        $lookup: {
+          from: 'feedbacks', // Mongoose pluralizes Feedback to feedbacks
+          localField: '_id',
+          foreignField: 'propertyId',
+          as: 'reviews'
+        }
+      },
+      {
+        $addFields: {
+          reviewCount: { $size: '$reviews' },
+          avgRating: { $avg: '$reviews.rating' }
+        }
+      },
+      {
+        $addFields: {
+          // Smart Score Algorithm: (avgRating * 10) + (reviewCount * 5) + (isNew ? 10 : 0)
+          smartScore: {
+            $add: [
+              { $multiply: [{ $ifNull: ['$avgRating', 0] }, 10] },
+              { $multiply: ['$reviewCount', 5] },
+              {
+                $cond: [
+                  { $gt: ['$createdAt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
+                  10,
+                  0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $sort: {
+          smartScore: -1,
+          createdAt: -1
+        }
+      },
+      {
+        $limit: limit
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'createdBy'
+        }
+      },
+      {
+        $unwind: {
+          path: '$createdBy',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          'createdBy.password': 0,
+          'createdBy.twoFactorSecret': 0,
+          'createdBy.twoFactorBackupCodes': 0,
+          reviews: 0
+        }
+      }
+    ]);
+
+    res.status(200).json(
+      apiResponse(true, 'Featured properties retrieved successfully', featuredProperties)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dashboard stats for backoffice (scoped to user or full platform for admin)
+// @route   GET /api/properties/dashboard/stats
+// @access  Private (Admin / Agency / Owner)
+exports.getDashboardStats = async (req, res, next) => {
+  try {
+    const stats = await getDashboardStatsForUser(req.user._id, req.user.role);
+    res.status(200).json(apiResponse(true, 'Dashboard stats retrieved successfully', stats));
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Get all properties
 // @route   GET /api/properties
@@ -21,7 +120,9 @@ exports.getAllProperties = async (req, res, next) => {
       rooms,
       bathrooms,
       minSurface,
-      search
+      search,
+      sortBy,
+      sortOrder = 'desc'
     } = req.query;
 
     // Validate listingType if provided
@@ -54,11 +155,16 @@ exports.getAllProperties = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
+    // Apply only known sortable fields and sort directions.
+    const sortField = ['createdAt', 'price', 'title'].includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    const sort = { [sortField]: sortDirection };
+
     // Fetch properties
     let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .populate('createdBy', 'login email role firstName lastName')
       .lean();
 
@@ -68,7 +174,8 @@ exports.getAllProperties = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -153,7 +260,8 @@ exports.getMyProperties = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -235,7 +343,8 @@ exports.getPropertiesByUser = async (req, res, next) => {
     const transactions = await Transaction.aggregate([
       { $match: { propertyId: { $in: propertyIds }, type: 'RENT' } },
       { $sort: { endDate: -1, createdAt: -1 } },
-      { $group: {
+      {
+        $group: {
           _id: '$propertyId',
           latest: { $first: '$$ROOT' }
         }
@@ -274,7 +383,7 @@ exports.getPropertyById = async (req, res, next) => {
       );
     }
     const property = await Property.findById(id)
-      .populate('createdBy', 'login email role firstName lastName')
+      .populate('createdBy', 'login email role firstName lastName phone createdAt')
       .lean(); // Plain JSON so panoramas (id, url, linkHotspots) match front + backoffice
 
     if (!property) {
@@ -296,12 +405,12 @@ exports.getPropertyById = async (req, res, next) => {
 // @access  Private (Admin/Agent)
 exports.createProperty = async (req, res, next) => {
   try {
-    const reference = await Property.generateReference();
-
     const propertyData = {
       ...req.body,
-      reference,
     };
+
+    // Never trust client-side reference for a unique, server-generated field.
+    delete propertyData.reference;
 
     // Add createdBy if user is authenticated
     if (req.user && req.user._id) {
@@ -317,12 +426,96 @@ exports.createProperty = async (req, res, next) => {
       }));
 
       console.log(`✅ Uploaded ${req.files.length} image(s)`);
+
+      // Attempt to auto-detect features using FastAPI /detect/ endpoint (all images)
+      try {
+        const fs = require('fs');
+        // Only process regular images (skip panoramas)
+        const imagesToDetect = req.files.filter(f => !f.fieldname || !f.fieldname.startsWith('pano'));
+
+        if (imagesToDetect.length > 0) {
+          console.log(`🔍 Calling FastAPI detect endpoint for ${imagesToDetect.length} image(s)...`);
+
+          // Run detection on every image in parallel
+          const detectionResults = await Promise.allSettled(
+            imagesToDetect.map(async (imgFile) => {
+              const buffer = fs.readFileSync(imgFile.path);
+              const mimeType = imgFile.mimetype || 'image/jpeg';
+
+              const blob = new Blob([buffer], { type: mimeType });
+              const formData = new FormData();
+              formData.append('file', blob, imgFile.originalname);
+
+              const detectRes = await fetch('http://127.0.0.1:8000/detect/', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (!detectRes.ok) {
+                console.warn(`⚠️ Detect API returned ${detectRes.status} for ${imgFile.originalname}`);
+                return null;
+              }
+              return detectRes.json();
+            })
+          );
+
+          // Aggregate results across all images
+          const allObjectsSet = new Set();
+          const aggregatedRoomVotes = {};
+
+          for (const result of detectionResults) {
+            if (result.status === 'fulfilled' && result.value) {
+              const data = result.value;
+              (data.detected_objects || []).forEach(obj => allObjectsSet.add(obj));
+              for (const [room, votes] of Object.entries(data.room_votes || {})) {
+                aggregatedRoomVotes[room] = (aggregatedRoomVotes[room] || 0) + votes;
+              }
+            }
+          }
+
+          const allObjects = Array.from(allObjectsSet);
+          const inferredRoom = Object.keys(aggregatedRoomVotes).length > 0
+            ? Object.entries(aggregatedRoomVotes).sort((a, b) => b[1] - a[1])[0][0]
+            : null;
+
+          if (allObjects.length > 0 || inferredRoom) {
+            propertyData.detectedFeatures = {
+              objects: allObjects,
+              inferredRoom,
+              roomVotes: aggregatedRoomVotes,
+            };
+            console.log(`✅ AI Detection complete — objects: [${allObjects.join(', ')}], inferred room: ${inferredRoom}`);
+          }
+        }
+      } catch (detectErr) {
+        console.warn('⚠️ Error calling auto-detect API:', detectErr.message);
+      }
     }
 
-    const property = await Property.create(propertyData);
+    let property = null;
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      propertyData.reference = await Property.generateReference();
+
+      try {
+        property = await Property.create(propertyData);
+        break;
+      } catch (err) {
+        const duplicateReference =
+          err &&
+          err.code === 11000 &&
+          err.keyPattern &&
+          err.keyPattern.reference;
+
+        if (!duplicateReference || attempt === maxAttempts - 1) {
+          throw err;
+        }
+      }
+    }
 
     // Populate createdBy if it exists
-    if (property.createdBy) {
+    if (property && property.createdBy) {
       await property.populate('createdBy', 'login email role firstName lastName');
     }
 
@@ -432,7 +625,7 @@ exports.updatePropertyPanoramas = async (req, res, next) => {
 
 // @desc    Delete property
 // @route   DELETE /api/properties/:id
-// @access  Private (Admin)
+// @access  Private (Admin/Agency/Owner)
 exports.deleteProperty = async (req, res, next) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -440,6 +633,14 @@ exports.deleteProperty = async (req, res, next) => {
     if (!property) {
       return res.status(404).json(
         apiResponse(false, 'Property not found')
+      );
+    }
+
+    const userRole = String(req.user?.role || '').toUpperCase();
+    const isOwner = String(property.createdBy || '') === String(req.user?._id || '');
+    if (userRole !== 'ADMIN' && !isOwner) {
+      return res.status(403).json(
+        apiResponse(false, 'Forbidden: insufficient permissions')
       );
     }
 

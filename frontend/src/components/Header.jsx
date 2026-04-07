@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import LocalizedLink from './LocalizedLink';
-import { localizeRoute, getLanguageFromPath } from '../routes/routeConfig';
+import { localizeRoute, getLanguageFromPath, stripLanguagePrefix } from '../routes/routeConfig';
 import {
   shouldAccessBackoffice,
   getRedirectUrl,
@@ -14,6 +14,31 @@ const Header = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const renderBrand = ({ textColor = '#FFFFFF', iconSize = 44, className = '' } = {}) => (
+    <span
+      className={`d-inline-flex align-items-center ${className}`.trim()}
+      style={{ gap: '12px', lineHeight: 1 }}
+    >
+      <img
+        src="/assets/img/smart/image.png"
+        alt="Smart Property"
+        style={{ width: `${iconSize}px`, height: `${iconSize}px`, objectFit: 'contain' }}
+      />
+      <span
+        style={{
+          color: textColor,
+          fontWeight: 700,
+          fontSize: 'clamp(28px, 1.75vw, 36px)',
+          letterSpacing: '0.3px',
+          fontFamily: "'Nunito', sans-serif",
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Smart Property
+      </span>
+    </span>
+  );
 
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -42,7 +67,7 @@ const Header = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);
-    navigate('/');
+    navigate(localizeRoute('/', i18n.language));
   };
 
   const getUserInitials = (user) => {
@@ -58,14 +83,13 @@ const Header = () => {
     return user.email || '';
   };
 
-  const changeLanguage = (lang) => {
-    i18n.changeLanguage(lang);
-    
-    // Update URL based on language using the route utility
-    const currentPath = location.pathname;
-    const newPath = localizeRoute(currentPath, lang);
-    
-    navigate(newPath);
+  const changeLanguage = async (lang) => {
+    await i18n.changeLanguage(lang);
+
+    // Normalize current path before localizing and keep query/hash intact.
+    const cleanPath = stripLanguagePrefix(location.pathname || '/');
+    const newPath = localizeRoute(cleanPath || '/', lang);
+    navigate(`${newPath}${location.search || ''}${location.hash || ''}`);
   };
 
   const getCurrentLanguage = () => {
@@ -83,6 +107,25 @@ const Header = () => {
     return flagMap[lang] || 'us';
   };
 
+  const path = stripLanguagePrefix(location.pathname);
+
+  const navActive = {
+    home:
+      path === '/' ||
+      path === '/home' ||
+      path === '/index-2' ||
+      path === '/index-3',
+    buy:
+      path.startsWith('/buy-') ||
+      path.startsWith('/add-property-buy'),
+    rent:
+      (path.startsWith('/rent-') && !path.startsWith('/rental-')) ||
+      path.startsWith('/add-property-rent'),
+    agency: path.startsWith('/agency-') || path.startsWith('/agent-'),
+    about: path.startsWith('/about-us'),
+    contact: path.startsWith('/contact-us'),
+  };
+
   return (
     <div className="main-header-two">
       <header className="header header-three">
@@ -90,10 +133,10 @@ const Header = () => {
           <nav className="navbar navbar-expand-lg header-nav">
             <div className="navbar-header">
               <LocalizedLink to="/" className="navbar-brand logo">
-                <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
+                {renderBrand({ textColor: '#FFFFFF', iconSize: 44 })}
               </LocalizedLink>
               <LocalizedLink to="/" className="navbar-brand logo-dark">
-                <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
+                {renderBrand({ textColor: '#0F172A', iconSize: 44 })}
               </LocalizedLink>
               <a id="mobile_btn" href="#">
                 <i className="material-icons-outlined">menu</i>
@@ -103,10 +146,10 @@ const Header = () => {
             <div className="main-menu-wrapper">
               <div className="menu-header">
                 <LocalizedLink to="/" className="menu-logo">
-                  <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
+                  {renderBrand({ textColor: '#0F172A', iconSize: 38 })}
                 </LocalizedLink>
                 <LocalizedLink to="/" className="menu-logo menu-logo-dark">
-                  <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
+                  {renderBrand({ textColor: '#0F172A', iconSize: 38 })}
                 </LocalizedLink>
                 <a id="menu_close" className="menu-close" href="#">
                   <i className="material-icons-outlined">close</i>
@@ -117,34 +160,32 @@ const Header = () => {
               </div>
 
               <ul className="main-nav">
-                <li className="active">
+                <li className={navActive.home ? 'active' : ''}>
                   <LocalizedLink to="/">{t('navigation.home')}</LocalizedLink>
                 </li>
-               {/* <li>
-  <LocalizedLink to="/buy-property-grid">
-    {t('navigation.buyProperty')}
-  </LocalizedLink>
-</li> */}
-<li className="has-submenu">
+                <li className={navActive.buy ? 'active' : ''}>
+                  <LocalizedLink to="/buy-property-grid">{t('navigation.buyProperty')}</LocalizedLink>
+                </li>
+{/* <li className="has-submenu">
                       <a href="#">{t('navigation.buyProperty')}</a>
                       <ul className="submenu">
                         <li><LocalizedLink to="/buy-property-grid">{t('navigation.buyProperty')}</LocalizedLink></li>
                         <li><LocalizedLink to="/buy-property-grid-sidebar">{t('navigation.buyGridSidebar')}</LocalizedLink></li>
                       </ul>
-                    </li>
+                    </li> */}
 
-<li>
-  <LocalizedLink to="/rent-property-grid">
-    {t('navigation.rentProperty')}
-  </LocalizedLink>
-</li>
-               <li>
-  <LocalizedLink to="/agency-grid">
-    {t('navigation.agency')}
-  </LocalizedLink>
-</li>
-                <li><LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink></li>
-                <li><LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink></li>
+                <li className={navActive.rent ? 'active' : ''}>
+                  <LocalizedLink to="/rent-property-grid">{t('navigation.rentProperty')}</LocalizedLink>
+                </li>
+                <li className={navActive.agency ? 'active' : ''}>
+                  <LocalizedLink to="/agency-grid">{t('navigation.agency')}</LocalizedLink>
+                </li>
+                <li className={navActive.about ? 'active' : ''}>
+                  <LocalizedLink to="/about-us">{t('navigation.aboutUs')}</LocalizedLink>
+                </li>
+                <li className={navActive.contact ? 'active' : ''}>
+                  <LocalizedLink to="/contact-us">{t('navigation.contactUs')}</LocalizedLink>
+                </li>
               </ul>
 
               <div className="menu-dropdown">
