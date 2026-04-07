@@ -15,6 +15,31 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const renderBrand = ({ textColor = '#FFFFFF', iconSize = 44, className = '' } = {}) => (
+    <span
+      className={`d-inline-flex align-items-center ${className}`.trim()}
+      style={{ gap: '12px', lineHeight: 1 }}
+    >
+      <img
+        src="/assets/img/smart/image.png"
+        alt="Smart Property"
+        style={{ width: `${iconSize}px`, height: `${iconSize}px`, objectFit: 'contain' }}
+      />
+      <span
+        style={{
+          color: textColor,
+          fontWeight: 700,
+          fontSize: 'clamp(28px, 1.75vw, 36px)',
+          letterSpacing: '0.3px',
+          fontFamily: "'Nunito', sans-serif",
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Smart Property
+      </span>
+    </span>
+  );
+
   const [currentUser, setCurrentUser] = useState(null);
 
   // Re-read auth state whenever the route changes
@@ -108,10 +133,10 @@ const Header = () => {
           <nav className="navbar navbar-expand-lg header-nav">
             <div className="navbar-header">
               <LocalizedLink to="/" className="navbar-brand logo">
-                <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
+                {renderBrand({ textColor: '#FFFFFF', iconSize: 44 })}
               </LocalizedLink>
               <LocalizedLink to="/" className="navbar-brand logo-dark">
-                <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
+                {renderBrand({ textColor: '#0F172A', iconSize: 44 })}
               </LocalizedLink>
               <a id="mobile_btn" href="#">
                 <i className="material-icons-outlined">menu</i>
@@ -121,10 +146,10 @@ const Header = () => {
             <div className="main-menu-wrapper">
               <div className="menu-header">
                 <LocalizedLink to="/" className="menu-logo">
-                  <img src="/assets/img/logo.svg" className="img-fluid" alt="Logo" />
+                  {renderBrand({ textColor: '#0F172A', iconSize: 38 })}
                 </LocalizedLink>
                 <LocalizedLink to="/" className="menu-logo menu-logo-dark">
-                  <img src="/assets/img/logo-white.svg" className="img-fluid" alt="Logo" />
+                  {renderBrand({ textColor: '#0F172A', iconSize: 38 })}
                 </LocalizedLink>
                 <a id="menu_close" className="menu-close" href="#">
                   <i className="material-icons-outlined">close</i>
