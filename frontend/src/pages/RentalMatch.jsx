@@ -1,29 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchMatches, fetchCreditScore } from '../api/matching';
 import { getCurrentUser } from '../api/user';
 import '../styles/rentalMatch.css';
 
 const PROPERTY_TYPES = [
-  'Appartements',
-  'Maisons et Villas',
-  'Locations de vacances',
+  'apartments',
+  'housesVillas',
+  'holidayRentals',
 ];
 
 const EMPLOYMENT_OPTIONS = [
-  { value: 'CDI', label: 'CDI' },
-  { value: 'CDD', label: 'CDD' },
-  { value: 'freelance', label: 'Freelance' },
-  { value: 'retired', label: 'Retraite' },
-  { value: 'unemployed', label: 'Sans emploi' },
+  { value: 'CDI', labelKey: 'cdi' },
+  { value: 'CDD', labelKey: 'cdd' },
+  { value: 'freelance', labelKey: 'freelance' },
+  { value: 'retired', labelKey: 'retired' },
+  { value: 'unemployed', labelKey: 'unemployed' },
 ];
 
 const DOCUMENT_LABELS = {
-  national_id: 'Carte d identite nationale',
-  payslips_3months: '3 fiches de paie',
-  bank_statement: 'Releve bancaire',
-  employment_contract: 'Contrat de travail',
-  tax_notice: 'Declaration fiscale',
+  national_id: 'nationalId',
+  payslips_3months: 'payslips3months',
+  bank_statement: 'bankStatement',
+  employment_contract: 'employmentContract',
+  tax_notice: 'taxNotice',
 };
 
 const initialCandidate = {
@@ -31,7 +32,7 @@ const initialCandidate = {
   budget_max: 800,
   city: 'Tunis',
   min_rooms: 2,
-  preferred_categories: ['Appartements'],
+  preferred_categories: ['apartments'],
   min_size: 70,
 };
 
@@ -51,30 +52,76 @@ const initialCredit = {
   },
 };
 
-function buildHint(candidate) {
-  if (!candidate.city) return 'Conseil: indiquez votre ville pour de meilleures correspondances.';
+const formatTnd = (value) => {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return 'N/A';
+  return `${numberValue.toLocaleString('en-US').replace(/,/g, ' ')} TND`;
+};
+
+const clampScore = (value) => {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return 0;
+  return Math.max(0, Math.min(100, Math.round(numberValue)));
+};
+
+const getMatchScore = (match) => clampScore(match?.score_pct ?? (Number(match?.score || 0) * 100));
+
+const getRecommendationMeta = (recommendation, t) => {
+  switch (recommendation) {
+    case 'ACCEPT':
+      return {
+        label: t('rentalMatch.credit.meta.accept.label'),
+        tone: 'accept',
+        icon: 'verified',
+        note: t('rentalMatch.credit.meta.accept.note'),
+      };
+    case 'GUARANTEE':
+      return {
+        label: t('rentalMatch.credit.meta.guarantee.label'),
+        tone: 'warn',
+        icon: 'handshake',
+        note: t('rentalMatch.credit.meta.guarantee.note'),
+      };
+    default:
+      return {
+        label: t('rentalMatch.credit.meta.reject.label'),
+        tone: 'danger',
+        icon: 'gpp_bad',
+        note: t('rentalMatch.credit.meta.reject.note'),
+      };
+  }
+};
+
+function buildHint(candidate, t) {
+  if (!candidate.city) return t('rentalMatch.insights.hints.noCity');
   const budget = candidate.budget_max || 0;
-  if (budget < 500) return `Budget serré pour ${candidate.city}. Élargissez aux 1-2 pièces ou zones périphériques.`;
-  if (budget > 1500) return `Budget confortable pour ${candidate.city}. Regardez les quartiers centraux et récents.`;
-  return `Budget équilibré pour ${candidate.city}. Les appartements 2-3 pièces tournent autour de ${Math.round(budget)} TND.`;
+  if (budget < 500) return t('rentalMatch.insights.hints.lowBudget', { city: candidate.city });
+  if (budget > 1500) return t('rentalMatch.insights.hints.highBudget', { city: candidate.city });
+  return t('rentalMatch.insights.hints.midBudget', { city: candidate.city, budget: Math.round(budget) });
 }
 
-function buildMatchSummary(matches) {
-  if (!matches || matches.length === 0) return 'Les correspondances apparaîtront ici après recherche.';
+function buildMatchSummary(matches, t) {
+  if (!matches || matches.length === 0) return t('rentalMatch.results.emptySummary');
   const best = matches[0];
-  const avg = matches.reduce((s, m) => s + (m.score_pct || 0), 0) / matches.length;
-  return `Top choix: ${best.category} à ${best.city} (score ${best.score_pct}%). Score moyen ${avg.toFixed(1)}%.`;
+  const avg = matches.reduce((sum, match) => sum + getMatchScore(match), 0) / matches.length;
+  return t('rentalMatch.results.summary', {
+    category: best.category,
+    city: best.city,
+    score: getMatchScore(best),
+    avg: avg.toFixed(1),
+  });
 }
 
-function buildCreditSummary(result) {
-  if (!result) return 'Le résumé de crédit apparaîtra après l évaluation.';
+function buildCreditSummary(result, t) {
+  if (!result) return t('rentalMatch.credit.emptySummary');
   const { recommendation, score } = result;
-  if (recommendation === 'ACCEPT') return `✅ Solide: score ${score}. Le dossier semble prêt sans réserve majeure.`;
-  if (recommendation === 'GUARANTEE') return `⚠️ Mitigé: score ${score}. Un garant ou des pièces supplémentaires peuvent aider.`;
-  return `❌ Fragile: score ${score}. Réduire le loyer ou ajouter un garant améliorerait vos chances.`;
+  if (recommendation === 'ACCEPT') return t('rentalMatch.credit.summary.accept', { score });
+  if (recommendation === 'GUARANTEE') return t('rentalMatch.credit.summary.guarantee', { score });
+  return t('rentalMatch.credit.summary.reject', { score });
 }
 
 export default function RentalMatch() {
+  const { t } = useTranslation();
   const [candidate, setCandidate] = useState(initialCandidate);
   const [credit, setCredit] = useState(initialCredit);
   const [matches, setMatches] = useState([]);
@@ -83,7 +130,6 @@ export default function RentalMatch() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Ensure scrolling is enabled (some pages toggle body overflow)
     const enableScrolling = () => {
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
@@ -108,10 +154,9 @@ export default function RentalMatch() {
   }, []);
 
   useEffect(() => {
-    setCredit((prev) => ({ ...prev, rent_asked: candidate.budget_max || 0 }));
+    setCredit((prev) => ({ ...prev, rent_asked: candidate.budget_max ?? 0 }));
   }, [candidate.budget_max]);
 
-  // Accept auth payloads from backoffice window to persist JWT/user
   useEffect(() => {
     const handleMessage = async (event) => {
       const payload = event?.data;
@@ -128,7 +173,6 @@ export default function RentalMatch() {
         setCandidate((prev) => ({ ...prev, name: fullName }));
       }
 
-      // Refresh profile to ensure downstream fetches succeed with the new token
       try {
         const user = await getCurrentUser();
         if (user?.role === 'TENANT') {
@@ -146,7 +190,6 @@ export default function RentalMatch() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Prefill candidate from backend profile when logged in as TENANT
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -161,32 +204,33 @@ export default function RentalMatch() {
           }));
         }
       } catch (err) {
-        // Silent fallback to defaults when not authenticated
         console.warn('Unable to prefill user profile:', err.message);
       }
     };
     loadUser();
   }, []);
 
-  const hint = useMemo(() => buildHint(candidate), [candidate]);
-  const matchSummary = useMemo(() => buildMatchSummary(matches), [matches]);
-  const creditSummary = useMemo(() => buildCreditSummary(creditResult), [creditResult]);
+  const hint = useMemo(() => buildHint(candidate, t), [candidate, t]);
+  const matchSummary = useMemo(() => buildMatchSummary(matches, t), [matches, t]);
+  const creditSummary = useMemo(() => buildCreditSummary(creditResult, t), [creditResult, t]);
   const documentEntries = useMemo(
-    () => Object.keys(credit.documents || {}).map((key) => ({ key, label: DOCUMENT_LABELS[key] || key.replace(/_/g, ' ') })),
-    [credit.documents]
+    () => Object.keys(credit.documents || {}).map((key) => ({
+      key,
+      label: t(`rentalMatch.documents.${DOCUMENT_LABELS[key] || key}`, { defaultValue: key.replace(/_/g, ' ') }),
+    })),
+    [credit.documents, t]
   );
+
+  const bestMatch = matches[0] || null;
+  const bestMatchScore = bestMatch ? getMatchScore(bestMatch) : 0;
+  const creditMeta = useMemo(
+    () => getRecommendationMeta(creditResult?.recommendation, t),
+    [creditResult?.recommendation, t]
+  );
+  const documentCount = Object.values(credit.documents || {}).filter(Boolean).length;
 
   const handleCandidateChange = (field, value) => {
     setCandidate((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const toggleCategory = (category) => {
-    setCandidate((prev) => {
-      const current = prev.preferred_categories || [];
-      const exists = current.includes(category);
-      const updated = exists ? current.filter((c) => c !== category) : [...current, category];
-      return { ...prev, preferred_categories: updated };
-    });
   };
 
   const handleDocumentToggle = (doc) => {
@@ -196,28 +240,40 @@ export default function RentalMatch() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      const matchPayload = { ...candidate, top_n: 3 };
-      const creditPayload = { ...credit, rent_asked: candidate.budget_max || credit.rent_asked };
+      const matchPayload = {
+        ...candidate,
+        budget_max: Number(candidate.budget_max) || 0,
+        min_rooms: Number(candidate.min_rooms) || 0,
+        min_size: Number(candidate.min_size) || 0,
+        top_n: 3,
+      };
+      const creditPayload = {
+        ...credit,
+        rent_asked: Number(candidate.budget_max) || Number(credit.rent_asked) || 0,
+      };
+
       const [matchRes, creditRes] = await Promise.all([
         fetchMatches(matchPayload),
         fetchCreditScore(creditPayload),
       ]);
+
       setMatches(matchRes.matches || matchRes.data || []);
       setCreditResult(creditRes);
     } catch (err) {
-      setError(err.message || 'Une erreur est survenue.');
+      setError(err.message || t('rentalMatch.error.generic'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="main-wrapper">
+    <div className="main-wrapper rental-match-page">
       <div className="page-wrapper">
         <div className="breadcrumb-bar">
           <img src="/assets/img/bg/breadcrumb-bg-01.png" alt="" className="breadcrumb-bg-01 d-none d-lg-block" />
@@ -225,320 +281,399 @@ export default function RentalMatch() {
           <img src="/assets/img/bg/breadcrumb-bg-03.png" alt="" className="breadcrumb-bg-03" />
           <div className="row align-items-center text-center position-relative z-1">
             <div className="col-md-12 col-12 breadcrumb-arrow">
-              <h1 className="breadcrumb-title">Rental Match</h1>
+              <h1 className="breadcrumb-title">{t('rentalMatch.pageTitle')}</h1>
               <nav aria-label="breadcrumb" className="page-breadcrumb">
                 <ol className="breadcrumb">
-                  <li className="breadcrumb-item"><Link to="/"><span><i className="material-icons-outlined me-1">home</i></span>Home</Link></li>
-                  <li className="breadcrumb-item active" aria-current="page">Rental Match</li>
+                  <li className="breadcrumb-item">
+                    <Link to="/">
+                      <span><i className="material-icons-outlined me-1">home</i></span>
+                      {t('common.home')}
+                    </Link>
+                  </li>
+                  <li className="breadcrumb-item active" aria-current="page">{t('rentalMatch.pageTitle')}</li>
                 </ol>
               </nav>
             </div>
           </div>
         </div>
 
-        <div className="content overflow-hidden">
+        <div className="content rental-match-content">
           <div className="container">
 
-            <form onSubmit={handleSubmit} className="row g-4">
-              <div className="col-xl-5">
-                <div className="card shadow-sm h-100">
-                  <div className="card-header bg-white d-flex align-items-center justify-content-between">
-                    <div>
-                      <p className="text-muted mb-1 small">Profil candidat</p>
-                      <h5 className="mb-0">Vos critères</h5>
-                    </div>
-                    <span className="badge bg-primary-subtle text-primary">Step 1</span>
-                  </div>
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-12">
-                        <label className="form-label">Nom complet</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={candidate.name || ''}
-                          onChange={(e) => handleCandidateChange('name', e.target.value)}
-                          placeholder="Ahmed Ben Ali"
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Budget max (TND / mois)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={candidate.budget_max || ''}
-                          onChange={(e) => handleCandidateChange('budget_max', Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Ville</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={candidate.city || ''}
-                          onChange={(e) => handleCandidateChange('city', e.target.value)}
-                          placeholder="Tunis"
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Chambres min</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={candidate.min_rooms || ''}
-                          onChange={(e) => handleCandidateChange('min_rooms', Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Taille min (m²)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={candidate.min_size || ''}
-                          onChange={(e) => handleCandidateChange('min_size', Number(e.target.value))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <p className="text-muted mb-2">Types de biens préférés</p>
-                      <div className="d-flex flex-wrap gap-2">
-                        {PROPERTY_TYPES.map((type) => {
-                          const active = candidate.preferred_categories?.includes(type);
-                          return (
-                            <button
-                              key={type}
-                              type="button"
-                              className={`btn btn-sm rounded-pill ${active ? 'btn-primary' : 'btn-outline-secondary'}`}
-                              onClick={() => toggleCategory(type)}
-                            >
-                              {type}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+            <form onSubmit={handleSubmit} className="rental-match-grid">
+              <section className="rental-panel rental-panel--candidate">
+                <div className="rental-panel__header">
+                  <p className="rental-panel__eyebrow">{t('rentalMatch.candidate.step')}</p>
+                  <h2 className="rental-panel__title">{t('rentalMatch.candidate.title')}</h2>
+                  <p className="rental-panel__description">{t('rentalMatch.candidate.description')}</p>
                 </div>
-              </div>
-
-              <div className="col-xl-4">
-                <div className="card shadow-sm h-100">
-                  <div className="card-header bg-white d-flex align-items-center justify-content-between">
-                    <div>
-                      <p className="text-muted mb-1 small">Évaluation crédit</p>
-                      <h5 className="mb-0">Stabilité financière</h5>
-                    </div>
-                    <span className="badge bg-success-subtle text-success">Step 2</span>
+                <div className="rental-panel__body">
+                  <div className="match-field">
+                    <label className="form-label">{t('rentalMatch.candidate.fields.fullName')}</label>
+                    <input
+                      type="text"
+                      className="form-control rental-input"
+                      value={candidate.name ?? ''}
+                      onChange={(e) => handleCandidateChange('name', e.target.value)}
+                      placeholder={t('rentalMatch.candidate.placeholders.fullName')}
+                    />
                   </div>
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label className="form-label">Revenu mensuel net (TND)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={credit.monthly_income}
-                          onChange={(e) => setCredit((p) => ({ ...p, monthly_income: Number(e.target.value) }))}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Loyer envisagé (TND)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={credit.rent_asked}
-                          onChange={(e) => setCredit((p) => ({ ...p, rent_asked: Number(e.target.value) }))}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Dettes mensuelles (TND)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={credit.total_monthly_debts}
-                          onChange={(e) => setCredit((p) => ({ ...p, total_monthly_debts: Number(e.target.value) }))}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Type d'emploi</label>
-                        <select
-                          className="form-select"
-                          value={credit.employment_type}
-                          onChange={(e) => setCredit((p) => ({ ...p, employment_type: e.target.value }))}
-                        >
-                          {EMPLOYMENT_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-md-12">
-                        <label className="form-label">Ancienneté (mois)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="form-control"
-                          value={credit.months_employed}
-                          onChange={(e) => setCredit((p) => ({ ...p, months_employed: Number(e.target.value) }))}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="row g-2 mt-3">
-                      <div className="col-12">
-                        <p className="text-muted mb-1 small">Documents disponibles</p>
-                      </div>
-                      {documentEntries.map(({ key, label }) => (
-                        <div className="col-md-6" key={key}>
+                  <div className="match-field-grid">
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.candidate.fields.maxBudget')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={candidate.budget_max ?? ''}
+                        onChange={(e) => handleCandidateChange('budget_max', Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.candidate.fields.city')}</label>
+                      <input
+                        type="text"
+                        className="form-control rental-input"
+                        value={candidate.city ?? ''}
+                        onChange={(e) => handleCandidateChange('city', e.target.value)}
+                        placeholder={t('rentalMatch.candidate.placeholders.city')}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="match-field-grid">
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.candidate.fields.minRooms')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={candidate.min_rooms ?? ''}
+                        onChange={(e) => handleCandidateChange('min_rooms', Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.candidate.fields.minSize')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={candidate.min_size ?? ''}
+                        onChange={(e) => handleCandidateChange('min_size', Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="match-section">
+                    <div className="match-section__heading">
+                      <p className="match-section__label">{t('rentalMatch.candidate.preferredTypes')}</p>
+                      <span className="match-section__count">{t('rentalMatch.candidate.selectedCount', { count: candidate.preferred_categories?.length || 0 })}</span>
+                    </div>
+                    <div className="rental-chip-group">
+                      {PROPERTY_TYPES.map((type) => {
+                        const active = candidate.preferred_categories?.includes(type);
+                        return (
                           <button
+                            key={type}
                             type="button"
-                            className={`credit-doc-chip ${credit.documents[key] ? 'active' : ''}`}
-                            onClick={() => handleDocumentToggle(key)}
-                            aria-pressed={credit.documents[key]}
+                            className={`rental-chip ${active ? 'active' : ''}`}
+                            onClick={() => {
+                              const current = candidate.preferred_categories || [];
+                              const updated = current.includes(type)
+                                ? current.filter((item) => item !== type)
+                                : [...current, type];
+                              handleCandidateChange('preferred_categories', updated);
+                            }}
+                            aria-pressed={active}
                           >
-                            <span className="credit-doc-chip__indicator">{credit.documents[key] ? '✓' : ''}</span>
-                            <span className="credit-doc-chip__label">{label}</span>
+                            {t(`rentalMatch.propertyTypes.${type}`)}
                           </button>
-                        </div>
-                      ))}
-                      <div className="col-md-12">
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rental-panel rental-panel--credit">
+                <div className="rental-panel__header">
+                  <p className="rental-panel__eyebrow">{t('rentalMatch.credit.step')}</p>
+                  <h2 className="rental-panel__title">{t('rentalMatch.credit.title')}</h2>
+                  <p className="rental-panel__description">{t('rentalMatch.credit.description')}</p>
+                </div>
+                <div className="rental-panel__body">
+                  <div className="match-field-grid">
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.monthlyIncome')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={credit.monthly_income ?? ''}
+                        onChange={(e) => setCredit((prev) => ({ ...prev, monthly_income: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.rentAsked')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={credit.rent_asked ?? ''}
+                        onChange={(e) => setCredit((prev) => ({ ...prev, rent_asked: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="match-field-grid">
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.monthlyDebts')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={credit.total_monthly_debts ?? ''}
+                        onChange={(e) => setCredit((prev) => ({ ...prev, total_monthly_debts: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.employmentType')}</label>
+                      <select
+                        className="form-select rental-input"
+                        value={credit.employment_type}
+                        onChange={(e) => setCredit((prev) => ({ ...prev, employment_type: e.target.value }))}
+                      >
+                        {EMPLOYMENT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{t(`rentalMatch.credit.employmentOptions.${option.labelKey}`)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="match-field-grid">
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.monthsEmployed')}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rental-input"
+                        value={credit.months_employed ?? ''}
+                        onChange={(e) => setCredit((prev) => ({ ...prev, months_employed: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="match-field">
+                      <label className="form-label">{t('rentalMatch.credit.fields.guarantor')}</label>
+                      <button
+                        type="button"
+                        className={`rental-chip rental-chip--toggle w-100 ${credit.has_guarantor ? 'active' : ''}`}
+                        onClick={() => setCredit((prev) => ({ ...prev, has_guarantor: !prev.has_guarantor }))}
+                        aria-pressed={credit.has_guarantor}
+                      >
+                        <span className="rental-chip__indicator">{credit.has_guarantor ? '✓' : ''}</span>
+                        <span className="rental-chip__label">{t('rentalMatch.credit.guarantorAvailable')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="match-section">
+                    <div className="match-section__heading">
+                      <p className="match-section__label">{t('rentalMatch.documents.title')}</p>
+                      <span className="match-section__count">{t('rentalMatch.documents.confirmedCount', { count: documentCount })}</span>
+                    </div>
+                    <div className="match-doc-grid">
+                      {documentEntries.map(({ key, label }) => (
                         <button
+                          key={key}
                           type="button"
-                          className={`credit-doc-chip w-100 ${credit.has_guarantor ? 'active' : ''}`}
-                          onClick={() => setCredit((p) => ({ ...p, has_guarantor: !p.has_guarantor }))}
-                          aria-pressed={credit.has_guarantor}
+                          className={`credit-doc-chip rental-doc-chip ${credit.documents[key] ? 'active' : ''}`}
+                          onClick={() => handleDocumentToggle(key)}
+                          aria-pressed={credit.documents[key]}
                         >
-                          <span className="credit-doc-chip__indicator">{credit.has_guarantor ? '✓' : ''}</span>
-                          <span className="credit-doc-chip__label">Garant disponible</span>
+                          <span className="credit-doc-chip__indicator">{credit.documents[key] ? '✓' : ''}</span>
+                          <span className="credit-doc-chip__label">{label}</span>
                         </button>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="col-xl-3">
-                <div className="card h-100 shadow-sm ai-helper-card">
-                  <div className="card-header bg-white">
-                    <p className="text-muted mb-1 small">AI helper</p>
-                    <h5 className="mb-0">Conseils instantanés</h5>
+              <aside className="rental-panel rental-panel--insights">
+                <div className="rental-panel__header">
+                  <p className="rental-panel__eyebrow">{t('rentalMatch.insights.step')}</p>
+                  <h2 className="rental-panel__title">{t('rentalMatch.insights.title')}</h2>
+                  <p className="rental-panel__description">{t('rentalMatch.insights.description')}</p>
+                </div>
+                <div className="rental-panel__body">
+                  <div className="match-summary-stack">
+                    <div className="match-summary-tile">
+                      <span>{t('rentalMatch.insights.tiles.budgetCeiling')}</span>
+                      <strong>{formatTnd(candidate.budget_max)}</strong>
+                    </div>
+                    <div className="match-summary-tile">
+                      <span>{t('rentalMatch.insights.tiles.preferredCity')}</span>
+                      <strong>{candidate.city || t('rentalMatch.insights.anyCity')}</strong>
+                    </div>
+                    <div className="match-summary-tile">
+                      <span>{t('rentalMatch.insights.tiles.roomTarget')}</span>
+                      <strong>{candidate.min_rooms ?? 0}+</strong>
+                    </div>
+                    <div className="match-summary-tile">
+                      <span>{t('rentalMatch.insights.tiles.selectedDocs')}</span>
+                      <strong>{documentCount}</strong>
+                    </div>
                   </div>
-                  <div className="card-body d-flex flex-column gap-3">
-                    <div className="alert alert-primary-soft mb-0">
-                      <p className="fw-semibold mb-1">Conseil de saisie</p>
-                      <p className="mb-0 text-muted">{hint}</p>
-                    </div>
-                    <div className="alert alert-info-soft mb-0">
-                      <p className="fw-semibold mb-1">Résumé matching</p>
-                      <p className="mb-0 text-muted">{matchSummary}</p>
-                    </div>
-                    <div className="alert alert-success-soft mb-0">
-                      <p className="fw-semibold mb-1">Résumé crédit</p>
-                      <p className="mb-0 text-muted">{creditSummary}</p>
-                    </div>
+
+                  <div className="rental-tip-card rental-tip-card--primary">
+                    <p className="rental-tip-card__label">{t('rentalMatch.insights.searchHint')}</p>
+                    <p className="rental-tip-card__text">{hint}</p>
+                  </div>
+
+                  <div className="rental-tip-card rental-tip-card--secondary">
+                    <p className="rental-tip-card__label">{t('rentalMatch.insights.creditInsight')}</p>
+                    <p className="rental-tip-card__text">{creditSummary}</p>
+                  </div>
+
+                  <div className="rental-cta-stack">
+                    <button type="submit" className="btn btn-primary btn-lg rental-cta-button" disabled={loading}>
+                      {loading ? t('rentalMatch.actions.loading') : t('rentalMatch.actions.submit')}
+                    </button>
+                    <p className="rental-cta-note">{matchSummary}</p>
+                    {error && <div className="alert alert-danger mb-0">{error}</div>}
                   </div>
                 </div>
-              </div>
-
-              <div className="col-12 d-flex align-items-center gap-3 mt-2">
-                <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-                  {loading ? 'Calcul en cours...' : 'Obtenir mes 3 meilleures offres'}
-                </button>
-                {error && <span className="text-danger fw-semibold">{error}</span>}
-                <span className="text-muted small">Les résumés AI sont générés localement (sans LLM externe).</span>
-              </div>
+              </aside>
             </form>
 
-            <div className="section pt-0">
-              <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <section className="rental-results-section">
+              <div className="section-heading rental-results-header">
                 <div>
-                  <p className="text-muted mb-1 small">Résultats</p>
-                  <h4 className="mb-0">Top 3 correspondances</h4>
+                  <p className="section-heading__eyebrow">{t('rentalMatch.results.eyebrow')}</p>
+                  <h2 className="section-heading__title">{t('rentalMatch.results.title')}</h2>
+                  <p className="section-heading__copy">{t('rentalMatch.results.copy')}</p>
                 </div>
-                <span className="badge bg-soft-primary text-primary fw-semibold">Compatibilité</span>
+                <span className="results-badge">{t('rentalMatch.results.badge')}</span>
               </div>
 
-              <div className="row g-3">
-                {matches && matches.length > 0 ? (
-                  matches.slice(0, 3).map((m) => (
-                    <div className="col-lg-4" key={`${m.rank}-${m.city}-${m.price}`}>
-                      <div className="card shadow-sm h-100">
-                        <div className="card-body">
-                          <div className="d-flex align-items-start justify-content-between">
-                            <div>
-                              <p className="text-muted small mb-1">#{m.rank || '-'} • {m.category}</p>
-                              <h6 className="mb-1">{m.city}{m.region ? ` — ${m.region}` : ''}</h6>
-                              <p className="mb-2 fw-semibold text-primary">{m.price?.toFixed ? `${m.price.toFixed(0)} TND / mois` : `${m.price} TND / mois`}</p>
-                            </div>
-                            <div className="score-pill">
-                              <span>{m.score_pct ?? Math.round((m.score || 0) * 100)}</span>
-                              <small>%</small>
+              {loading ? (
+                <div className="rental-state-card">
+                  <div className="spinner-border text-primary mb-3" role="status" aria-hidden="true" />
+                  <h3>{t('rentalMatch.actions.loadingTitle')}</h3>
+                  <p>{t('rentalMatch.actions.loadingCopy')}</p>
+                </div>
+              ) : matches && matches.length > 0 ? (
+                <div className="match-grid">
+                  {matches.slice(0, 3).map((match, index) => {
+                    const score = getMatchScore(match);
+                    const scoreTone = score >= 80 ? 'excellent' : score >= 60 ? 'good' : 'fair';
+                    const breakdownEntries = Object.entries(match.breakdown || {});
+
+                    return (
+                      <article className={`match-card match-card--${scoreTone}`} key={`${match.rank}-${match.city}-${match.price}-${index}`}>
+                        <div className="match-card__top">
+                          <div>
+                            <p className="match-card__eyebrow">#{match.rank || index + 1}</p>
+                            <h3 className="match-card__city">{match.city}{match.region ? ` — ${match.region}` : ''}</h3>
+                            <p className="match-card__category">{match.category}</p>
+                          </div>
+
+                          <div className="match-score-ring" style={{ background: `conic-gradient(#2563eb ${score}%, rgba(148, 163, 184, 0.18) 0)` }}>
+                            <div className="match-score-ring__inner">
+                              <strong className="match-score-ring__value">{score}</strong>
+                              <span className="match-score-ring__suffix">%</span>
                             </div>
                           </div>
-                          <p className="text-muted mb-2">🛏 {m.room_count} • 🛁 {m.bathroom_count ?? '-'} • 📐 {m.size} m²</p>
-                          <p className="mb-2">{m.explanation}</p>
-                          {m.breakdown && (
-                            <div className="d-flex flex-wrap gap-2">
-                              {Object.entries(m.breakdown).map(([k, v]) => (
-                                <span key={k} className="badge bg-light text-dark border">{k.replace('_', ' ')}: {v}%</span>
+                        </div>
+
+                        <div className="match-card__body">
+                          <div className="match-card__price">{match.price?.toFixed ? `${match.price.toFixed(0)} TND / ${t('rentalMatch.common.month')}` : `${match.price} TND / ${t('rentalMatch.common.month')}`}</div>
+                          <div className="match-card__facts">
+                            <span className="match-fact">🛏 {match.room_count}</span>
+                            <span className="match-fact">🛁 {match.bathroom_count ?? '-'}</span>
+                            <span className="match-fact">📐 {match.size} m²</span>
+                          </div>
+
+                          <p className="match-card__explanation">{match.explanation}</p>
+
+                          {breakdownEntries.length > 0 && (
+                            <div className="match-breakdown">
+                              {breakdownEntries.map(([key, value]) => (
+                                <span key={key} className="match-breakdown__pill">
+                                  {t(`rentalMatch.breakdownLabels.${key}`, { defaultValue: key.replace(/_/g, ' ') })}: {value}%
+                                </span>
                               ))}
                             </div>
                           )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-12">
-                    <div className="alert alert-secondary mb-0">Lancez une recherche pour voir les résultats.</div>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            <div className="section pt-0 pb-5">
-              <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                          <div className="match-card__footer">
+                            <Link
+                              to={`/rent-property-grid?city=${encodeURIComponent(match.city || '')}`}
+                              className="btn btn-outline-primary btn-sm"
+                            >
+                              {t('rentalMatch.results.exploreCityListings')}
+                            </Link>
+                            {index === 0 && <span className="match-card__badge">{t('rentalMatch.results.bestMatch')}</span>}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rental-state-card">
+                  <i className="material-icons-outlined rental-state-card__icon">search_off</i>
+                  <h3>{t('rentalMatch.results.noMatchesTitle')}</h3>
+                  <p>{t('rentalMatch.results.noMatchesCopy')}</p>
+                </div>
+              )}
+            </section>
+
+            <section className="credit-verdict-section">
+              <div className="section-heading rental-results-header">
                 <div>
-                  <p className="text-muted mb-1 small">Crédit</p>
-                  <h4 className="mb-0">Votre décision</h4>
+                  <p className="section-heading__eyebrow">{t('rentalMatch.credit.verdictEyebrow')}</p>
+                  <h2 className="section-heading__title">{t('rentalMatch.credit.verdictTitle')}</h2>
+                  <p className="section-heading__copy">{t('rentalMatch.credit.verdictCopy')}</p>
                 </div>
               </div>
 
               {creditResult ? (
-                <div className="card credit-card shadow">
-                  <div className="card-body row g-3 align-items-center">
-                    <div className="col-md-3 text-center">
-                      <div className={`pill pill-${(creditResult.recommendation || '').toLowerCase()}`}>
-                        {creditResult.recommendation || '—'}
-                      </div>
-                      <p className="display-6 fw-bold mb-0 text-dark">{creditResult.score}</p>
-                      <p className="text-muted mb-0">Score / 100</p>
+                <div className={`credit-verdict-card credit-verdict-card--${creditMeta.tone}`}>
+                  <div className="credit-verdict-card__header">
+                    <div>
+                      <p className="credit-verdict-card__eyebrow">{t('rentalMatch.credit.decision')}</p>
+                      <h3 className="credit-verdict-card__title">{creditMeta.label}</h3>
+                      <p className="credit-verdict-card__copy">{creditResult.explanation}</p>
                     </div>
-                    <div className="col-md-9">
-                      <p className="mb-3">{creditResult.explanation}</p>
-                      <div className="row g-2">
-                        {creditResult.breakdown && Object.entries(creditResult.breakdown).map(([k, v]) => (
-                          <div key={k} className="col-md-4">
-                            <div className="bg-light rounded-3 p-3 h-100 border">
-                              <p className="text-muted mb-1 text-capitalize">{k.replace('_', ' ')}</p>
-                              <p className="fw-semibold mb-0">{v}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="credit-score-badge">
+                      <strong>{creditResult.score}</strong>
+                      <span>/100</span>
                     </div>
+                  </div>
+
+                  <div className="credit-verdict-card__note">
+                    <i className="material-icons-outlined">{creditMeta.icon}</i>
+                    <span>{creditMeta.note}</span>
+                  </div>
+
+                  <div className="credit-breakdown-grid">
+                    {creditResult.breakdown && Object.entries(creditResult.breakdown).map(([key, value]) => (
+                      <div key={key} className="credit-breakdown-item">
+                        <span className="credit-breakdown-item__label">{t(`rentalMatch.breakdownLabels.${key}`, { defaultValue: key.replace(/_/g, ' ') })}</span>
+                        <strong className="credit-breakdown-item__value">{value}</strong>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <div className="alert alert-secondary">Remplissez le formulaire pour obtenir le verdict crédit.</div>
+                <div className="rental-state-card rental-state-card--soft">
+                  <i className="material-icons-outlined rental-state-card__icon">fact_check</i>
+                  <h3>{t('rentalMatch.credit.pendingTitle')}</h3>
+                  <p>{t('rentalMatch.credit.pendingCopy')}</p>
+                </div>
               )}
-            </div>
+            </section>
           </div>
         </div>
       </div>

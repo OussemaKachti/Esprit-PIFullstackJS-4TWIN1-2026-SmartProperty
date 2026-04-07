@@ -171,13 +171,13 @@ def evaluate_candidate(dossier):
     # Recommendation
     if score >= CREDIT_ACCEPT:
         recommendation = "ACCEPT"
-        rec_text = "✅ Dossier solide. Recommandation: ACCEPTER."
+        rec_text = "Dossier solide. Recommandation: ACCEPTER."
     elif score >= CREDIT_GUARANTEE:
         recommendation = "GUARANTEE"
-        rec_text = "⚠️  Dossier moyen. Recommandation: DEMANDER UNE CAUTION ou garant."
+        rec_text = "Dossier moyen. Recommandation: DEMANDER UNE CAUTION ou garant."
     else:
         recommendation = "REFUSE"
-        rec_text = "❌ Dossier insuffisant. Recommandation: REFUSER."
+        rec_text = "Dossier insuffisant. Recommandation: REFUSER."
 
     # Explanation
     reasons = []

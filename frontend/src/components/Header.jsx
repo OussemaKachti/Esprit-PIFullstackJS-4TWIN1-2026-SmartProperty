@@ -121,6 +121,7 @@ const Header = () => {
     rent:
       (path.startsWith('/rent-') && !path.startsWith('/rental-')) ||
       path.startsWith('/add-property-rent'),
+    rentalMatch: path.startsWith('/rental-match'),
     agency: path.startsWith('/agency-') || path.startsWith('/agent-'),
     about: path.startsWith('/about-us'),
     contact: path.startsWith('/contact-us'),
@@ -176,6 +177,9 @@ const Header = () => {
 
                 <li className={navActive.rent ? 'active' : ''}>
                   <LocalizedLink to="/rent-property-grid">{t('navigation.rentProperty')}</LocalizedLink>
+                </li>
+                <li className={navActive.rentalMatch ? 'active' : ''}>
+                  <LocalizedLink to="/rental-match">{t('navigation.rentalMatch')}</LocalizedLink>
                 </li>
                 <li className={navActive.agency ? 'active' : ''}>
                   <LocalizedLink to="/agency-grid">{t('navigation.agency')}</LocalizedLink>

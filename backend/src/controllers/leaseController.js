@@ -394,7 +394,7 @@ exports.createLease = async (req, res, next) => {
           false,
           blockingLease.status === LeaseStatus.PENDING
             ? 'You already have a pending rental request for this property. Cancel it before sending another one.'
-            : 'You already have an active or upcoming rental for this property. You can request again after your rental end date has passed, or if the booking was cancelled.'
+            : 'You already have an active or upcoming rental for this property. You can request again after your rental end date has passed.'
         )
       );
     }

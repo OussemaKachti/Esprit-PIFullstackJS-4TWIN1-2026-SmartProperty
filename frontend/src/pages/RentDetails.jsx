@@ -415,7 +415,6 @@ const RentDetails = () => {
 				body: JSON.stringify(payload),
 			});
 
-			setSuccessMessage(t('propertyDetails.bookingRequestSent'));
 			setBlockingLease({
 				status: 'PENDING',
 				endDate: bookingForm.endDate,
@@ -1295,8 +1294,7 @@ const RentDetails = () => {
 																	.
 																</>
 															)}{' '}
-															Send another request only after it is <strong>cancelled</strong> or after your rental{' '}
-															<strong>end date</strong> has passed.
+															Send another request only after your rental <strong>end date</strong> has passed.
 														</div>
 													)}
 

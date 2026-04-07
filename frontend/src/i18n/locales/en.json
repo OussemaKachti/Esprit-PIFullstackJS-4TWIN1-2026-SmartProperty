@@ -30,6 +30,7 @@
     "listing": "Listing",
     "buyProperty": "Buy Property",
     "rentProperty": "Rent Property",
+    "rentalMatch": "Rental Match",
     "agent": "Agent",
     "agency": "Agency",
     "pages": "Pages",
@@ -358,6 +359,141 @@
     "comprehensivePlanning": "Comprehensive planning",
     "clientSatisfaction": "Client satisfaction",
     "support247": "24/7 support"
+  },
+  "rentalMatch": {
+    "pageTitle": "Rental Match",
+    "error": {
+      "generic": "Something went wrong. Please try again."
+    },
+    "common": {
+      "month": "month"
+    },
+    "candidate": {
+      "step": "Step 1",
+      "title": "Candidate profile",
+      "description": "Set the search boundaries and the desired rental profile.",
+      "preferredTypes": "Preferred types",
+      "selectedCount": "{{count}} selected",
+      "fields": {
+        "fullName": "Full name",
+        "maxBudget": "Max budget (TND / month)",
+        "city": "City",
+        "minRooms": "Min rooms",
+        "minSize": "Min size (m2)"
+      },
+      "placeholders": {
+        "fullName": "Ahmed Ben Ali",
+        "city": "Tunis"
+      }
+    },
+    "propertyTypes": {
+      "apartments": "Apartments",
+      "housesVillas": "Houses and Villas",
+      "holidayRentals": "Holiday rentals"
+    },
+    "credit": {
+      "step": "Step 2",
+      "title": "Credit confidence",
+      "description": "Assess solvency and supporting documents before sending an application.",
+      "guarantorAvailable": "Guarantor available",
+      "emptySummary": "Credit summary will appear after the evaluation.",
+      "decision": "Credit decision",
+      "verdictEyebrow": "Credit",
+      "verdictTitle": "Your decision",
+      "verdictCopy": "This view summarizes solvency, document completeness, and the final recommendation.",
+      "pendingTitle": "Verdict pending",
+      "pendingCopy": "Complete the form and submit it to get the credit recommendation card.",
+      "fields": {
+        "monthlyIncome": "Net monthly income (TND)",
+        "rentAsked": "Planned rent (TND)",
+        "monthlyDebts": "Monthly debts (TND)",
+        "employmentType": "Employment type",
+        "monthsEmployed": "Seniority (months)",
+        "guarantor": "Guarantor"
+      },
+      "employmentOptions": {
+        "cdi": "Permanent contract",
+        "cdd": "Fixed-term contract",
+        "freelance": "Freelance",
+        "retired": "Retired",
+        "unemployed": "Unemployed"
+      },
+      "summary": {
+        "accept": "Strong: score {{score}}. The file looks ready without major reservations.",
+        "guarantee": "Mixed: score {{score}}. A guarantor or more documents can help.",
+        "reject": "Fragile: score {{score}}. Lower rent or adding a guarantor would improve your chances."
+      },
+      "meta": {
+        "accept": {
+          "label": "Strong profile",
+          "note": "The file is ready to move forward."
+        },
+        "guarantee": {
+          "label": "Mixed profile",
+          "note": "A guarantor or more documents would help."
+        },
+        "reject": {
+          "label": "Fragile profile",
+          "note": "Reduce rent or reinforce supporting proof."
+        }
+      }
+    },
+    "documents": {
+      "title": "Documents",
+      "confirmedCount": "{{count}} confirmed",
+      "nationalId": "National ID card",
+      "payslips3months": "3 payslips",
+      "bankStatement": "Bank statement",
+      "employmentContract": "Employment contract",
+      "taxNotice": "Tax notice"
+    },
+    "insights": {
+      "step": "Step 3",
+      "title": "Engine summary",
+      "description": "A quick snapshot of what the matcher sees before you launch the request.",
+      "anyCity": "Any city",
+      "searchHint": "Search hint",
+      "creditInsight": "Credit insight",
+      "tiles": {
+        "budgetCeiling": "Budget ceiling",
+        "preferredCity": "Preferred city",
+        "roomTarget": "Room target",
+        "selectedDocs": "Selected docs"
+      },
+      "hints": {
+        "noCity": "Tip: set your city to improve match quality.",
+        "lowBudget": "Tight budget for {{city}}. Expand to 1-2 rooms or peripheral areas.",
+        "highBudget": "Comfortable budget for {{city}}. Check central and newer neighborhoods.",
+        "midBudget": "Balanced budget for {{city}}. Typical 2-3 room apartments are around {{budget}} TND."
+      }
+    },
+    "actions": {
+      "loading": "Calculating...",
+      "submit": "Get my top 3 offers",
+      "loadingTitle": "Calculating",
+      "loadingCopy": "We are scoring your profile and credit file."
+    },
+    "results": {
+      "eyebrow": "Results",
+      "title": "Top 3 matches",
+      "copy": "Each result is ranked by score, room fit, surface, and budget alignment.",
+      "badge": "Compatibility",
+      "emptySummary": "Matches will appear here after search.",
+      "summary": "Top pick: {{category}} in {{city}} (score {{score}}%). Average score {{avg}}%.",
+      "exploreCityListings": "Explore city listings",
+      "bestMatch": "Best match",
+      "noMatchesTitle": "No matches yet",
+      "noMatchesCopy": "Launch a search to see the most relevant rentals for this profile."
+    },
+    "breakdownLabels": {
+      "budget": "budget",
+      "city": "city",
+      "rooms": "rooms",
+      "size": "size",
+      "documents": "documents",
+      "stability": "stability",
+      "debt_ratio": "debt ratio"
+    }
   },
   "faqPage": {
     "title": "Smart Property FAQ - Tunisia",

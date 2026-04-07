@@ -30,6 +30,7 @@
     "listing": "Annonces",
     "buyProperty": "Acheter",
     "rentProperty": "Louer",
+    "rentalMatch": "Rental Match",
     "agent": "Agents",
     "agency": "Agences",
     "pages": "Pages",
@@ -357,6 +358,141 @@
     "comprehensivePlanning": "Planification complète",
     "clientSatisfaction": "Satisfaction client",
     "support247": "Support 24/7"
+  },
+  "rentalMatch": {
+    "pageTitle": "Rental Match",
+    "error": {
+      "generic": "Une erreur est survenue. Veuillez reessayer."
+    },
+    "common": {
+      "month": "mois"
+    },
+    "candidate": {
+      "step": "Etape 1",
+      "title": "Profil candidat",
+      "description": "Definissez les limites de recherche et le profil locatif souhaite.",
+      "preferredTypes": "Types preferes",
+      "selectedCount": "{{count}} selectionnes",
+      "fields": {
+        "fullName": "Nom complet",
+        "maxBudget": "Budget max (TND / mois)",
+        "city": "Ville",
+        "minRooms": "Chambres min",
+        "minSize": "Taille min (m2)"
+      },
+      "placeholders": {
+        "fullName": "Ahmed Ben Ali",
+        "city": "Tunis"
+      }
+    },
+    "propertyTypes": {
+      "apartments": "Appartements",
+      "housesVillas": "Maisons et villas",
+      "holidayRentals": "Locations de vacances"
+    },
+    "credit": {
+      "step": "Etape 2",
+      "title": "Confiance credit",
+      "description": "Evaluez la solvabilite et les documents avant d'envoyer une demande.",
+      "guarantorAvailable": "Garant disponible",
+      "emptySummary": "Le resume credit apparaitra apres l'evaluation.",
+      "decision": "Decision credit",
+      "verdictEyebrow": "Credit",
+      "verdictTitle": "Votre decision",
+      "verdictCopy": "Cette vue resume la solvabilite, les documents et la recommandation finale.",
+      "pendingTitle": "Verdict en attente",
+      "pendingCopy": "Completez le formulaire pour obtenir la recommandation credit.",
+      "fields": {
+        "monthlyIncome": "Revenu mensuel net (TND)",
+        "rentAsked": "Loyer envisage (TND)",
+        "monthlyDebts": "Dettes mensuelles (TND)",
+        "employmentType": "Type d'emploi",
+        "monthsEmployed": "Anciennete (mois)",
+        "guarantor": "Garant"
+      },
+      "employmentOptions": {
+        "cdi": "CDI",
+        "cdd": "CDD",
+        "freelance": "Freelance",
+        "retired": "Retraite",
+        "unemployed": "Sans emploi"
+      },
+      "summary": {
+        "accept": "Solide : score {{score}}. Le dossier semble pret sans reserve majeure.",
+        "guarantee": "Mitige : score {{score}}. Un garant ou plus de pieces peuvent aider.",
+        "reject": "Fragile : score {{score}}. Baisser le loyer ou ajouter un garant aiderait."
+      },
+      "meta": {
+        "accept": {
+          "label": "Profil solide",
+          "note": "Le dossier est pret pour avancer."
+        },
+        "guarantee": {
+          "label": "Profil mitige",
+          "note": "Un garant ou plus de pieces aideraient."
+        },
+        "reject": {
+          "label": "Profil fragile",
+          "note": "Reduire le loyer ou renforcer les preuves."
+        }
+      }
+    },
+    "documents": {
+      "title": "Documents",
+      "confirmedCount": "{{count}} confirmes",
+      "nationalId": "Carte d'identite nationale",
+      "payslips3months": "3 fiches de paie",
+      "bankStatement": "Releve bancaire",
+      "employmentContract": "Contrat de travail",
+      "taxNotice": "Declaration fiscale"
+    },
+    "insights": {
+      "step": "Etape 3",
+      "title": "Resume moteur",
+      "description": "Un apercu rapide de ce que le moteur detecte avant le lancement.",
+      "anyCity": "Toute ville",
+      "searchHint": "Conseil de recherche",
+      "creditInsight": "Point credit",
+      "tiles": {
+        "budgetCeiling": "Plafond budget",
+        "preferredCity": "Ville preferee",
+        "roomTarget": "Objectif chambres",
+        "selectedDocs": "Docs selectionnes"
+      },
+      "hints": {
+        "noCity": "Conseil : indiquez votre ville pour de meilleures correspondances.",
+        "lowBudget": "Budget serre pour {{city}}. Elargissez aux 1-2 pieces ou zones peripheriques.",
+        "highBudget": "Budget confortable pour {{city}}. Regardez les quartiers centraux et recents.",
+        "midBudget": "Budget equilibre pour {{city}}. Les appartements 2-3 pieces tournent autour de {{budget}} TND."
+      }
+    },
+    "actions": {
+      "loading": "Calcul en cours...",
+      "submit": "Obtenir mes 3 meilleures offres",
+      "loadingTitle": "Calcul en cours",
+      "loadingCopy": "Nous evaluons votre profil et votre dossier credit."
+    },
+    "results": {
+      "eyebrow": "Resultats",
+      "title": "Top 3 correspondances",
+      "copy": "Chaque resultat est classe par score, chambres, surface et budget.",
+      "badge": "Compatibilite",
+      "emptySummary": "Les correspondances apparaitront ici apres recherche.",
+      "summary": "Top choix : {{category}} a {{city}} (score {{score}}%). Score moyen {{avg}}%.",
+      "exploreCityListings": "Explorer les annonces de la ville",
+      "bestMatch": "Meilleure correspondance",
+      "noMatchesTitle": "Aucune correspondance",
+      "noMatchesCopy": "Lancez une recherche pour afficher les locations les plus pertinentes."
+    },
+    "breakdownLabels": {
+      "budget": "budget",
+      "city": "ville",
+      "rooms": "chambres",
+      "size": "taille",
+      "documents": "documents",
+      "stability": "stabilite",
+      "debt_ratio": "ratio dette"
+    }
   },
   "faqPage": {
     "title": "FAQ Smart Property - Tunisie",
