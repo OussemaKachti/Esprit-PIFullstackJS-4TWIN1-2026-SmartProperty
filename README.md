@@ -75,7 +75,7 @@ The platform combines AI-powered rental matching with a modern web application t
 - Language: Python 3
 - Framework: YOLOv8 (Object Detection)
 - Purpose: Property image analysis and rental matching
-- Model: Pre-trained YOLOv8 Nano
+- Model: YOLOv8 trained on dataset coco
 
 ## Architecture
 
