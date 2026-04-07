@@ -191,9 +191,24 @@ propertySchema.index({ title: 'text', description: 'text' });
 
 // Méthode pour générer une référence unique
 propertySchema.statics.generateReference = async function () {
-  const count = await this.countDocuments();
   const year = new Date().getFullYear();
-  return `PROP-${year}-${String(count + 1).padStart(5, '0')}`;
+  const prefix = `PROP-${year}-`;
+  const latest = await this.findOne({
+    reference: { $regex: `^${prefix}` },
+  })
+    .sort({ reference: -1 })
+    .select('reference')
+    .lean();
+
+  let nextSequence = 1;
+  if (latest && latest.reference) {
+    const match = String(latest.reference).match(/(\d+)$/);
+    if (match) {
+      nextSequence = Number(match[1]) + 1;
+    }
+  }
+
+  return `${prefix}${String(nextSequence).padStart(5, '0')}`;
 };
 
 const Property = mongoose.model('Property', propertySchema);

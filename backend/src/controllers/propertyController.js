@@ -319,12 +319,12 @@ exports.getPropertyById = async (req, res, next) => {
 // @access  Private (Admin/Agent)
 exports.createProperty = async (req, res, next) => {
   try {
-    const reference = await Property.generateReference();
-
     const propertyData = {
       ...req.body,
-      reference,
     };
+
+    // Never trust client-side reference for a unique, server-generated field.
+    delete propertyData.reference;
 
     // Add createdBy if user is authenticated
     if (req.user && req.user._id) {
@@ -406,10 +406,30 @@ exports.createProperty = async (req, res, next) => {
       }
     }
 
-    const property = await Property.create(propertyData);
+    let property = null;
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      propertyData.reference = await Property.generateReference();
+
+      try {
+        property = await Property.create(propertyData);
+        break;
+      } catch (err) {
+        const duplicateReference =
+          err &&
+          err.code === 11000 &&
+          err.keyPattern &&
+          err.keyPattern.reference;
+
+        if (!duplicateReference || attempt === maxAttempts - 1) {
+          throw err;
+        }
+      }
+    }
 
     // Populate createdBy if it exists
-    if (property.createdBy) {
+    if (property && property.createdBy) {
       await property.populate('createdBy', 'login email role firstName lastName');
     }
 
