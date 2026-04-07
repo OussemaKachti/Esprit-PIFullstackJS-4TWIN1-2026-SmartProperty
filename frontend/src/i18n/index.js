@@ -28,15 +28,17 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'fr',
-    fallbackLng: 'fr',
+    supportedLngs: ['en', 'fr', 'de', 'it'],
+    nonExplicitSupportedLngs: true,
+    lng: 'en',
+    fallbackLng: 'en',
     debug: false,
 
     detection: {
       order: ['path', 'cookie', 'localStorage', 'navigator'],
       caches: ['cookie', 'localStorage'],
       lookupFromPathIndex: 0,
-      checkWhitelist: true
+      checkSupportedLngs: true
     },
 
     interpolation: {

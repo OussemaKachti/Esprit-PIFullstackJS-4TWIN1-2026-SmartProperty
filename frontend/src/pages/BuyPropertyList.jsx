@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import PropertyListPagination from '../components/PropertyListPagination';
+import LocalizedLink from '../components/LocalizedLink';
 
 const PAGE_SIZE = 8;
 
@@ -152,12 +153,12 @@ const BuyPropertyList = () => {
 								<nav aria-label="breadcrumb" className="page-breadcrumb">
 									<ol className="breadcrumb">
 										<li className="breadcrumb-item">
-											<Link to="/">
+											<LocalizedLink to="/">
 												<span>
 													<i className="material-icons-outlined me-1">home</i>
 												</span>
 												Home
-											</Link>
+											</LocalizedLink>
 										</li>
 										<li className="breadcrumb-item active" aria-current="page">
 											Buy List
@@ -220,19 +221,19 @@ const BuyPropertyList = () => {
 												</div>
 												<ul className="grid-list-view d-flex align-items-center justify-content-center">
 													<li>
-														<Link to="/buy-property-list" className="list-icon active">
+														<LocalizedLink to="/buy-property-list" className="list-icon active">
 															<i className="material-icons">list</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 													<li>
-														<Link to="/buy-property-grid" className="list-icon">
+														<LocalizedLink to="/buy-property-grid" className="list-icon">
 															<i className="material-icons">grid_view</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 													<li>
-														<Link to="/buy-list-map" className="list-icon">
+														<LocalizedLink to="/buy-list-map" className="list-icon">
 															<i className="material-icons-outlined">location_on</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 												</ul>
 											</div>
@@ -281,7 +282,7 @@ const BuyPropertyList = () => {
 												<div className="property-card mb-4">
 													<div className="property-listing-item p-0 mb-0 shadow-none d-flex align-items-center flex-lg-nowrap flex-wrap">
 														<div className="buy-grid-img buy-list-img mb-0 rounded-0">
-															<Link to={`/buy-details/${property._id}`}>
+															<LocalizedLink to={`/buy-details/${property._id}`}>
 																<img
 																	className="img-fluid"
 																	src={getImageUrl(property.images?.[0]) || '/assets/img/buy/buy-grid-img-01.jpg'}
@@ -291,7 +292,7 @@ const BuyPropertyList = () => {
 																		e.target.src = '/assets/img/buy/buy-grid-img-01.jpg';
 																	}}
 																/>
-															</Link>
+																</LocalizedLink>
 															<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 p-3 z-1">
 																<div className="d-flex align-items-center gap-2">
 																	{property.status === 'AVAILABLE' && (
@@ -335,11 +336,11 @@ const BuyPropertyList = () => {
 																	<div className="d-flex align-items-center justify-content-between">
 																		<div>
 																			<h6 className="title mb-1">
-																				<Link to={`/buy-details/${property._id}`}>
+																				<LocalizedLink to={`/buy-details/${property._id}`}>
 																					{property.title ||
 																						property.description?.substring(0, 50) ||
 																						'Property for sale'}
-																				</Link>
+																				</LocalizedLink>
 																			</h6>
 																			<p className="d-flex align-items-center fs-14 mb-0">
 																				<i className="material-icons-outlined me-1 ms-0">location_on</i>
@@ -416,22 +417,22 @@ const BuyPropertyList = () => {
 									<h6>Popular Properties</h6>
 									<div className="search-list">
 										<p>
-											<Link to="/rent-property-grid">Beautiful Condo Room</Link>
+											<LocalizedLink to="/rent-property-grid">Beautiful Condo Room</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Royal Apartment</Link>
+											<LocalizedLink to="/rent-property-grid">Royal Apartment</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Grand Villa House</Link>
+											<LocalizedLink to="/rent-property-grid">Grand Villa House</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Grand Mahaka</Link>
+											<LocalizedLink to="/rent-property-grid">Grand Mahaka</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Lunaria Residence</Link>
+											<LocalizedLink to="/rent-property-grid">Lunaria Residence</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Stephen Alexander Homes</Link>
+											<LocalizedLink to="/rent-property-grid">Stephen Alexander Homes</LocalizedLink>
 										</p>
 									</div>
 								</form>

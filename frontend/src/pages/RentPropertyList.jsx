@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import PropertyListPagination from '../components/PropertyListPagination';
+import LocalizedLink from '../components/LocalizedLink';
 
 const PAGE_SIZE = 8;
 
@@ -160,12 +161,12 @@ const RentPropertyList = () => {
 								<nav aria-label="breadcrumb" className="page-breadcrumb">
 									<ol className="breadcrumb">
 										<li className="breadcrumb-item">
-											<Link to="/">
+											<LocalizedLink to="/">
 												<span>
 													<i className="material-icons-outlined me-1">home</i>
 												</span>
 												Home
-											</Link>
+											</LocalizedLink>
 										</li>
 										<li className="breadcrumb-item active" aria-current="page">
 											Rent List
@@ -228,19 +229,19 @@ const RentPropertyList = () => {
 												</div>
 												<ul className="grid-list-view d-flex align-items-center justify-content-center">
 													<li>
-														<Link to="/rent-property-list" className="list-icon active">
+														<LocalizedLink to="/rent-property-list" className="list-icon active">
 															<i className="material-icons">list</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 													<li>
-														<Link to="/rent-property-grid" className="list-icon">
+														<LocalizedLink to="/rent-property-grid" className="list-icon">
 															<i className="material-icons">grid_view</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 													<li>
-														<Link to="/rent-list-map" className="list-icon">
+														<LocalizedLink to="/rent-list-map" className="list-icon">
 															<i className="material-icons-outlined">location_on</i>
-														</Link>
+														</LocalizedLink>
 													</li>
 												</ul>
 											</div>
@@ -289,7 +290,7 @@ const RentPropertyList = () => {
 												<div className="property-card mb-4">
 													<div className="property-listing-item p-0 mb-0 shadow-none d-flex flex-lg-nowrap flex-wrap">
 														<div className="buy-grid-img buy-list-img rent-list-img mb-0 rounded-0">
-															<Link to={`/rent-details/${property._id}`}>
+															<LocalizedLink to={`/rent-details/${property._id}`}>
 																<img
 																	className="img-fluid"
 																	src={getImageUrl(property.images?.[0]) || '/assets/img/rent/rent-grid-img-01.jpg'}
@@ -299,7 +300,7 @@ const RentPropertyList = () => {
 																		e.target.src = '/assets/img/rent/rent-grid-img-01.jpg';
 																	}}
 																/>
-															</Link>
+																</LocalizedLink>
 															<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 p-3 z-1">
 																<div className="d-flex align-items-center gap-2">
 																	{property.status === 'AVAILABLE' && (
@@ -343,11 +344,11 @@ const RentPropertyList = () => {
 															<div className="d-flex align-items-center justify-content-between mb-3">
 																<div>
 																	<h6 className="title mb-1">
-																		<Link to={`/rent-details/${property._id}`}>
+																		<LocalizedLink to={`/rent-details/${property._id}`}>
 																			{property.title ||
 																				property.description?.substring(0, 50) ||
 																				'Property for rent'}
-																		</Link>
+																		</LocalizedLink>
 																	</h6>
 																	<p className="d-flex align-items-center fs-14 mb-0">
 																		<i className="material-icons-outlined me-1 ms-0">location_on</i>
@@ -374,12 +375,12 @@ const RentPropertyList = () => {
 																	Listed on :{' '}
 																	<span className="fw-medium text-body">{formatListedDate(property.createdAt)}</span>
 																</p>
-																<Link
+																<LocalizedLink
 																	to={`/rent-details/${property._id}`}
 																	className="btn btn-dark btn-sm d-inline-flex align-items-center"
 																>
 																	View details
-																</Link>
+																</LocalizedLink>
 															</div>
 														</div>
 													</div>
@@ -423,22 +424,22 @@ const RentPropertyList = () => {
 									<h6>Popular Properties</h6>
 									<div className="search-list">
 										<p>
-											<Link to="/rent-property-grid">Beautiful Condo Room</Link>
+											<LocalizedLink to="/rent-property-grid">Beautiful Condo Room</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Royal Apartment</Link>
+											<LocalizedLink to="/rent-property-grid">Royal Apartment</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Grand Villa House</Link>
+											<LocalizedLink to="/rent-property-grid">Grand Villa House</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Grand Mahaka</Link>
+											<LocalizedLink to="/rent-property-grid">Grand Mahaka</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Lunaria Residence</Link>
+											<LocalizedLink to="/rent-property-grid">Lunaria Residence</LocalizedLink>
 										</p>
 										<p>
-											<Link to="/rent-property-grid">Stephen Alexander Homes</Link>
+											<LocalizedLink to="/rent-property-grid">Stephen Alexander Homes</LocalizedLink>
 										</p>
 									</div>
 								</form>

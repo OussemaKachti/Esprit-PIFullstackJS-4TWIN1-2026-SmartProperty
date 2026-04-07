@@ -34,7 +34,9 @@ exports.getAllProperties = async (req, res, next) => {
       rooms,
       bathrooms,
       minSurface,
-      search
+      search,
+      sortBy,
+      sortOrder = 'desc'
     } = req.query;
 
     // Validate listingType if provided
@@ -67,11 +69,16 @@ exports.getAllProperties = async (req, res, next) => {
 
     const skip = (page - 1) * limit;
 
+    // Apply only known sortable fields and sort directions.
+    const sortField = ['createdAt', 'price', 'title'].includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    const sort = { [sortField]: sortDirection };
+
     // Fetch properties
     let properties = await Property.find(filter)
       .limit(limit * 1)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .populate('createdBy', 'login email role firstName lastName')
       .lean();
 

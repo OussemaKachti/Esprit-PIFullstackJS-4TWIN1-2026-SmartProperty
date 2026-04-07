@@ -3,10 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LocalizedLink from '../../components/LocalizedLink';
 import { getUserData, canListPropertyFromHomepage } from '../../utils/auth';
+import { localizeRoute } from '../../routes/routeConfig';
 import './index3-banner.css';
 
 const Index3 = () => {
-  const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [listingUser, setListingUser] = useState(() => getUserData());
@@ -46,8 +47,9 @@ const Index3 = () => {
     if (buyFilters.minPrice) params.append('minPrice', buyFilters.minPrice);
     if (buyFilters.maxPrice) params.append('maxPrice', buyFilters.maxPrice);
     params.append('listingType', 'FOR_SALE');
-    
-    navigate(`/buy-property-grid?${params.toString()}`);
+
+		const localizedPath = localizeRoute('/buy-property-grid', i18n.language);
+		navigate(`${localizedPath}?${params.toString()}`);
   };
 
   const handleRentSearch = (e) => {
@@ -59,8 +61,9 @@ const Index3 = () => {
     if (rentFilters.minPrice) params.append('minPrice', rentFilters.minPrice);
     if (rentFilters.maxPrice) params.append('maxPrice', rentFilters.maxPrice);
     params.append('listingType', 'FOR_RENT');
-    
-    navigate(`/rent-property-grid?${params.toString()}`);
+
+		const localizedPath = localizeRoute('/rent-property-grid', i18n.language);
+		navigate(`${localizedPath}?${params.toString()}`);
   };
 
   useEffect(() => {

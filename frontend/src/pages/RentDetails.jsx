@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -53,6 +54,7 @@ function pickBlockingLease(leases) {
 }
 
 const RentDetails = () => {
+	const { t } = useTranslation();
 	const location = useLocation();
 	const { id: routeId } = useParams();
 	const [currentUser, setCurrentUser] = useState(() => getUserData());
@@ -64,7 +66,7 @@ const RentDetails = () => {
 		startDate: '',
 		endDate: '',
 		rentAmount: '',
-		note: 'I would like to book this property. Please confirm availability.',
+		note: t('propertyDetails.bookingRequestDefaultNote'),
 	});
 
 	const propertyId = useMemo(() => {
@@ -81,9 +83,9 @@ const RentDetails = () => {
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
 
 	const listingLabel = useMemo(() => {
-		if (!property?.listingType) return 'For Rent';
-		return property.listingType === 'FOR_SALE' ? 'For Sale' : 'For Rent';
-	}, [property?.listingType]);
+		if (!property?.listingType) return t('propertyDetails.forRent');
+		return property.listingType === 'FOR_SALE' ? t('propertyDetails.forSale') : t('propertyDetails.forRent');
+	}, [property?.listingType, t]);
 
 	const addressLabel = useMemo(() => {
 		if (!property) return '';
@@ -101,9 +103,9 @@ const RentDetails = () => {
 
 	const formattedPrice = useMemo(() => {
 		const price = property?.price;
-		if (price === undefined || price === null || Number.isNaN(Number(price))) return 'N/A';
+		if (price === undefined || price === null || Number.isNaN(Number(price))) return t('propertyPages.notAvailable');
 		return `${Number(price).toLocaleString('en-US').replace(/,/g, ' ')} TND`;
-	}, [property?.price]);
+	}, [property?.price, t]);
 
 	const tourPanoramas = useMemo(() => normalizePanoramas(property?.panoramas), [property?.panoramas]);
 	const hasPanoramas = tourPanoramas.length > 0;
@@ -130,7 +132,7 @@ const RentDetails = () => {
 		const o = property?.createdBy;
 		if (!o || typeof o !== 'object') {
 			return {
-				displayName: 'Listing owner',
+				displayName: t('propertyDetails.listingOwner'),
 				email: null,
 				phone: null,
 				whatsappDigits: '',
@@ -139,7 +141,7 @@ const RentDetails = () => {
 			};
 		}
 		const name = [o.firstName, o.lastName].filter(Boolean).join(' ').trim();
-		const displayName = name || o.login || o.email || 'Listing owner';
+		const displayName = name || o.login || o.email || t('propertyDetails.listingOwner');
 		const initials = (name || o.login || o.email || '?')
 			.split(/\s+/)
 			.map((p) => p[0])
@@ -162,7 +164,7 @@ const RentDetails = () => {
 			memberSince,
 			initials,
 		};
-	}, [property?.createdBy]);
+	}, [property?.createdBy, t]);
 
 	const goHeroPrev = useCallback(() => {
 		setHeroImageIndex((i) => (heroSlides.length ? (i - 1 + heroSlides.length) % heroSlides.length : 0));
@@ -183,8 +185,8 @@ const RentDetails = () => {
 		if (!property) return '';
 		const addr = property.address?.trim();
 		if (addr) return addr;
-		return [property.city, property.region, property.country || 'Tunisia'].filter(Boolean).join(', ');
-	}, [property]);
+		return [property.city, property.region, property.country || t('propertyPages.countryFallback')].filter(Boolean).join(', ');
+	}, [property, t]);
 
 	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
 	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
@@ -203,7 +205,7 @@ const RentDetails = () => {
 			property.address,
 			property.city,
 			property.region,
-			property.country || 'Tunisia',
+			property.country || t('propertyPages.countryFallback'),
 		].filter(Boolean);
 
 		if (addressParts.length === 0) {
@@ -220,7 +222,7 @@ const RentDetails = () => {
 		}
 
 		const query = addressParts.join(', ');
-		const t = setTimeout(async () => {
+		const geocodeTimer = setTimeout(async () => {
 			try {
 				let res = await fetch(
 					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
@@ -248,8 +250,12 @@ const RentDetails = () => {
 				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
 		}, 500);
-		return () => clearTimeout(t);
-	}, [property]);
+		return () => clearTimeout(geocodeTimer);
+	}, [property, t]);
+
+	useEffect(() => {
+		setBookingForm((prev) => ({ ...prev, note: t('propertyDetails.bookingRequestDefaultNote') }));
+	}, [t]);
 
 	useEffect(() => {
 		if (!propertyId) {
@@ -272,7 +278,7 @@ const RentDetails = () => {
 			} catch (e) {
 				if (!cancelled) {
 					setProperty(null);
-					setLoadError('Failed to load property. Please try again.');
+					setLoadError(t('propertyDetails.failedToLoadProperty'));
 				}
 			} finally {
 				if (!cancelled) setLoading(false);
@@ -281,7 +287,7 @@ const RentDetails = () => {
 		return () => {
 			cancelled = true;
 		};
-	}, [propertyId]);
+	}, [propertyId, t]);
 
 	useEffect(() => {
 		if (property?.price && !bookingForm.rentAmount) {
@@ -342,17 +348,17 @@ const RentDetails = () => {
 		const userId = currentUser?._id || currentUser?.id;
 
 		if (!propertyId) {
-			setErrorMessage('Missing property identifier. Open this page from a property card to book.');
+			setErrorMessage(t('propertyDetails.missingPropertyIdentifier'));
 			return;
 		}
 
 		if (!currentUser || !userId) {
-			setErrorMessage('Please sign in to request a booking.');
+			setErrorMessage(t('propertyDetails.signInToBook'));
 			return;
 		}
 
 		if (!bookingForm.startDate || !bookingForm.endDate || !bookingForm.rentAmount) {
-			setErrorMessage('Choose start date, end date, and your budget.');
+			setErrorMessage(t('propertyDetails.chooseDatesBudget'));
 			return;
 		}
 
@@ -373,14 +379,14 @@ const RentDetails = () => {
 				body: JSON.stringify(payload),
 			});
 
-			setSuccessMessage('Request sent! We pinged the owner by email, push, and in-app notification.');
+			setSuccessMessage(t('propertyDetails.bookingRequestSent'));
 			setBlockingLease({
 				status: 'PENDING',
 				endDate: bookingForm.endDate,
 				startDate: bookingForm.startDate,
 			});
 		} catch (error) {
-			setErrorMessage(error.message || 'Could not send request.');
+			setErrorMessage(error.message || t('propertyDetails.couldNotSendRequest'));
 		} finally {
 			setIsSending(false);
 		}
@@ -448,7 +454,7 @@ const RentDetails = () => {
 									<div className="row align-items-center text-center position-relative z-1">
 										<div className="col-xl-8">
 											<div className="d-flex align-center gap-2 mb-2">
-												<span className="badge bg-primary">{typeDisplayLabel || 'Property'}</span>
+														<span className="badge bg-primary">{typeDisplayLabel || t('propertyDetails.propertyFallback')}</span>
 												<span className="badge bg-secondary">{listingLabel}</span>
 											</div>
 											<h1 className="breadcrumb-title text-start">{property.title}</h1>
@@ -470,16 +476,16 @@ const RentDetails = () => {
 												<i className="fa-solid fa-circle text-body"></i>
 												<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item">
 													<i className="material-icons-outlined text-white me-1">location_on</i>
-													{addressLabel || '—'}
+																	{addressLabel || t('propertyDetails.noDescription')}
 												</div>
 												<i className="fa-solid fa-circle text-body"></i>
-												<p className="fs-14 mb-0 text-white">Last updated: {formattedUpdatedAt || '—'}</p>
+														<p className="fs-14 mb-0 text-white">{t('propertyDetails.lastUpdated')}: {formattedUpdatedAt || t('propertyDetails.noDescription')}</p>
 											</div>
 										</div>
 										<div className="col-xl-4 d-flex d-xl-block align-items-center flex-wrap gap-3">
 											<h4 className="mb-0 text-primary text-xl-end text-start">
 												{formattedPrice}
-												<span className="fs-6 fw-normal d-block d-xl-inline ms-xl-2"> / month</span>
+																<span className="fs-6 fw-normal d-block d-xl-inline ms-xl-2"> / {t('propertyPages.month')}</span>
 											</h4>
 										</div>
 									</div>
@@ -492,15 +498,15 @@ const RentDetails = () => {
 						<div className="container">
 							{!propertyId && (
 								<div className="alert alert-warning mb-4" role="alert">
-									Open a rental listing from the marketplace to load photos, map, and owner details.
+													{t('propertyDetails.openRentalFromMarketplace')}
 								</div>
 							)}
 							{propertyId && loading && (
 								<div className="text-center py-5">
 									<div className="spinner-border text-primary" role="status">
-										<span className="visually-hidden">Loading...</span>
+															<span className="visually-hidden">{t('common.loading')}</span>
 									</div>
-									<p className="mt-3">Loading rental listing...</p>
+														<p className="mt-3">{t('propertyDetails.loadingRentalListing')}</p>
 								</div>
 							)}
 							{propertyId && !loading && loadError && (
@@ -515,10 +521,10 @@ const RentDetails = () => {
 											<div className="mb-4 d-inline-flex align-center justify-content-between w-100 flex-wrap gap-1">
 												<div className="d-inline-flex align-center gap-2">
 													<span className="badge bg-danger d-flex align-items-center">
-														<i className="material-icons-outlined fs-14 me-1">generating_tokens</i> Trending
+																<i className="material-icons-outlined fs-14 me-1">generating_tokens</i> {t('propertyDetails.trending')}
 													</span>
 													<span className="badge bg-orange d-flex align-items-center">
-														<i className="material-icons-outlined fs-14 me-1">loyalty</i> Featured
+																<i className="material-icons-outlined fs-14 me-1">loyalty</i> {t('propertyDetails.featured')}
 													</span>
 													{hasPanoramas && (
 														<button
@@ -528,11 +534,11 @@ const RentDetails = () => {
 															style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
 														>
 															<i className="material-icons-outlined fs-14 me-1">panorama</i>
-															View 360° tour
+																{t('propertyDetails.view360Tour')}
 														</button>
 													)}
 												</div>
-												<p className="mb-0 text-dark">Rental listing</p>
+													<p className="mb-0 text-dark">{t('propertyDetails.rentalListing')}</p>
 											</div>
 
 											<div className="slider-card service-slider-card mb-4 overflow-hidden bg-white border rounded-4 shadow-sm">
@@ -553,7 +559,7 @@ const RentDetails = () => {
 																className="position-absolute top-50 start-0 translate-middle-y ms-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
 																style={{ width: 40, height: 40, zIndex: 6, background: 'rgba(0,0,0,0.5)' }}
 																onClick={goHeroPrev}
-																aria-label="Previous photo"
+																aria-label={t('propertyDetails.previousPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_left</i>
 															</button>
@@ -562,7 +568,7 @@ const RentDetails = () => {
 																className="position-absolute top-50 end-0 translate-middle-y me-2 d-flex align-items-center justify-content-center border-0 rounded-circle text-white"
 																style={{ width: 40, height: 40, zIndex: 6, background: 'rgba(0,0,0,0.5)' }}
 																onClick={goHeroNext}
-																aria-label="Next photo"
+																aria-label={t('propertyDetails.nextPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_right</i>
 															</button>
@@ -585,7 +591,7 @@ const RentDetails = () => {
 															<div className="fw-semibold fs-5">{formattedPrice}</div>
 															<p className="mb-0 small text-white-50">
 																{property.city}
-																{property.country ? `, ${property.country}` : ', Tunisia'}
+																{property.country ? `, ${property.country}` : `, ${t('propertyPages.countryFallback')}`}
 															</p>
 														</div>
 														{typeDisplayLabel && (
@@ -611,10 +617,10 @@ const RentDetails = () => {
 																fontWeight: 600,
 															}}
 															onClick={() => setIsTourModalOpen(true)}
-															aria-label="Open 360 degree virtual tour"
+															aria-label={t('propertyDetails.open360Aria')}
 														>
 															<i className="material-icons-outlined" style={{ fontSize: '18px' }}>panorama</i>
-															360° Tour
+															{t('propertyDetails.short360Tour')}
 														</button>
 													)}
 												</div>
@@ -628,7 +634,7 @@ const RentDetails = () => {
 																		}`}
 																	style={{ maxHeight: 88 }}
 																	onClick={() => setHeroImageIndex(index)}
-																	aria-label={`Show photo ${index + 1}`}
+																	aria-label={t('propertyDetails.showPhotoAria', { index: index + 1 })}
 																>
 																	<img src={url} alt="" className="w-100 h-100" style={{ objectFit: 'cover' }} />
 																</button>
@@ -644,12 +650,12 @@ const RentDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-1" aria-expanded="true">
-															Description
+															{t('propertyDetails.descriptionTitle')}
 														</button>
 													</div>
 													<div id="accordion-1" className="accordion-collapse collapse show">
 														<div className="accordion-body">
-															<p>{property?.description || '—'}</p>
+															<p>{property?.description || t('propertyDetails.noDescription')}</p>
 														</div>
 													</div>
 												</div>
@@ -659,7 +665,7 @@ const RentDetails = () => {
 													<div className="accordion-item border-primary" style={{ borderWidth: '2px', backgroundColor: '#f8f9fa' }}>
 														<div className="accordion-header">
 															<button className="accordion-button text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-ai" aria-expanded="true">
-																<i className="material-icons-outlined me-2">auto_awesome</i> AI Auto-Detected Features
+																<i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyDetails.aiDetectedFeatures')}
 															</button>
 														</div>
 														<div id="accordion-ai" className="accordion-collapse collapse show">
@@ -669,8 +675,8 @@ const RentDetails = () => {
 																		<p className="mb-2 d-flex align-items-start gap-2">
 																			<i className="material-icons-outlined text-success mt-1">category</i>
 																			<span>
-																				<strong>Detected Objects: </strong>
-																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : 'None'}</span>
+																				<strong>{t('propertyDetails.detectedObjects')}: </strong>
+																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : t('propertyDetails.none')}</span>
 																			</span>
 																		</p>
 																	</div>
@@ -678,7 +684,7 @@ const RentDetails = () => {
 																		<div className="col-12">
 																			<p className="mb-2 fw-semibold d-flex align-items-center gap-2">
 																				<i className="material-icons-outlined text-success">sensor_window</i>
-																				Detected Rooms:
+																				{t('propertyDetails.detectedRooms')}:
 																			</p>
 																			<div className="d-flex flex-wrap gap-2">
 																				{Object.entries(property.detectedFeatures.roomVotes)
@@ -702,7 +708,7 @@ const RentDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-2" aria-expanded="true">
-															Property Features
+															{t('propertyDetails.propertyFeaturesTitle')}
 														</button>
 													</div>
 													<div id="accordion-2" className="accordion-collapse collapse show">
@@ -711,20 +717,20 @@ const RentDetails = () => {
 																<div className="col-lg-3 col-md-6">
 																	<div className="buy-property-items">
 																		<p>
-																			<i className="material-icons-outlined">bed</i> Bedrooms: {property?.rooms ?? '—'}
+																			<i className="material-icons-outlined">bed</i> Bedrooms: {property?.rooms ?? t('propertyDetails.noDescription')}
 																		</p>
 																		<p>
-																			<i className="material-icons-outlined">straighten</i> Area: {property?.surface ?? '—'} m²
+																			<i className="material-icons-outlined">straighten</i> Area: {property?.surface ?? t('propertyDetails.noDescription')} m2
 																		</p>
 																		<p>
-																			<i className="material-icons-outlined">sell</i> Status: {property?.status || '—'}
+																			<i className="material-icons-outlined">sell</i> Status: {property?.status || t('propertyDetails.noDescription')}
 																		</p>
 																	</div>
 																</div>
 																<div className="col-lg-3 col-md-6">
 																	<div className="buy-property-items">
 																		<p>
-																			<i className="material-icons-outlined">bathtub</i> Bathrooms: {property?.bathrooms ?? '—'}
+																			<i className="material-icons-outlined">bathtub</i> Bathrooms: {property?.bathrooms ?? t('propertyDetails.noDescription')}
 																		</p>
 																		<p>
 																			<i className="material-icons-outlined">home_work</i> Listing: {listingLabel}
@@ -740,28 +746,28 @@ const RentDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-3" aria-expanded="true">
-															About Property
+															{t('propertyDetails.aboutPropertyTitle')}
 														</button>
 													</div>
 													<div id="accordion-3" className="accordion-collapse collapse show">
 														<div className="accordion-body">
 															<p className="mb-2 text-body">
-																This rental offers a practical mix of comfort, accessibility, and neighborhood amenities — consistent with the
+																This rental offers a practical mix of comfort, accessibility, and neighborhood amenities - consistent with the
 																description and photos in this listing.
 															</p>
 															<p className="mb-2 text-body">
-																Located in <strong>{property?.city || '—'}</strong>
+																Located in <strong>{property?.city || t('propertyDetails.noDescription')}</strong>
 																{property?.country ? `, ${property.country}` : ', Tunisia'}, it is listed for rent on Smart Property.
 															</p>
 															<p className="mb-2 text-body">
 																<i className="fa-solid fa-circle-check text-success me-2" />
 																{property?.surface != null
-																	? `Interior surface around ${property.surface} m² (as listed).`
+																	? `Interior surface around ${property.surface} m2 (as listed).`
 																	: 'See property features for size and room counts.'}
 															</p>
 															<p className="mb-2 text-body">
 																<i className="fa-solid fa-circle-check text-success me-2" />
-																Type: <strong>{typeDisplayLabel || '—'}</strong>
+																Type: <strong>{typeDisplayLabel || t('propertyDetails.noDescription')}</strong>
 																{property?.rooms != null ? ` · ${property.rooms} rooms` : ''}
 																{property?.bathrooms != null ? ` · ${property.bathrooms} bathrooms` : ''}
 															</p>
@@ -869,7 +875,7 @@ const RentDetails = () => {
 																data-bs-target="#accordion-rent-360"
 																aria-expanded="true"
 															>
-																360° Virtual Tour
+																{t('propertyDetails.virtualTourTitle')}
 															</button>
 														</div>
 														<div id="accordion-rent-360" className="accordion-collapse collapse show">
@@ -883,7 +889,7 @@ const RentDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-6" aria-expanded="true">
-															Gallery
+															{t('propertyDetails.galleryTitle')}
 														</button>
 													</div>
 													<div id="accordion-6" className="accordion-collapse collapse show">
@@ -903,19 +909,19 @@ const RentDetails = () => {
 																		</div>
 																	))
 																) : (
-																	<p className="text-body mb-0">No photos have been uploaded for this listing yet.</p>
+																	<p className="text-body mb-0">{t('propertyDetails.noPhotos')}</p>
 																)}
 															</div>
 														</div>
 													</div>
 												</div>
 
-												{/* Video & FAQ hidden — template-only (same as Buy details) */}
+												{/* Video & FAQ hidden - template-only (same as Buy details) */}
 
 												<div className="accordion-item mb-xl-0">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-9" aria-expanded="true">
-															Reviews
+															{t('propertyDetails.reviewsTitle')}
 														</button>
 													</div>
 													<div id="accordion-9" className="accordion-collapse collapse show">
@@ -1154,7 +1160,7 @@ const RentDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Listing Owner Details</h5>
+													<h5 className="mb-0">{t('propertyDetails.listingOwnerDetails')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="d-flex align-items-center gap-2 mb-3">
@@ -1168,35 +1174,34 @@ const RentDetails = () => {
 														<div>
 															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
 															<p className="mb-0 fs-14 text-body">
-																This listing: {ratingSummary.averageRating || '0.0'} / 5 · {ratingSummary.totalReviews || 0}{' '}
-																review{Number(ratingSummary.totalReviews) === 1 ? '' : 's'}
+																{t('propertyDetails.thisListingRating', { rating: ratingSummary.averageRating || '0.0', total: ratingSummary.totalReviews || 0 })}
 															</p>
 														</div>
 													</div>
 													<ul className="mb-3 list-unstyled">
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Phone</span>
-															<span className="text-end">{ownerProfile.phone || '—'}</span>
+															<span className="text-body">{t('propertyDetails.phone')}</span>
+															<span className="text-end">{ownerProfile.phone || t('propertyDetails.noDescription')}</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Email</span>
+															<span className="text-body">{t('propertyDetails.email')}</span>
 															<span className="text-end text-break">
 																{ownerProfile.email ? (
 																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
 																		{ownerProfile.email}
 																	</a>
 																) : (
-																	'—'
+																		t('propertyDetails.noDescription')
 																)}
 															</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Member since</span>
-															<span>{ownerProfile.memberSince || '—'}</span>
+															<span className="text-body">{t('propertyDetails.memberSince')}</span>
+															<span>{ownerProfile.memberSince || t('propertyDetails.noDescription')}</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
-															<span className="text-body">Account</span>
-															<div className="badge bg-success text-white">Registered</div>
+															<span className="text-body">{t('propertyDetails.account')}</span>
+															<div className="badge bg-success text-white">{t('propertyDetails.registered')}</div>
 														</li>
 													</ul>
 													<div className="d-flex align-items-center justify-content-between gap-3">
@@ -1207,20 +1212,20 @@ const RentDetails = () => {
 																rel="noopener noreferrer"
 																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
 															>
-																WhatsApp
+																{t('propertyDetails.whatsapp')}
 															</a>
 														) : (
-															<span className="btn btn-secondary disabled w-100">WhatsApp</span>
+															<span className="btn btn-secondary disabled w-100">{t('propertyDetails.whatsapp')}</span>
 														)}
 														{ownerProfile.email ? (
 															<a
 																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
 																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
 															>
-																Email owner
+																{t('propertyDetails.emailOwner')}
 															</a>
 														) : (
-															<span className="btn btn-secondary disabled w-100">Email owner</span>
+															<span className="btn btn-secondary disabled w-100">{t('propertyDetails.emailOwner')}</span>
 														)}
 													</div>
 												</div>
@@ -1229,13 +1234,13 @@ const RentDetails = () => {
 
 											<div className="card">
 												<div className="card-header d-flex align-items-center justify-content-between">
-													<h5 className="mb-0">Smart Booking Request</h5>
+													<h5 className="mb-0">{t('propertyDetails.smartBookingRequest')}</h5>
 													<span className="badge bg-primary">Live</span>
 												</div>
 												<div className="card-body">
 													<div className="alert alert-info py-2 mb-3">
-														<div className="fw-semibold">We’ll notify the owner instantly.</div>
-														<div className="small text-body">Push + email + in-app to the owner, with your profile attached.</div>
+														<div className="fw-semibold">{t('propertyDetails.notifyOwnerInstantly')}</div>
+														<div className="small text-body">{t('propertyDetails.notifyOwnerDetail')}</div>
 													</div>
 
 													{blockingLease && (
@@ -1250,7 +1255,7 @@ const RentDetails = () => {
 																	<strong>
 																		{blockingLease.endDate
 																			? new Date(blockingLease.endDate).toLocaleDateString()
-																			: '—'}
+																			: t('propertyDetails.noDescription')}
 																	</strong>
 																	.
 																</>
@@ -1261,7 +1266,7 @@ const RentDetails = () => {
 													)}
 
 													<div className="mb-3">
-														<label className="form-label fw-semibold">Start date</label>
+														<label className="form-label fw-semibold">{t('propertyDetails.startDate')}</label>
 														<input
 															type="date"
 															className="form-control"
@@ -1272,7 +1277,7 @@ const RentDetails = () => {
 													</div>
 
 													<div className="mb-3">
-														<label className="form-label fw-semibold">End date</label>
+														<label className="form-label fw-semibold">{t('propertyDetails.endDate')}</label>
 														<input
 															type="date"
 															className="form-control"
@@ -1283,12 +1288,12 @@ const RentDetails = () => {
 													</div>
 
 													<div className="mb-3">
-														<label className="form-label fw-semibold">Your budget (TND)</label>
+														<label className="form-label fw-semibold">{t('propertyDetails.yourBudgetTnd')}</label>
 														<input
 															type="number"
 															min="0"
 															className="form-control"
-															placeholder="e.g. 1200"
+															placeholder={t('propertyDetails.budgetPlaceholder')}
 															value={bookingForm.rentAmount}
 															onChange={handleBookingChange('rentAmount')}
 															disabled={Boolean(blockingLease)}
@@ -1296,7 +1301,7 @@ const RentDetails = () => {
 													</div>
 
 													<div className="mb-3">
-														<label className="form-label fw-semibold">Message to owner</label>
+														<label className="form-label fw-semibold">{t('propertyDetails.messageToOwner')}</label>
 														<textarea
 															className="form-control"
 															rows="3"
@@ -1319,13 +1324,13 @@ const RentDetails = () => {
 														disabled={isSending || Boolean(blockingLease)}
 													>
 														<i className="material-icons-outlined me-2">rocket_launch</i>
-														{isSending ? 'Sending...' : 'Send rental request'}
+														{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}
 													</button>
 													{!propertyId && (
-														<p className="text-danger small mt-2 mb-0">Open this page from a property card so we know which listing to book.</p>
+														<p className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>
 													)}
 													{!currentUser && (
-														<p className="text-muted small mt-2 mb-0">Sign in to auto-attach your profile and contact.</p>
+														<p className="text-muted small mt-2 mb-0">{t('propertyDetails.signInAutoAttach')}</p>
 													)}
 												</div>
 											</div>
@@ -1333,15 +1338,15 @@ const RentDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Why Book With Us</h5>
+													<h5 className="mb-0">{t('propertyDetails.whyBookWithUs')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="mb-0">
-														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">badge</i> Expertise and Experience</p>
-														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">design_services</i> Tailored Services</p>
-														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">play_lesson</i> Comprehensive Planning</p>
-														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">person</i> Client Satisfaction</p>
-														<p className="d-flex align-items-center gap-2 mb-0 text-body"><i className="material-icons-outlined text-secondary">support_agent</i> 24/7 Support</p>
+														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">badge</i> {t('propertyDetails.expertiseExperience')}</p>
+														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">design_services</i> {t('propertyDetails.tailoredServices')}</p>
+														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">play_lesson</i> {t('propertyDetails.comprehensivePlanning')}</p>
+														<p className="d-flex align-items-center gap-2 mb-3 text-body"><i className="material-icons-outlined text-secondary">person</i> {t('propertyDetails.clientSatisfaction')}</p>
+														<p className="d-flex align-items-center gap-2 mb-0 text-body"><i className="material-icons-outlined text-secondary">support_agent</i> {t('propertyDetails.support247')}</p>
 													</div>
 												</div>
 											</div>
@@ -1349,7 +1354,7 @@ const RentDetails = () => {
 
 											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">
 												<div className="card-header bg-white border-bottom py-3">
-													<h5 className="mb-0 fs-6 fw-semibold">Nearby Landmarks &amp; Visits</h5>
+													<h5 className="mb-0 fs-6 fw-semibold">{t('propertyDetails.nearbyTitle')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="rounded-4 border overflow-hidden mb-3" style={{ height: 176 }}>
@@ -1378,28 +1383,28 @@ const RentDetails = () => {
 															</MapContainer>
 														) : (
 															<div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted small">
-																Loading map…
+																{t('propertyDetails.loadingMap')}
 															</div>
 														)}
 													</div>
 													<div className="px-3 py-2 border rounded-4 bg-light mb-3">
 														<p className="mb-0 text-uppercase fw-semibold text-muted" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
-															Property address
+															{t('propertyDetails.propertyAddress')}
 														</p>
-														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || '—'}</p>
+														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || t('propertyDetails.noDescription')}</p>
 													</div>
 													<ul className="list-unstyled small text-body mb-0">
 														<li className="d-flex align-items-center gap-2 mb-2">
-															<span className="text-success">✔</span>
-															Near main city attractions
+															<span className="text-success">+</span>
+															{t('propertyDetails.nearAttractions')}
 														</li>
 														<li className="d-flex align-items-center gap-2 mb-2">
-															<span className="text-success">✔</span>
-															Easy access to transportation
+															<span className="text-success">+</span>
+															{t('propertyDetails.easyTransport')}
 														</li>
 														<li className="d-flex align-items-center gap-2 mb-0">
-															<span className="text-success">✔</span>
-															Shops and services nearby
+															<span className="text-success">+</span>
+															{t('propertyDetails.shopsNearby')}
 														</li>
 													</ul>
 												</div>
@@ -1712,7 +1717,7 @@ const RentDetails = () => {
 							}}
 							role="dialog"
 							aria-modal="true"
-							aria-label="360 virtual tour"
+							aria-label={t('propertyDetails.virtualTourAria')}
 						>
 							<div
 								className="d-flex align-items-center justify-content-between flex-shrink-0 px-3 py-2 border-bottom border-secondary"
@@ -1720,10 +1725,10 @@ const RentDetails = () => {
 							>
 								<span className="text-white fw-semibold d-flex align-items-center gap-2 mb-0">
 									<i className="material-icons-outlined text-white">panorama</i>
-									360° Virtual Tour
+									{t('propertyDetails.virtualTourTitle')}
 								</span>
 								<button type="button" className="btn btn-sm btn-outline-light" onClick={closeTourModal}>
-									Close
+									{t('common.close')}
 								</button>
 							</div>
 							<div className="flex-grow-1 position-relative" style={{ minHeight: 0, background: '#000' }}>
@@ -1735,22 +1740,22 @@ const RentDetails = () => {
 
 				</div>
 
-				<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+				<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 					<div className="modal-dialog  modal-dialog-centered modal-lg">
 						<div className="modal-content">
 							<div className="modal-body search-wrap">
 								<form className="search-form" id="search-form" action="rent-property-grid.html">
 									<div className="d-flex align-items-center justify-content-between mb-4">
-										<h5>What Are You Looking for?</h5>
+										<h5>{t('propertyPages.whatLookingFor')}</h5>
 										<a href="#" className="close" data-bs-dismiss="modal"><i className="material-icons-outlined">close</i></a>
 									</div>
 									<div className="input-group input-group-flat">
-										<input type="text" className="form-control" placeholder="Type a Keyword...." />
+										<input type="text" className="form-control" placeholder={t('propertyPages.typeKeywordPlaceholder')} />
 										<span className="input-group-text">
 											<i className="material-icons-outlined">search</i>
 										</span>
 									</div>
-									<h6>Popular Properties</h6>
+									<h6>{t('propertyPages.popularProperties')}</h6>
 									<div className="search-list">
 										<p><Link to="/rent-property-grid">Beautiful Condo Room</Link></p>
 										<p><Link to="/rent-property-grid">Royal Apartment</Link></p>

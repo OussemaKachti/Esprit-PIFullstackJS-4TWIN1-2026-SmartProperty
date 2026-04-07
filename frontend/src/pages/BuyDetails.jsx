@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -45,6 +46,7 @@ const DESCRIPTION_PREVIEW_MAX = 320;
 
 const BuyDetails = () => {
 	const { id } = useParams();
+	const { t } = useTranslation();
 	const [currentUser] = useState(() => getUserData());
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(Boolean(id));
@@ -64,7 +66,7 @@ const BuyDetails = () => {
 	const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 	const [enquiryForm, setEnquiryForm] = useState({
 		offerPrice: '',
-		note: 'I would like to proceed with a purchase request.',
+		note: t('propertyDetails.purchaseRequestDefaultNote'),
 	});
 
 	const handleEnquiryFieldChange = (field) => (event) => {
@@ -76,18 +78,18 @@ const BuyDetails = () => {
 
 	const handleEnquirySubmit = async () => {
 		if (!property?._id) {
-			toast.error('Property not ready yet. Please wait a moment.');
+			toast.error(t('propertyDetails.propertyNotReady'));
 			return;
 		}
 
 		const buyerId = currentUser?._id || currentUser?.id;
 		if (!buyerId) {
-			toast.error('Please sign in to submit an offer.');
+			toast.error(t('propertyDetails.signInToSubmitOffer'));
 			return;
 		}
 
 		if (!enquiryForm.offerPrice || Number.isNaN(Number(enquiryForm.offerPrice))) {
-			toast.error('Please enter your offer price.');
+			toast.error(t('propertyDetails.enterOfferPrice'));
 			return;
 		}
 
@@ -104,14 +106,14 @@ const BuyDetails = () => {
 				}),
 			});
 
-			toast.success('Your purchase request was sent to the property owner.');
+			toast.success(t('propertyDetails.purchaseRequestSent'));
 			setEnquiryForm({
 				offerPrice: '',
-				note: 'I would like to proceed with a purchase request.',
+				note: t('propertyDetails.purchaseRequestDefaultNote'),
 			});
 			setBlockingSale({ status: 'PENDING' });
 		} catch (submitError) {
-			toast.error(submitError?.message || submitError?.response?.data?.message || 'Failed to send request.');
+			toast.error(submitError?.message || submitError?.response?.data?.message || t('propertyDetails.failedToSendRequest'));
 		} finally {
 			setIsEnquirySubmitting(false);
 		}
@@ -164,7 +166,7 @@ const BuyDetails = () => {
 			const eligibleImage = updatedProperty?.images?.find(img => img.isEligibleForStaging);
 
 			if (!eligibleImage) {
-				toast.error("Vision Analysis failed to verify this room. Please upload a clear photo of an empty interior.", { duration: 5000 });
+				toast.error(t('propertyDetails.visionAnalysisFailed'), { duration: 5000 });
 				setIsStagingLoading(false);
 				return;
 			}
@@ -182,14 +184,14 @@ const BuyDetails = () => {
 				const rawUrl = stageResponse.data.data.stagedImageUrl;
 				const finalUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}/${rawUrl}`;
 				setStagedResultUrl(finalUrl);
-				toast.success("✨ Room staged successfully!", { duration: 3000 });
+				toast.success(t('propertyDetails.roomStagedSuccess'), { duration: 3000 });
 			} else {
-				toast.error("Failed to generate staging.");
+				toast.error(t('propertyDetails.failedToGenerateStaging'));
 			}
 
 		} catch (err) {
 			console.error(err);
-			toast.error(err.response?.data?.message || "AI Analysis or Staging failed due to an error.", { duration: 5000 });
+			toast.error(err.response?.data?.message || t('propertyDetails.aiAnalysisFailed'), { duration: 5000 });
 		} finally {
 			setIsStagingLoading(false);
 		}
@@ -202,9 +204,9 @@ const BuyDetails = () => {
 	};
 
 	const listingLabel = useMemo(() => {
-		if (!property?.listingType) return 'For Sale';
-		return property.listingType === 'FOR_RENT' ? 'For Rent' : 'For Sale';
-	}, [property?.listingType]);
+		if (!property?.listingType) return t('propertyDetails.forSale');
+		return property.listingType === 'FOR_RENT' ? t('propertyDetails.forRent') : t('propertyDetails.forSale');
+	}, [property?.listingType, t]);
 
 	const addressLabel = useMemo(() => {
 		if (!property) return '';
@@ -222,9 +224,9 @@ const BuyDetails = () => {
 
 	const formattedPrice = useMemo(() => {
 		const price = property?.price;
-		if (price === undefined || price === null || Number.isNaN(Number(price))) return 'N/A';
+		if (price === undefined || price === null || Number.isNaN(Number(price))) return t('propertyPages.notAvailable');
 		return `${Number(price).toLocaleString('en-US').replace(/,/g, ' ')} TND`;
-	}, [property?.price]);
+	}, [property?.price, t]);
 
 	const tourPanoramas = useMemo(
 		() => normalizePanoramas(property?.panoramas),
@@ -260,7 +262,7 @@ const BuyDetails = () => {
 		const o = property?.createdBy;
 		if (!o || typeof o !== 'object') {
 			return {
-				displayName: 'Listing owner',
+				displayName: t('propertyDetails.listingOwner'),
 				email: null,
 				phone: null,
 				whatsappDigits: '',
@@ -269,7 +271,7 @@ const BuyDetails = () => {
 			};
 		}
 		const name = [o.firstName, o.lastName].filter(Boolean).join(' ').trim();
-		const displayName = name || o.login || o.email || 'Listing owner';
+		const displayName = name || o.login || o.email || t('propertyDetails.listingOwner');
 		const initials = (name || o.login || o.email || '?')
 			.split(/\s+/)
 			.map((p) => p[0])
@@ -327,8 +329,8 @@ const BuyDetails = () => {
 		if (!property) return '';
 		const addr = property.address?.trim();
 		if (addr) return addr;
-		return [property.city, property.region, property.country || 'Tunisia'].filter(Boolean).join(', ');
-	}, [property]);
+		return [property.city, property.region, property.country || t('propertyPages.countryFallback')].filter(Boolean).join(', ');
+	}, [property, t]);
 
 	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
 	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
@@ -351,7 +353,7 @@ const BuyDetails = () => {
 			property.address,
 			property.city,
 			property.region,
-			property.country || 'Tunisia',
+			property.country || t('propertyPages.countryFallback'),
 		].filter(Boolean);
 
 		if (addressParts.length === 0) {
@@ -368,7 +370,7 @@ const BuyDetails = () => {
 		}
 
 		const query = addressParts.join(', ');
-		const t = setTimeout(async () => {
+		const geocodeTimer = setTimeout(async () => {
 			try {
 				let res = await fetch(
 					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
@@ -396,10 +398,14 @@ const BuyDetails = () => {
 				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
 		}, 500);
-		return () => clearTimeout(t);
-	}, [property]);
+		return () => clearTimeout(geocodeTimer);
+	}, [property, t]);
 
 	// Image check removed; button will always show now.
+
+	useEffect(() => {
+		setEnquiryForm((prev) => ({ ...prev, note: t('propertyDetails.purchaseRequestDefaultNote') }));
+	}, [t]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -418,7 +424,7 @@ const BuyDetails = () => {
 					setRatingSummary(summary?.[id] || { averageRating: '0.0', totalReviews: 0 });
 				}
 			} catch (e) {
-				if (!cancelled) setError('Failed to load property. Please try again.');
+				if (!cancelled) setError(t('propertyDetails.failedToLoadProperty'));
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -427,7 +433,7 @@ const BuyDetails = () => {
 		return () => {
 			cancelled = true;
 		};
-	}, [id]);
+	}, [id, t]);
 
 	useEffect(() => {
 		// Force enable scrolling
@@ -514,10 +520,10 @@ const BuyDetails = () => {
 								<div className="row align-items-center text-center position-relative z-1">
 									<div className="col-xl-8">
 										<div className="d-flex align-center gap-2 mb-2">
-											<span className="badge bg-primary">{property?.type || 'Property'}</span>
+											<span className="badge bg-primary">{property?.type || t('propertyDetails.propertyFallback')}</span>
 											<span className="badge bg-secondary">{listingLabel}</span>
 										</div>
-										<h1 className="breadcrumb-title text-start ">{property?.title || 'Property'}</h1>
+										<h1 className="breadcrumb-title text-start ">{property?.title || t('propertyDetails.propertyFallback')}</h1>
 										<div className="d-flex align-items-center gap-2 flex-wrap gap-1 mb-xl-0 mb-4">
 											<div className="d-flex align-items-center justify-content-center">
 												<i className="material-icons-outlined text-warning">star</i>
@@ -530,7 +536,7 @@ const BuyDetails = () => {
 											<i className="fa-solid fa-circle text-body"></i>
 											<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item"><i className="material-icons-outlined text-white me-1">location_on</i>{addressLabel || '—'} <Link to="/buy-grid-map" className="text-primary fs-14 text-decoration-underline ms-1"> View Location</Link></div>
 											<i className="fa-solid fa-circle text-body"></i>
-											<p className="fs-14 mb-0 text-white">Last Updated on : {formattedUpdatedAt || '—'}</p>
+											<p className="fs-14 mb-0 text-white">{t('propertyDetails.lastUpdatedOn')} {formattedUpdatedAt || '—'}</p>
 										</div>
 									</div>
 									<div className="col-xl-4 d-flex d-xl-block align-items-center flex-wrap gap-3">
@@ -553,10 +559,10 @@ const BuyDetails = () => {
 						<div className="container">
 							{loading && (
 								<div className="text-center py-5">
-									<div className="spinner-border text-primary" role="status">
-										<span className="visually-hidden">Loading...</span>
+											<div className="spinner-border text-primary" role="status">
+												<span className="visually-hidden">{t('common.loading')}</span>
 									</div>
-									<p className="mt-3">Loading property...</p>
+											<p className="mt-3">{t('propertyDetails.loadingProperty')}</p>
 								</div>
 							)}
 							{!loading && error && (
@@ -573,15 +579,15 @@ const BuyDetails = () => {
 
 											<div className="mb-4 d-inline-flex align-center justify-content-between w-100 flex-wrap gap-1">
 												<div className="d-inline-flex align-center gap-2">
-													<span className="badge bg-danger d-flex align-items-center"> <i className="material-icons-outlined fs-14 me-1">generating_tokens</i> Trending </span>
-													<span className="badge bg-orange d-flex align-items-center"> <i className="material-icons-outlined  fs-14 me-1">loyalty</i> Featured </span>
+													<span className="badge bg-danger d-flex align-items-center"> <i className="material-icons-outlined fs-14 me-1">generating_tokens</i> {t('propertyDetails.trending')} </span>
+													<span className="badge bg-orange d-flex align-items-center"> <i className="material-icons-outlined  fs-14 me-1">loyalty</i> {t('propertyDetails.featured')} </span>
 													<button
 														className="btn btn-sm btn-primary d-flex align-items-center text-white border-0 shadow-sm px-3"
 														onClick={() => setShowStagingModal(true)}
 														style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)' }}
-														title="Use AI to virtually stage eligible empty rooms"
+														title={t('propertyDetails.magicStagingTitle')}
 													>
-														<i className="material-icons-outlined fs-14 me-1">auto_awesome</i> Magic Staging
+														<i className="material-icons-outlined fs-14 me-1">auto_awesome</i> {t('propertyDetails.magicStaging')}
 													</button>
 													{hasPanoramas && (
 														<button
@@ -589,15 +595,15 @@ const BuyDetails = () => {
 															className="btn btn-sm d-flex align-items-center text-white border-0 shadow-sm px-3"
 															onClick={() => setIsTourModalOpen(true)}
 															style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
-															title="Open immersive 360° virtual tour"
+															title={t('propertyDetails.openImmersiveTour')}
 														>
 															<i className="material-icons-outlined fs-14 me-1">panorama</i>
-															View 360° tour
+															{t('propertyDetails.view360Tour')}
 														</button>
 													)}
 												</div>
 												<p className="mb-0 text-dark">
-													Total No of Visits : 45
+													{t('propertyDetails.totalVisits', { count: 45 })}
 												</p>
 											</div>
 
@@ -607,7 +613,7 @@ const BuyDetails = () => {
 													<img
 														src={heroSlides[safeHeroIndex] || heroSlides[0]}
 														className="w-100 d-block bg-light"
-														alt={property?.title || 'Property'}
+																												alt={property?.title || t('propertyDetails.propertyFallback')}
 														style={{
 															objectFit: 'contain',
 															height: 'clamp(220px, 52vw, 384px)',
@@ -625,7 +631,7 @@ const BuyDetails = () => {
 																	background: 'rgba(0,0,0,0.5)',
 																}}
 																onClick={goHeroPrev}
-																aria-label="Previous photo"
+																														aria-label={t('propertyDetails.previousPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_left</i>
 															</button>
@@ -639,7 +645,7 @@ const BuyDetails = () => {
 																	background: 'rgba(0,0,0,0.5)',
 																}}
 																onClick={goHeroNext}
-																aria-label="Next photo"
+																														aria-label={t('propertyDetails.nextPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_right</i>
 															</button>
@@ -662,7 +668,7 @@ const BuyDetails = () => {
 															<div className="fw-semibold fs-5">{formattedPrice}</div>
 															<p className="mb-0 small text-white-50">
 																{property?.city}
-																{property?.country ? `, ${property.country}` : ', Tunisia'}
+																														{property?.country ? `, ${property.country}` : `, ${t('propertyPages.countryFallback')}`}
 															</p>
 														</div>
 														{typeDisplayLabel && (
@@ -688,10 +694,10 @@ const BuyDetails = () => {
 																fontWeight: 600,
 															}}
 															onClick={() => setIsTourModalOpen(true)}
-															aria-label="Open 360 degree virtual tour"
+																													aria-label={t('propertyDetails.open360Aria')}
 														>
 															<i className="material-icons-outlined" style={{ fontSize: '18px' }}>panorama</i>
-															360° Tour
+																													{t('propertyDetails.short360Tour')}
 														</button>
 													)}
 												</div>
@@ -710,7 +716,7 @@ const BuyDetails = () => {
 																		}`}
 																	style={{ maxHeight: 88 }}
 																	onClick={() => setHeroImageIndex(index)}
-																	aria-label={`Show photo ${index + 1}`}
+																															aria-label={t('propertyDetails.showPhotoAria', { index: index + 1 })}
 																>
 																	<img
 																		src={url}
@@ -733,7 +739,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-1" aria-expanded="true">
-															Description
+																													{t('propertyDetails.descriptionTitle')}
 														</button>
 													</div>
 													<div id="accordion-1" className="accordion-collapse collapse show">
@@ -749,7 +755,7 @@ const BuyDetails = () => {
 																		onClick={() => setDescriptionExpanded((v) => !v)}
 																		aria-expanded={descriptionExpanded}
 																	>
-																		{descriptionExpanded ? 'Read less' : 'Read more'}
+																		{descriptionExpanded ? t('propertyDetails.readLess') : t('propertyDetails.readMore')}
 																	</button>
 																	<i className="material-icons-outlined" style={{ fontSize: '18px' }}>
 																		{descriptionExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
@@ -765,7 +771,7 @@ const BuyDetails = () => {
 													<div className="accordion-item border-primary" style={{ borderWidth: '2px', backgroundColor: '#f8f9fa' }}>
 														<div className="accordion-header">
 															<button className="accordion-button text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-ai-buy" aria-expanded="true">
-																<i className="material-icons-outlined me-2">auto_awesome</i> AI Auto-Detected Features
+																														<i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyDetails.aiDetectedFeatures')}
 															</button>
 														</div>
 														<div id="accordion-ai-buy" className="accordion-collapse collapse show">
@@ -775,8 +781,8 @@ const BuyDetails = () => {
 																		<p className="mb-2 d-flex align-items-start gap-2">
 																			<i className="material-icons-outlined text-success mt-1">category</i>
 																			<span>
-																				<strong>Detected Objects: </strong>
-																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : 'None'}</span>
+																				<strong>{t('propertyDetails.detectedObjects')}: </strong>
+																				<span className="text-capitalize">{property.detectedFeatures.objects?.length ? property.detectedFeatures.objects.join(', ') : t('propertyDetails.none')}</span>
 																			</span>
 																		</p>
 																	</div>
@@ -784,7 +790,7 @@ const BuyDetails = () => {
 																		<div className="col-12">
 																			<p className="mb-2 fw-semibold d-flex align-items-center gap-2">
 																				<i className="material-icons-outlined text-success">sensor_window</i>
-																				Detected Rooms:
+																																					{t('propertyDetails.detectedRooms')}:
 																			</p>
 																			<div className="d-flex flex-wrap gap-2">
 																				{Object.entries(property.detectedFeatures.roomVotes)
@@ -797,7 +803,7 @@ const BuyDetails = () => {
 																						</span>
 																					))}
 																			</div>
-																			<small className="text-muted mt-1 d-block">Primary room in blue · count = supporting objects</small>
+																																			<small className="text-muted mt-1 d-block">{t('propertyDetails.primaryRoomHint')}</small>
 																		</div>
 																	)}
 																</div>
@@ -809,7 +815,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-2" aria-expanded="true">
-															Property Features
+																													{t('propertyDetails.propertyFeaturesTitle')}
 														</button>
 													</div>
 													<div id="accordion-2" className="accordion-collapse collapse show">
@@ -854,7 +860,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-3" aria-expanded="true">
-															About Property
+																													{t('propertyDetails.aboutPropertyTitle')}
 														</button>
 													</div>
 													<div id="accordion-3" className="accordion-collapse collapse show">
@@ -894,7 +900,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-4" aria-expanded="true">
-															Amenities
+																													{t('propertyDetails.amenitiesTitle')}
 														</button>
 													</div>
 													<div id="accordion-4" className="accordion-collapse collapse show">
@@ -938,6 +944,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-5" aria-expanded="true">
 															Floor Plan
+																													{t('propertyDetails.floorPlanTitle')}
 														</button>
 													</div>
 													<div id="accordion-5" className="accordion-collapse collapse show">
@@ -980,6 +987,7 @@ const BuyDetails = () => {
 														<div className="accordion-header">
 															<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-360" aria-expanded="true">
 																360° Virtual Tour
+																														{t('propertyDetails.virtualTourTitle')}
 															</button>
 														</div>
 														<div id="accordion-360" className="accordion-collapse collapse show">
@@ -994,6 +1002,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-6" aria-expanded="true">
 															Gallery
+																													{t('propertyDetails.galleryTitle')}
 														</button>
 													</div>
 													<div id="accordion-6" className="accordion-collapse collapse show">
@@ -1007,8 +1016,7 @@ const BuyDetails = () => {
 																			</a>
 																		</div>
 																	))
-																) : (
-																	<p className="text-body mb-0">No photos have been uploaded for this listing yet.</p>
+																) : (																															<p className="text-body mb-0">{t('propertyDetails.noPhotos')}</p>
 																)}
 															</div>
 														</div>
@@ -1046,6 +1054,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-9" aria-expanded="true">
 															Reviews
+																													{t('propertyDetails.reviewsTitle')}
 														</button>
 													</div>
 													<div id="accordion-9" className="accordion-collapse collapse show">
@@ -1284,7 +1293,7 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Enquiry</h5>
+													<h5 className="mb-0">{t('propertyDetails.enquiryTitle')}</h5>
 												</div>
 
 												<div className="card-body">
@@ -1292,12 +1301,12 @@ const BuyDetails = () => {
 													<ul className="nav nav-pills listing-nav flex-nowrap" role="tablist">
 														<li className="nav-item me-2 w-100" role="presentation">
 															<Link className="nav-link active fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-1" aria-selected="true">
-																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>Request Info
+																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>{t('propertyDetails.requestInfo')}
 															</Link>
 														</li>
 														<li className="nav-item w-100" role="presentation">
 															<Link className="nav-link fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
-																<i className="material-icons-outlined fs-14 me-1">videocam</i>Schedule a Visit
+																<i className="material-icons-outlined fs-14 me-1">videocam</i>{t('propertyDetails.scheduleVisit')}
 															</Link>
 														</li>
 													</ul>
@@ -1312,8 +1321,8 @@ const BuyDetails = () => {
 																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 																		</div>
 																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
 																		</div>
 																	</div>
 																</div>
@@ -1321,24 +1330,22 @@ const BuyDetails = () => {
 
 															{blockingSale && (
 																<div className="alert alert-warning py-2 small mb-3" role="alert">
-																	You already have an active purchase request for this property (status:{' '}
-																	<strong>{blockingSale.status}</strong>). You can submit a new offer only after it is
-																	cancelled or completed.
+																	{t('propertyDetails.activePurchaseRequestWarning', { status: blockingSale.status })}
 																</div>
 															)}
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Offer Price </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.offerPriceLabel')} </label>
 																<input
 																	type="number"
 																	className="form-control"
-																	placeholder="Your offer"
+																	placeholder={t('propertyDetails.offerPricePlaceholder')}
 																	value={enquiryForm.offerPrice}
 																	onChange={handleEnquiryFieldChange('offerPrice')}
 																	disabled={Boolean(blockingSale)}
 																/>
 															</div>
 															<div className="mb-4">
-																<label className="form-label fw-semibold"> Note to Owner (optional) </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.noteToOwnerOptional')} </label>
 																<textarea
 																	className="form-control"
 																	rows="3"
@@ -1354,7 +1361,7 @@ const BuyDetails = () => {
 																	onClick={handleEnquirySubmit}
 																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
 																>
-																	{isEnquirySubmitting ? 'Submitting...' : 'Submit Purchase Request'}
+																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submitPurchaseRequest')}
 																</button>
 															</div>
 														</div>
@@ -1366,44 +1373,44 @@ const BuyDetails = () => {
 																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 																		</div>
 																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
 																		</div>
 																	</div>
 																</div>
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Name </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
 																<input
 																	type="text"
 																	className="form-control"
-																	placeholder="Your Name"
+																	placeholder={t('propertyDetails.yourNamePlaceholder')}
 																	value={enquiryForm.name}
 																	onChange={handleEnquiryFieldChange('name')}
 																/>
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Email </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
 																<input
 																	type="email"
 																	className="form-control"
-																	placeholder="Your Email"
+																	placeholder={t('propertyDetails.yourEmailPlaceholder')}
 																	value={enquiryForm.email}
 																	onChange={handleEnquiryFieldChange('email')}
 																/>
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Phone </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
 																<input
 																	type="text"
 																	className="form-control"
-																	placeholder="Your Phone Number"
+																	placeholder={t('propertyDetails.yourPhonePlaceholder')}
 																	value={enquiryForm.phone}
 																	onChange={handleEnquiryFieldChange('phone')}
 																/>
 															</div>
 															<div className="mb-4">
-																<label className="form-label fw-semibold"> Description </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
 																<textarea
 																	className="form-control"
 																	rows="3"
@@ -1418,7 +1425,7 @@ const BuyDetails = () => {
 																	onClick={handleEnquirySubmit}
 																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
 																>
-																	{isEnquirySubmitting ? 'Submitting...' : 'Submit'}
+																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submit')}
 																</button>
 															</div>
 														</div>
@@ -1430,15 +1437,15 @@ const BuyDetails = () => {
 																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 																		</div>
 																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">Adrian Hendriques</h6>
-																			<p className="mb-0 fs-14 text-body"> Company Agent </p>
+																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
+																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
 																		</div>
 																	</div>
 																</div>
 															</div>
 
 															<div className="select-date-item">
-																<h6 className="fs-16 fw-semibold mb-2"> Select Day </h6>
+																<h6 className="fs-16 fw-semibold mb-2"> {t('propertyDetails.selectDay')} </h6>
 																<div className="d-flex align-items-center justify-content-between gap-1 flex-wrap">
 																	<div className="d-flex flex-column gap-1 border">
 																		<p className="mb-0"> Mon </p>
@@ -1469,7 +1476,7 @@ const BuyDetails = () => {
 															</div>
 
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Select Time </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.selectTime')} </label>
 																<div className="input-group w-auto input-group-flat">
 																	<input type="text" className="form-control bg-light timepicker" placeholder="-- : --" />
 																	<span className="input-group-text">
@@ -1479,23 +1486,23 @@ const BuyDetails = () => {
 															</div>
 
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Name </label>
-																<input type="text" className="form-control" placeholder="Your Name" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourNamePlaceholder')} />
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Email </label>
-																<input type="text" className="form-control" placeholder="Your Email" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourEmailPlaceholder')} />
 															</div>
 															<div className="mb-3">
-																<label className="form-label fw-semibold"> Phone </label>
-																<input type="text" className="form-control" placeholder="Your Phone Number" />
+																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
+																<input type="text" className="form-control" placeholder={t('propertyDetails.yourPhonePlaceholder')} />
 															</div>
 															<div className="mb-4">
-																<label className="form-label fw-semibold"> Description </label>
+																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
 																<textarea className="form-control" rows="3"></textarea>
 															</div>
 															<div>
-																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">Submit</Link>
+																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">{t('propertyDetails.submit')}</Link>
 															</div>
 														</div>
 													</div>
@@ -1506,7 +1513,7 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Listing Owner Details</h5>
+																									<h5 className="mb-0">{t('propertyDetails.listingOwnerDetails')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="d-flex align-items-center gap-2 mb-3">
@@ -1520,18 +1527,20 @@ const BuyDetails = () => {
 														<div>
 															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
 															<p className="mb-0 fs-14 text-body">
-																This listing: {ratingSummary.averageRating || '0.0'} / 5 · {ratingSummary.totalReviews || 0}{' '}
-																review{Number(ratingSummary.totalReviews) === 1 ? '' : 's'}
+																{t('propertyDetails.thisListingRating', {
+																	rating: ratingSummary.averageRating || '0.0',
+																	total: ratingSummary.totalReviews || 0,
+																})}
 															</p>
 														</div>
 													</div>
 													<ul className="mb-3 list-unstyled">
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Phone</span>
+																														<span className="text-body">{t('propertyDetails.phone')}</span>
 															<span className="text-end">{ownerProfile.phone || '—'}</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Email</span>
+																														<span className="text-body">{t('propertyDetails.email')}</span>
 															<span className="text-end text-break">
 																{ownerProfile.email ? (
 																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
@@ -1543,12 +1552,12 @@ const BuyDetails = () => {
 															</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">Member since</span>
+																														<span className="text-body">{t('propertyDetails.memberSince')}</span>
 															<span>{ownerProfile.memberSince || '—'}</span>
 														</li>
 														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
-															<span className="text-body">Account</span>
-															<div className="badge bg-success text-white">Registered</div>
+															<span className="text-body">{t('propertyDetails.account')}</span>
+															<div className="badge bg-success text-white">{t('propertyDetails.registered')}</div>
 														</li>
 													</ul>
 													<div className="d-flex align-items-center justify-content-between gap-3">
@@ -1559,20 +1568,21 @@ const BuyDetails = () => {
 																rel="noopener noreferrer"
 																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
 															>
-																WhatsApp
+																														{t('propertyDetails.whatsapp')}
 															</a>
 														) : (
-															<span className="btn btn-secondary disabled w-100">WhatsApp</span>
+																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.whatsapp')}</span>
 														)}
 														{ownerProfile.email ? (
 															<a
 																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
 																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
 															>
-																Email owner
+																
+																														{t('propertyDetails.emailOwner')}
 															</a>
 														) : (
-															<span className="btn btn-secondary disabled w-100">Email owner</span>
+																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.emailOwner')}</span>
 														)}
 													</div>
 												</div>
@@ -1581,7 +1591,7 @@ const BuyDetails = () => {
 
 											<div className="card">
 												<div className="card-header">
-													<h5 className="mb-0">Share Property</h5>
+																									<h5 className="mb-0">{t('propertyDetails.shareProperty')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="buy-social-icons-items d-flex align-center gap-2 flex-wrap">
@@ -1629,7 +1639,7 @@ const BuyDetails = () => {
 
 											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">
 												<div className="card-header bg-white border-bottom py-3">
-													<h5 className="mb-0 fs-6 fw-semibold">Nearby Landmarks &amp; Visits</h5>
+													<h5 className="mb-0 fs-6 fw-semibold">{t('propertyDetails.nearbyTitle')}</h5>
 												</div>
 												<div className="card-body">
 													<div className="rounded-4 border overflow-hidden mb-3" style={{ height: 176 }}>
@@ -1658,28 +1668,28 @@ const BuyDetails = () => {
 															</MapContainer>
 														) : (
 															<div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted small">
-																Loading map…
+																{t('propertyDetails.loadingMap')}
 															</div>
 														)}
 													</div>
 													<div className="px-3 py-2 border rounded-4 bg-light mb-3">
 														<p className="mb-0 text-uppercase fw-semibold text-muted" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
-															Property address
+																													{t('propertyDetails.propertyAddress')}
 														</p>
-														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || '—'}</p>
+														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || t('propertyDetails.noDescription')}</p>
 													</div>
 													<ul className="list-unstyled small text-body mb-0">
 														<li className="d-flex align-items-center gap-2 mb-2">
 															<span className="text-success">✔</span>
-															Near main city attractions
+																													{t('propertyDetails.nearAttractions')}
 														</li>
 														<li className="d-flex align-items-center gap-2 mb-2">
 															<span className="text-success">✔</span>
-															Easy access to transportation
+																													{t('propertyDetails.easyTransport')}
 														</li>
 														<li className="d-flex align-items-center gap-2 mb-0">
 															<span className="text-success">✔</span>
-															Shops and services nearby
+																													{t('propertyDetails.shopsNearby')}
 														</li>
 													</ul>
 												</div>
@@ -1998,16 +2008,18 @@ const BuyDetails = () => {
 							<div className="modal-body search-wrap">
 								<form className="search-form" id="search-form" action="rent-property-grid.html">
 									<div className="d-flex align-items-center justify-content-between mb-4">
-										<h5>What Are You Looking for?</h5>
+										<h5>{t('propertyPages.whatLookingFor')}</h5>
 										<a href="#" className="close" data-bs-dismiss="modal"><i className="material-icons-outlined">close</i></a>
 									</div>
 									<div className="input-group input-group-flat">
 										<input type="text" className="form-control" placeholder="Type a Keyword...." />
+																					<input type="text" className="form-control" placeholder={t('propertyPages.typeKeywordPlaceholder')} />
 										<span className="input-group-text">
 											<i className="material-icons-outlined">search</i>
 										</span>
 									</div>
 									<h6>Popular Properties</h6>
+																			<h6>{t('propertyPages.popularProperties')}</h6>
 									<div className="search-list">
 										<p><Link to="/rent-property-grid">Beautiful Condo Room</Link></p>
 										<p><Link to="/rent-property-grid">Royal Apartment</Link></p>
@@ -2029,12 +2041,13 @@ const BuyDetails = () => {
 							<div className="modal-content border-0 shadow-lg">
 								<div className="modal-header border-0 pb-0">
 									<h5 className="modal-title d-flex align-items-center gap-2 fw-semibold">
-										<span style={{ fontSize: '1.5rem' }}>✨</span> AI Virtual Staging
+										<span style={{ fontSize: '1.5rem' }}>✨</span> {t('propertyDetails.aiVirtualStaging')}
 									</h5>
 									<button type="button" className="btn-close" onClick={closeStagingModal}></button>
 								</div>
 								<div className="modal-body p-4">
 									<p className="text-muted mb-4">Transform this empty room into a beautifully furnished space using AI.</p>
+									<p className="text-muted mb-4">{t('propertyDetails.stagingDescription')}</p>
 
 									<div className="row">
 										<div className="col-md-8">
@@ -2043,23 +2056,26 @@ const BuyDetails = () => {
 													<div className="text-center p-4">
 														<div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status"></div>
 														<h6 className="mb-1 text-primary fw-bold">Analyzing Room Depth...</h6>
-														<p className="text-muted fs-14">Applying {selectedStyle} aesthetics</p>
+														<h6 className="mb-1 text-primary fw-bold">{t('propertyDetails.analyzingRoomDepth')}</h6>
+														<p className="text-muted fs-14">{t('propertyDetails.applyingStyle', { style: selectedStyle })}</p>
 													</div>
 												) : stagedResultUrl ? (
-													<img src={stagedResultUrl} alt="Staged Room" className="img-fluid w-100 h-100 object-fit-cover" />
+													<img src={stagedResultUrl} alt={t('propertyDetails.stagedRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover" />
 												) : (
-													<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt="Original Room" className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
+													<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt={t('propertyDetails.originalRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
 												)}
 
 												{stagedResultUrl && !isStagingLoading && (
 													<div className="position-absolute top-0 start-0 m-3">
 														<span className="badge bg-success shadow-sm px-3 py-2 fs-13">VIRTUAL STAGING</span>
+																											<span className="badge bg-success shadow-sm px-3 py-2 fs-13">{t('propertyDetails.virtualStagingBadge')}</span>
 													</div>
 												)}
 											</div>
 										</div>
 										<div className="col-md-4 mt-4 mt-md-0 d-flex flex-column">
 											<h6 className="fw-bold mb-3">Select Style</h6>
+																						<h6 className="fw-bold mb-3">{t('propertyDetails.selectStyle')}</h6>
 											<div className="d-flex flex-column gap-3 mb-4">
 												{['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
 													<label key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
@@ -2085,11 +2101,11 @@ const BuyDetails = () => {
 													style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', border: 'none' }}
 												>
 													{isStagingLoading ? (
-														<>Generating...</>
+														<>{t('propertyDetails.generating')}</>
 													) : stagedResultUrl ? (
-														<><i className="material-icons-outlined">refresh</i> Regenerate</>
+														<><i className="material-icons-outlined">refresh</i> {t('propertyDetails.regenerate')}</>
 													) : (
-														<><span>✨</span> Apply Magic Staging</>
+														<><span>✨</span> {t('propertyDetails.applyMagicStaging')}</>
 													)}
 												</button>
 											</div>
@@ -2114,7 +2130,7 @@ const BuyDetails = () => {
 						}}
 						role="dialog"
 						aria-modal="true"
-						aria-label="360 virtual tour"
+						aria-label={t('propertyDetails.virtualTourAria')}
 					>
 						<div
 							className="d-flex align-items-center justify-content-between flex-shrink-0 px-3 py-2 border-bottom border-secondary"
@@ -2122,10 +2138,10 @@ const BuyDetails = () => {
 						>
 							<span className="text-white fw-semibold d-flex align-items-center gap-2 mb-0">
 								<i className="material-icons-outlined text-white">panorama</i>
-								360° Virtual Tour
+								{t('propertyDetails.virtualTourTitle')}
 							</span>
 							<button type="button" className="btn btn-sm btn-outline-light" onClick={closeTourModal}>
-								Close
+								{t('common.close')}
 							</button>
 						</div>
 						<div className="flex-grow-1 position-relative" style={{ minHeight: 0, background: '#000' }}>

@@ -53,6 +53,8 @@ export const getProperties = async (filters = {}) => {
     if (filters.rooms) params.append('rooms', filters.rooms);
     if (filters.bathrooms) params.append('bathrooms', filters.bathrooms);
     if (filters.minSurface) params.append('minSurface', filters.minSurface);
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
     if (filters.page) params.append('page', filters.page);
     
     // Default to 20 items per page for better display

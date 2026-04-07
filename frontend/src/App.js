@@ -1,7 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './i18n';
 
 // Import global components
@@ -11,7 +11,10 @@ import Footer from './components/Footer';
 // Import route configuration
 import { 
   generateLocalizedRoutes, 
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES,
   getLanguageFromPath, 
+  localizeRoute,
   isAuthRoute
 } from './routes/routeConfig';
 
@@ -108,14 +111,79 @@ const COMPONENT_MAP = {
 const LanguageDetector = () => {
   const { i18n } = useTranslation();
   const location = useLocation();
+  const prevPathRef = useRef(location.pathname || '/');
 
   useEffect(() => {
+    const pathname = location.pathname || '/';
     const detectedLang = getLanguageFromPath(location.pathname);
-    
-    if (i18n.language !== detectedLang) {
-      i18n.changeLanguage(detectedLang);
+
+    const hasLanguagePrefix = /^\/([a-z]{2})(\/|$)/.test(pathname);
+
+    if (hasLanguagePrefix) {
+      if (i18n.language !== detectedLang) {
+        i18n.changeLanguage(detectedLang);
+      }
+      prevPathRef.current = pathname;
+      return;
     }
+
+    const prevPath = prevPathRef.current || '/';
+    const prevHadLanguagePrefix = /^\/([a-z]{2})(\/|$)/.test(prevPath);
+    const prevStripped = prevPath.replace(/^\/([a-z]{2})(\/|$)/, '/');
+
+    // When user switches from a localized URL to the same unprefixed URL,
+    // that means they intentionally selected the default language (en).
+    if (prevHadLanguagePrefix && prevStripped === pathname && i18n.language !== DEFAULT_LANGUAGE) {
+      i18n.changeLanguage(DEFAULT_LANGUAGE);
+    }
+
+    prevPathRef.current = pathname;
   }, [location.pathname, i18n]);
+
+  return null;
+};
+
+const LocalePathPreserver = () => {
+  const { i18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const prevPathRef = useRef(location.pathname || '/');
+
+  useEffect(() => {
+    const pathname = location.pathname || '/';
+    const hasLanguagePrefix = /^\/([a-z]{2})(\/|$)/.test(pathname);
+    if (hasLanguagePrefix) {
+      prevPathRef.current = pathname;
+      return;
+    }
+
+    // Keep dedicated non-localized token route working as-is.
+    if (/^\/reset-password\/[^/]+/.test(pathname)) {
+      prevPathRef.current = pathname;
+      return;
+    }
+
+    const prevPath = prevPathRef.current || '/';
+    const prevHadLanguagePrefix = /^\/([a-z]{2})(\/|$)/.test(prevPath);
+    const prevStripped = prevPath.replace(/^\/([a-z]{2})(\/|$)/, '/');
+
+    // If user just switched back to default language, we get /fr/foo -> /foo.
+    // Do not re-apply the old language prefix in that case.
+    if (prevHadLanguagePrefix && prevStripped === pathname) {
+      prevPathRef.current = pathname;
+      return;
+    }
+
+    const activeLanguage = (i18n.resolvedLanguage || i18n.language || DEFAULT_LANGUAGE).slice(0, 2);
+    if (!SUPPORTED_LANGUAGES.includes(activeLanguage) || activeLanguage === DEFAULT_LANGUAGE) {
+      prevPathRef.current = pathname;
+      return;
+    }
+
+    const localizedPath = localizeRoute(pathname, activeLanguage);
+    navigate(`${localizedPath}${location.search || ''}${location.hash || ''}`, { replace: true });
+    prevPathRef.current = pathname;
+  }, [location.pathname, location.search, location.hash, i18n.language, i18n.resolvedLanguage, navigate]);
 
   return null;
 };
@@ -224,6 +292,7 @@ function App() {
     <Router>
       <ToastContainer />
       <LanguageDetector />
+      <LocalePathPreserver />
       <AppLayout>
         <Routes>
           {localizedRoutes.map((route, index) => {

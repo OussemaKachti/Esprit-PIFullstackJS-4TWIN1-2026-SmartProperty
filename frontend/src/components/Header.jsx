@@ -42,7 +42,7 @@ const Header = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);
-    navigate('/');
+    navigate(localizeRoute('/', i18n.language));
   };
 
   const getUserInitials = (user) => {
@@ -58,14 +58,13 @@ const Header = () => {
     return user.email || '';
   };
 
-  const changeLanguage = (lang) => {
-    i18n.changeLanguage(lang);
-    
-    // Update URL based on language using the route utility
-    const currentPath = location.pathname;
-    const newPath = localizeRoute(currentPath, lang);
-    
-    navigate(newPath);
+  const changeLanguage = async (lang) => {
+    await i18n.changeLanguage(lang);
+
+    // Normalize current path before localizing and keep query/hash intact.
+    const cleanPath = stripLanguagePrefix(location.pathname || '/');
+    const newPath = localizeRoute(cleanPath || '/', lang);
+    navigate(`${newPath}${location.search || ''}${location.hash || ''}`);
   };
 
   const getCurrentLanguage = () => {
