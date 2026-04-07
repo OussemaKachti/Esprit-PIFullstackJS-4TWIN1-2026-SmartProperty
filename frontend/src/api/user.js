@@ -12,3 +12,20 @@ export async function completeOnboarding() {
   });
 }
 
+export async function updateCurrentUserProfile(payload) {
+  const data = await apiRequest('/api/users/profile', {
+    method: 'PUT',
+    base: 'backend',
+    body: JSON.stringify(payload),
+  });
+  return data.user;
+}
+
+export async function requestPasswordReset(email) {
+  return apiRequest('/api/users/forgot-password', {
+    method: 'POST',
+    base: 'backend',
+    body: JSON.stringify({ email }),
+  });
+}
+

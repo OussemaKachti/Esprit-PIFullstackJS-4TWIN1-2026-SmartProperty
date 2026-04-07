@@ -101,6 +101,7 @@ export const ROUTES = [
   { path: '/privacy-policy', component: 'PrivacyPolicy' },
   { path: '/terms-condition', component: 'TermsCondition' },
   { path: '/rental-match', component: 'RentalMatch' },
+  { path: '/profile-settings', component: 'ProfileSettings' },
 
   // E-commerce Routes
   { path: '/wishlist', component: 'Wishlist' },

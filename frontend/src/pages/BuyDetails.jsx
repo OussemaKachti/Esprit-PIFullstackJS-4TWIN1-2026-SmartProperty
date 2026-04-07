@@ -824,30 +824,25 @@ const BuyDetails = () => {
 															<div className="row row-gap-4">
 																<div className="col-lg-3 col-md-6">
 																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">bed</i>  Bedrooms: {property?.rooms ?? 0}</p>
-																		<p> <i className="material-icons-outlined">door_sliding</i> Floor: 5th of 12 </p>
-																		<p> <i className="material-icons-outlined">straighten</i>  Area : {property?.surface ?? 'N/A'} Sq Ft</p>
+																		<p>
+																			<i className="material-icons-outlined">bed</i> Bedrooms: {property?.rooms ?? t('propertyDetails.noDescription')}
+																		</p>
+																		<p>
+																			<i className="material-icons-outlined">straighten</i> Area: {property?.surface ?? t('propertyDetails.noDescription')} m2
+																		</p>
+																		<p>
+																			<i className="material-icons-outlined">sell</i> Status: {property?.status || t('propertyDetails.noDescription')}
+																		</p>
 																	</div>
 																</div>
 																<div className="col-lg-3 col-md-6">
 																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">bathtub</i>  Bathrooms: {property?.bathrooms ?? 0}</p>
-																		<p> <i className="material-icons-outlined">bento</i>  Wardrobe :1 </p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">ac_unit</i> AC : 4 </p>
-																	</div>
-																</div>
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">directions_car_filled</i>  Parking: 1</p>
-																		<p> <i className="material-icons-outlined">tv</i> TV : 4 </p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">kitchen</i>Fridge : 1  </p>
-																	</div>
-																</div>
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">corporate_fare</i> Balcony: Yes</p>
-																		<p> <i className="material-icons-outlined">water</i>  Water Purifier : 2</p>
-																		<p className="mb-lg-0 mb-0"> <i className="material-icons-outlined">checkroom</i>  Curtains : yes </p>
+																		<p>
+																			<i className="material-icons-outlined">bathtub</i> Bathrooms: {property?.bathrooms ?? t('propertyDetails.noDescription')}
+																		</p>
+																		<p>
+																			<i className="material-icons-outlined">home_work</i> Listing: {listingLabel}
+																		</p>
 																	</div>
 																</div>
 															</div>
@@ -897,89 +892,10 @@ const BuyDetails = () => {
 												</div>
 
 
-												<div className="accordion-item">
-													<div className="accordion-header">
-														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-4" aria-expanded="true">
-																													{t('propertyDetails.amenitiesTitle')}
-														</button>
-													</div>
-													<div id="accordion-4" className="accordion-collapse collapse show">
-														<div className="accordion-body">
+												{/* Amenities hidden - static template values */}
 
 
-															<div className="row row-gap-4">
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">fitness_center</i>  Gym</p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">supervised_user_circle</i>Visitor Parking</p>
-																	</div>
-																</div>
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">pool</i> Swimming Pool</p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">wb_sunny</i>Natural Light</p>
-																	</div>
-																</div>
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">snippet_folder</i>Power Backup</p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">meeting_room</i>Airy Rooms</p>
-																	</div>
-																</div>
-																<div className="col-lg-3 col-md-6">
-																	<div className="buy-property-items">
-																		<p> <i className="material-icons-outlined">local_bar</i> Clubhouse</p>
-																		<p className="mb-lg-0"> <i className="material-icons-outlined">interests</i>Spacious Interior</p>
-																	</div>
-																</div>
-															</div>
-
-
-														</div>
-													</div>
-												</div>
-
-
-												<div className="accordion-item">
-													<div className="accordion-header">
-														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-5" aria-expanded="true">
-															Floor Plan
-																													{t('propertyDetails.floorPlanTitle')}
-														</button>
-													</div>
-													<div id="accordion-5" className="accordion-collapse collapse show">
-														<div className="accordion-body">
-
-															<div className="card border-0 shadow-none bg-light rounded mb-3">
-																<div className="card-body d-flex align-center justify-content-between gap-2 flex-wrap">
-																	<h6 className="fs-16 fw-semibold mb-0">Balcony Plan</h6>
-																	<div className="d-flex align-items-center floor-items">
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">file_download</i> </a>
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">remove_red_eye</i> </a>
-																	</div>
-																</div>
-															</div>
-															<div className="card border-0 shadow-none bg-light rounded mb-3">
-																<div className="card-body d-flex align-center justify-content-between gap-2 flex-wrap">
-																	<h6 className="fs-16 fw-semibold mb-0">Front Hall</h6>
-																	<div className="d-flex align-items-center floor-items">
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">file_download</i> </a>
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">remove_red_eye</i> </a>
-																	</div>
-																</div>
-															</div>
-															<div className="card border-0 shadow-none bg-light rounded mb-0">
-																<div className="card-body d-flex align-center justify-content-between gap-2 flex-wrap">
-																	<h6 className="fs-16 fw-semibold mb-0">Kitchen</h6>
-																	<div className="d-flex align-items-center floor-items">
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">file_download</i> </a>
-																		<a href="#" className="fs-16 text-dark"> <i className="material-icons-outlined">remove_red_eye</i> </a>
-																	</div>
-																</div>
-															</div>
-														</div>
-													</div>
-												</div>
+												{/* Floor plan hidden - no real floor plan data in property payload */}
 
 
 												{hasPanoramas && (
@@ -1606,35 +1522,7 @@ const BuyDetails = () => {
 											</div>
 
 
-											<div className="card">
-												<div className="card-header">
-													<h5 className="mb-0">Mortarage Calculator</h5>
-												</div>
-												<div className="card-body">
-													<form>
-														<div className="mb-3">
-															<label className="form-label fw-semibold"> Total Amount ($) </label>
-															<input type="text" className="form-control" placeholder="Your Total Amount " value="15000" />
-														</div>
-														<div className="mb-3">
-															<label className="form-label fw-semibold"> Down Payment ($) </label>
-															<input type="text" className="form-control" placeholder="Your Down Payment" value="10000" />
-														</div>
-														<div className="mb-3">
-															<label className="form-label fw-semibold"> Loan Terms (Years) </label>
-															<input type="text" className="form-control" placeholder="Your Loan Terms" value="3" />
-														</div>
-														<div className="mb-3">
-															<label className="form-label fw-semibold"> Interest Rate (%)</label>
-															<input type="text" className="form-control" placeholder="Your Interest Rate" value="15" />
-														</div>
-														<div className="mb-0">
-															<label className="form-label fw-semibold"> Min Sqft </label>
-															<input type="text" className="form-control" />
-														</div>
-													</form>
-												</div>
-											</div>
+											{/* Mortarage Calculator hidden - static template widget */}
 
 
 											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">

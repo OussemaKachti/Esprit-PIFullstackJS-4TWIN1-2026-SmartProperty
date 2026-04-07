@@ -86,6 +86,7 @@ import AgencyDoc from "./features/auth/AgencyDocsForm";
 import CINForm from "./features/auth/CINForm";
 import TwoFactorSetup from "./features/auth/TwoFactorSetup";
 import RentalMatch from "./pages/RentalMatch.jsx";
+import ProfileSettings from "./pages/ProfileSettings";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -105,7 +106,7 @@ const COMPONENT_MAP = {
   Wishlist, Cart, Checkout, InvoiceDetails,
   Notifications, Maintenance, ComingSoon,
   Signin, Index2, Index3, FirstStepForm, FormContainer, AgencyDoc, CINForm,
-  RentalMatch,
+  RentalMatch, ProfileSettings,
 }
 
 const LanguageDetector = () => {
@@ -202,6 +203,8 @@ const AUTH_ROUTES = [
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
+  const cleanPath = (location.pathname || '/').replace(/^\/([a-z]{2})(\/|$)/, '/');
+  const hideFooter = cleanPath === '/profile-settings';
   
   if (isAuthRoute(location.pathname)) {
     return (
@@ -217,7 +220,7 @@ const AppLayout = ({ children }) => {
       <main className="main-content">
         {children}
       </main>
-      <Footer />
+      {!hideFooter && <Footer />}
     </div>
   );
 };

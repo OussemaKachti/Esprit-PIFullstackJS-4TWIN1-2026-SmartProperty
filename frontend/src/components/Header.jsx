@@ -225,7 +225,7 @@ const Header = () => {
                         Backoffice
                       </button>
                     )}
-                    <LocalizedLink to="/form?step=1" className="btn btn-outline-primary w-100 mb-2 d-inline-flex align-items-center justify-content-center">
+                    <LocalizedLink to="/profile-settings" className="btn btn-outline-primary w-100 mb-2 d-inline-flex align-items-center justify-content-center">
                       <i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>person_outline</i>Profile Settings
                     </LocalizedLink>
                     <button className="btn btn-danger w-100 d-inline-flex align-items-center justify-content-center" onClick={handleLogout}>
@@ -336,7 +336,7 @@ const Header = () => {
                         <i className="material-icons-outlined me-2">dashboard_customize</i>Backoffice
                       </button>
                     )}
-                    <LocalizedLink to="/form?step=1" className="dropdown-item d-inline-flex align-items-center">
+                    <LocalizedLink to="/profile-settings" className="dropdown-item d-inline-flex align-items-center">
                       <i className="material-icons-outlined me-2">person_outline</i>Profile Settings
                     </LocalizedLink>
                     <hr className="dropdown-divider" />
