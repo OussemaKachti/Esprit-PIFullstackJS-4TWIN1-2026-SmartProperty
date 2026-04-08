@@ -95,8 +95,135 @@ The system follows a modular architecture:
 - Python 3.9+ (for AI/ML services)
 - MongoDB (or other supported database)
 
-### Frontend Setup
+### Project Structure (Run Each App Separately)
+- `frontend/` → Public website (React CRA)
+- `backofficee/` → Admin dashboard (React + Vite + TS)
+- `backend/` → Express API + business logic
+- `rental-matching-ai/` → Python AI microservice (FastAPI + ML)
+
+## Setup By Folder
+
+### 1) Backend Setup (`backend/`)
+
+```bash
+cd backend
+npm install
+```
+
+Create `.env` in `backend/` with at least:
+
+```env
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=your_mongodb_connection
+JWT_SECRET=your_jwt_secret
+
+# AI providers
+GROQ_API_KEY=your_groq_key
+HUGGINGFACE_API_KEY=your_huggingface_key
+
+# Cloudinary (if image upload is enabled)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+
+# Pusher
+PUSHER_APP_ID=your_id
+PUSHER_KEY=your_key
+PUSHER_SECRET=your_secret
+PUSHER_CLUSTER=your_cluster
+```
+
+Run backend:
+
+```bash
+npm run dev
+```
+
+Optional one-time scripts:
+
+```bash
+npm run init-user
+npm run create-admin
+npm run import-data
+```
+
+### 2) Frontend Setup (`frontend/`)
+
 ```bash
 cd frontend
 npm install
 npm start
+```
+
+Default local URL: `http://localhost:3000`
+
+### 3) Backoffice Setup (`backofficee/`)
+
+```bash
+cd backofficee
+npm install
+npm run dev
+```
+
+Default local URL: Vite URL shown in terminal (usually `http://localhost:5173`)
+
+### 4) AI Service Setup (`rental-matching-ai/`)
+
+```bash
+cd rental-matching-ai
+python -m venv .venv
+```
+
+Activate venv:
+
+- Windows (PowerShell):
+
+```bash
+.\.venv\Scripts\Activate.ps1
+```
+
+- macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Create `.env` in `rental-matching-ai/` (for email notifications):
+
+```env
+EMAIL_SENDER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+```
+
+Run AI API:
+
+```bash
+uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+Optional ML pipeline run:
+
+```bash
+python src/clean_data.py
+python src/train_models.py
+python main.py
+```
+
+## Full Local Startup Order
+1. Start `backend/` (`npm run dev`) on port `5000`.
+2. Start `rental-matching-ai/` (`uvicorn ...`) on port `8000`.
+3. Start `frontend/` (`npm start`) on port `3000`.
+4. Start `backofficee/` (`npm run dev`) on port `5173`.
+
+## Quick Health Check
+- Backend API responds on `http://localhost:5000`
+- AI service responds on `http://127.0.0.1:8000/docs`
+- Frontend opens on `http://localhost:3000`
+- Backoffice opens on Vite URL (`http://localhost:5173`)
