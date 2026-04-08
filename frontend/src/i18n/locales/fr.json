@@ -658,6 +658,11 @@
     "contactForm": {
       "title": "Restons en Contact",
       "subtitle": "Recevez les actualités, restez informé et bénéficiez d'offres spéciales"
+    },
+    "accessibility": {
+      "ariaLabel": "Informations d'accessibilité",
+      "badge": "Navigation Clavier",
+      "note": "Vous pouvez naviguer sur cette page avec le clavier (appuyez sur Tab pour avancer, Shift+Tab pour revenir en arrière)."
     }
   }
 }

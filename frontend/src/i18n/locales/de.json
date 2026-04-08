@@ -561,5 +561,12 @@
     "popular4": "Grand Mahaka",
     "popular5": "Lunaria Residence",
     "popular6": "Stephen Alexander Homes"
+  },
+  "index3": {
+    "accessibility": {
+      "ariaLabel": "Informationen zur Barrierefreiheit",
+      "badge": "Tastaturfreundlich",
+      "note": "Sie können diese Seite mit der Tastatur bedienen (Tab zum Weitergehen, Shift+Tab zum Zurückgehen)."
+    }
   }
 }

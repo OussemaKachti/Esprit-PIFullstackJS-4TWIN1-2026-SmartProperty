@@ -260,7 +260,7 @@ const Index3 = () => {
   };
 
   return (
-    <>
+		<div className="index3-page">
 			<section className="banner-section-three index3-banner aos">
 				<div className="container">
 					<div className="row align-items-center justify-content-between">
@@ -290,9 +290,9 @@ const Index3 = () => {
 									<ul className="nav nav-tabs index3-search-tabs" role="tablist">
 										<li className="nav-item" role="presentation">
 											<a className="nav-link active" data-bs-toggle="tab" href="#buy_property" role="tab" aria-controls="buy_property" aria-selected="true">
-<span class="material-icons-outlined me-2 white-icon">
+													<span className="material-icons-outlined me-2 white-icon" aria-hidden="true">
   home
-</span>												{t('search.buyProperty')}
+													</span>{t('search.buyProperty')}
 											</a>
 										</li>
 										<li className="nav-item" role="presentation">
@@ -302,6 +302,13 @@ const Index3 = () => {
 											</a>
 										</li>
 									</ul>
+								</div>
+								<div className="index3-accessibility-note" role="note" aria-label={t('index3.accessibility.ariaLabel')}>
+									<span className="index3-accessibility-badge">
+										<i className="material-icons-outlined" aria-hidden="true">accessibility</i>
+										{t('index3.accessibility.badge')}
+									</span>
+									<p className="mb-0">{t('index3.accessibility.note')}</p>
 								</div>
 								<div className="tab-content index3-tab-content">
 									<div className="tab-pane fade show active" id="buy_property" role="tabpanel">
@@ -403,14 +410,14 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-01.jpg" alt="" /></Link>
+									<Link to="/index-3"><img src="/assets/img/home-3/location/location-01.jpg" alt="City view of Tunis" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location1')}</h5>
 											<p>300 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
-											<a href="#"><i className="material-icons-outlined">north_east</i></a>
+											<Link to="/buy-property-grid" aria-label={`Browse properties in ${t('propertySection.location1')}`}><i className="material-icons-outlined" aria-hidden="true">north_east</i></Link>
 										</div>
 									</div>
 								</div>
@@ -420,14 +427,14 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-02.jpg" alt="" /></Link>
+									<Link to="/index-3"><img src="/assets/img/home-3/location/location-02.jpg" alt="City view of Sousse" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location2')}</h5>
 											<p>458 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
-											<a href="#"><i className="material-icons-outlined">north_east</i></a>
+											<Link to="/buy-property-grid" aria-label={`Browse properties in ${t('propertySection.location2')}`}><i className="material-icons-outlined" aria-hidden="true">north_east</i></Link>
 										</div>
 									</div>
 								</div>
@@ -437,14 +444,14 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-03.jpg" alt="" /></Link>
+									<Link to="/index-3"><img src="/assets/img/home-3/location/location-03.jpg" alt="City view of Sfax" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location3')}</h5>
 											<p>175 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
-											<a href="#"><i className="material-icons-outlined">north_east</i></a>
+											<Link to="/buy-property-grid" aria-label={`Browse properties in ${t('propertySection.location3')}`}><i className="material-icons-outlined" aria-hidden="true">north_east</i></Link>
 										</div>
 									</div>
 								</div>
@@ -454,14 +461,14 @@ const Index3 = () => {
 						<div className="col-lg-6" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-04.jpg" alt="" /></Link>
+									<Link to="/index-3"><img src="/assets/img/home-3/location/location-04.jpg" alt="City view of Nabeul" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location4')}</h5>
 											<p>155 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
-											<a href="#"><i className="material-icons-outlined">north_east</i></a>
+											<Link to="/buy-property-grid" aria-label={`Browse properties in ${t('propertySection.location4')}`}><i className="material-icons-outlined" aria-hidden="true">north_east</i></Link>
 										</div>
 									</div>
 								</div>
@@ -471,14 +478,14 @@ const Index3 = () => {
 						<div className="col-lg-6" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-05.jpg" alt="" /></Link>
+									<Link to="/index-3"><img src="/assets/img/home-3/location/location-05.jpg" alt="City view of Hammamet" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location5')}</h5>
 											<p>265 {t('propertySection.properties')}</p>
 										</div>
 										<div className="arrow-overlay">
-											<a href="#"><i className="material-icons-outlined">north_east</i></a>
+											<Link to="/buy-property-grid" aria-label={`Browse properties in ${t('propertySection.location5')}`}><i className="material-icons-outlined" aria-hidden="true">north_east</i></Link>
 										</div>
 									</div>
 								</div>
@@ -489,7 +496,7 @@ const Index3 = () => {
 					
 
 					<div className="text-center mt-4 pt-3">
-						<a href="#" className="btn btn-dark btn-lg d-inline-flex align-items-center">{t('propertySection.viewMore')}<i className="material-icons-outlined ms-1">north_east</i></a>
+						<Link to="/buy-property-grid" className="btn btn-dark btn-lg d-inline-flex align-items-center" aria-label={t('propertySection.viewMore')}>{t('propertySection.viewMore')}<i className="material-icons-outlined ms-1" aria-hidden="true">north_east</i></Link>
 					</div>
 				</div>
 			</section>
@@ -596,7 +603,7 @@ const Index3 = () => {
 							<div className="property-item">
 								<div className="property-img">
 									<Link to="/rent-property-grid">
-										<img src="/assets/img/home-3/property/property-04.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-04.jpg" alt="Featured houses" />
 									</Link>
 									<span className="building-icon">
 										<img src="/assets/img/icons/building-02.svg" alt="" />
@@ -618,7 +625,7 @@ const Index3 = () => {
 							<div className="property-item">
 								<div className="property-img">
 									<Link to="/rent-property-grid">
-										<img src="/assets/img/home-3/property/property-05.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-05.jpg" alt="Featured offices" />
 									</Link>
 									<span className="building-icon">
 										<img src="/assets/img/icons/building-04.svg" alt="" />
@@ -640,7 +647,7 @@ const Index3 = () => {
 							<div className="property-item">
 								<div className="property-img">
 									<Link to="/rent-property-grid">
-										<img src="/assets/img/home-3/property/property-06.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-06.jpg" alt="Featured villas" />
 									</Link>
 									<span className="building-icon">
 										<img src="/assets/img/icons/building-01.svg" alt="" />
@@ -662,7 +669,7 @@ const Index3 = () => {
 							<div className="property-item">
 								<div className="property-img">
 									<Link to="/rent-property-grid">
-										<img src="/assets/img/home-3/property/property-07.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-07.jpg" alt="Featured apartments" />
 									</Link>
 									<span className="building-icon">
 										<img src="/assets/img/icons/building-03.svg" alt="" />
@@ -684,7 +691,7 @@ const Index3 = () => {
 							<div className="property-item">
 								<div className="property-img">
 									<Link to="/rent-property-grid">
-										<img src="/assets/img/home-3/property/property-08.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-08.jpg" alt="Featured duplexes" />
 									</Link>
 									<span className="building-icon">
 										<img src="/assets/img/icons/building-05.svg" alt="" />
@@ -775,7 +782,7 @@ const Index3 = () => {
 												<img src={prop.images?.[0] ? getImageUrl(prop.images[0]) : '/assets/img/home-3/property/property-09.jpg'} alt={prop.title || 'Property'} onError={(e) => { e.target.src = '/assets/img/home-3/property/property-09.jpg'; }} />
 											</Link>
 											<div className="favourite">
-												<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+												<button type="button" className="icon-btn" aria-label="Add property to favorites"><i className="material-icons-outlined" aria-hidden="true">favorite_border</i></button>
 											</div>
 											<div className="d-flex align-items-center token-top">
 												<span className="token bg-danger me-1">
@@ -928,10 +935,10 @@ const Index3 = () => {
 							<div className="rent-property-item flex-fill">
 								<div className="property-img">
 									<Link to="/buy-details">
-										<img src="/assets/img/home-3/property/property-13.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-13.jpg" alt="Royal Apartment exterior" />
 									</Link>
 									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+										<button type="button" className="icon-btn" aria-label="Add property to favorites"><i className="material-icons-outlined" aria-hidden="true">favorite_border</i></button>
 									</div>
 									<div className="d-flex align-items-center token-top">
 										<span className="token bg-danger me-1">
@@ -978,10 +985,10 @@ const Index3 = () => {
 							<div className="rent-property-item flex-fill">
 								<div className="property-img">
 									<Link to="/buy-details">
-										<img src="/assets/img/home-3/property/property-14.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-14.jpg" alt="Grand Villa House exterior" />
 									</Link>
 									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+										<button type="button" className="icon-btn" aria-label="Add property to favorites"><i className="material-icons-outlined" aria-hidden="true">favorite_border</i></button>
 									</div>
 									<div className="d-flex align-items-center token-top">
 										<span className="token bg-danger me-1">
@@ -1028,10 +1035,10 @@ const Index3 = () => {
 							<div className="rent-property-item flex-fill">
 								<div className="property-img">
 									<Link to="/buy-details">
-										<img src="/assets/img/home-3/property/property-15.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-15.jpg" alt="Elite Suite Room exterior" />
 									</Link>
 									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+										<button type="button" className="icon-btn" aria-label="Add property to favorites"><i className="material-icons-outlined" aria-hidden="true">favorite_border</i></button>
 									</div>
 									<div className="d-flex align-items-center token-top">
 										<span className="token bg-danger me-1">
@@ -1078,10 +1085,10 @@ const Index3 = () => {
 							<div className="rent-property-item flex-fill">
 								<div className="property-img">
 									<Link to="/buy-details">
-										<img src="/assets/img/home-3/property/property-16.jpg" alt="" />
+										<img src="/assets/img/home-3/property/property-16.jpg" alt="Celestial Residency exterior" />
 									</Link>
 									<div className="favourite">
-										<a href="#"><i className="material-icons-outlined">favorite_border</i></a>
+										<button type="button" className="icon-btn" aria-label="Add property to favorites"><i className="material-icons-outlined" aria-hidden="true">favorite_border</i></button>
 									</div>
 									<div className="d-flex align-items-center token-top">
 										<span className="token bg-danger me-1">
@@ -1154,7 +1161,7 @@ const Index3 = () => {
 									</div>
 									<h2 className="mb-2">Histoires de succès de nos clients</h2>
 									<p className="mb-4">Découvrez ce que nos clients satisfaits disent de leurs expériences avec Smart Property.</p>
-									<a href="#" className="btn btn-dark d-inline-flex align-items-center">Voir Plus<i className="material-icons-outlined ms-1">north_east</i></a>
+									<Link to="/testimonials" className="btn btn-dark d-inline-flex align-items-center" aria-label="View testimonials">Voir Plus<i className="material-icons-outlined ms-1" aria-hidden="true">north_east</i></Link>
 								</div>
 								<div className="success-customer mb-4">
 									<h6>Approuv\u00e9 par plus de 50K+ clients en Tunisie</h6>
@@ -1190,10 +1197,10 @@ const Index3 = () => {
 											</div>
 											<p>Trouver ma maison parfaite en Tunisie a été incroyablement facile avec Smart Property. L'interface est conviviale et intuitive.</p>
 											<div className="review-customer">
-												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
-													<img src="/assets/img/users/user-02.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-												</a>
-												<h6 className="me-2"><a href="#">Aïda Belaid</a></h6>
+												<span className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
+													<img src="/assets/img/users/user-02.jpg" className="img-fluid border border-white rounded-circle" alt="Aïda Belaid" />
+												</span>
+												<h6 className="me-2"><span>Aïda Belaid</span></h6>
 												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer1Location')}</span>
 											</div>
 										</div>
@@ -1208,10 +1215,10 @@ const Index3 = () => {
 											</div>
 											<p>Smart Property a rendu la location immobilière très facile. Super simple et sans stress!</p>
 											<div className="review-customer">
-												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
-													<img src="/assets/img/users/user-04.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-												</a>
-												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer2Name')}</a></h6>
+												<span className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
+													<img src="/assets/img/users/user-04.jpg" className="img-fluid border border-white rounded-circle" alt={t('index3.testimonials.customer2Name')} />
+												</span>
+												<h6 className="me-2"><span>{t('index3.testimonials.customer2Name')}</span></h6>
 												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer2Location')}</span>
 											</div>
 										</div>
@@ -1229,10 +1236,10 @@ const Index3 = () => {
 											</div>
 											<p>Réserver ma future propriété a été si simple avec Smart Property. Le site est très facile à utiliser!</p>
 											<div className="review-customer">
-												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
-													<img src="/assets/img/users/user-06.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-												</a>
-												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer3Name')}</a></h6>
+												<span className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
+													<img src="/assets/img/users/user-06.jpg" className="img-fluid border border-white rounded-circle" alt={t('index3.testimonials.customer3Name')} />
+												</span>
+												<h6 className="me-2"><span>{t('index3.testimonials.customer3Name')}</span></h6>
 												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer3Location')}</span>
 											</div>
 										</div>
@@ -1247,10 +1254,10 @@ const Index3 = () => {
 											</div>
 											<p>Smart Property a rendu la recherche immobilière sans effort. L'interface est tellement facile à naviguer!</p>
 											<div className="review-customer">
-												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
-													<img src="/assets/img/users/user-17.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
-												</a>
-												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer4Name')}</a></h6>
+												<span className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
+													<img src="/assets/img/users/user-17.jpg" className="img-fluid border border-white rounded-circle" alt={t('index3.testimonials.customer4Name')} />
+												</span>
+												<h6 className="me-2"><span>{t('index3.testimonials.customer4Name')}</span></h6>
 												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer4Location')}</span>
 											</div>
 										</div>
@@ -1322,9 +1329,9 @@ const Index3 = () => {
 									<div className="d-flex align-items-center email-forms">
 										<div className="contact-box align-items-center justify-content-center flex-fill">
 											<span className="input-icon d-inline-flex align-items-center"><i className="material-icons-outlined">email</i></span>
-											<input type="email" className="form-control" placeholder="Enter Email Address" />
+											<input type="email" className="form-control" placeholder="Enter Email Address" aria-label="Email address" />
 										</div>
-										<button type="submit"><i className="material-icons-outlined">send</i></button>
+											<button type="submit" aria-label="Send newsletter request"><i className="material-icons-outlined" aria-hidden="true">send</i></button>
 									</div>
 								</form>
 							</div> 
@@ -1342,17 +1349,17 @@ const Index3 = () => {
 			
 
 			
-			<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+			<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true" aria-labelledby="search-modal-title">
 				<div className="modal-dialog  modal-dialog-centered modal-lg">
 					<div className="modal-content">
 						<div className="modal-body search-wrap">
 							<form className="search-form" id="search-form" action="rent-property-grid.html">
 								<div className="d-flex align-items-center justify-content-between mb-4">
-									<h5>Que recherchez-vous ?</h5>
-									<a href="#" className="close" data-bs-dismiss="modal"><i className="material-icons-outlined">close</i></a>
+									<h5 id="search-modal-title">Que recherchez-vous ?</h5>
+									<button type="button" className="close" data-bs-dismiss="modal" aria-label="Close search modal"><i className="material-icons-outlined" aria-hidden="true">close</i></button>
 								</div>
 								<div className="input-group input-group-flat">
-									<input type="text" className="form-control" placeholder="Type a Keyword...." />
+									<input type="text" className="form-control" placeholder="Type a Keyword...." aria-label="Search keyword" />
 									<span className="input-group-text">
 										<i className="material-icons-outlined">search</i>
 									</span>
@@ -1371,7 +1378,7 @@ const Index3 = () => {
 					</div>
 				</div>
 			</div>
-    </>
+		</div>
   );
 };
 

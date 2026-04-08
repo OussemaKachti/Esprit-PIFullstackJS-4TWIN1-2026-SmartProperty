@@ -561,5 +561,12 @@
     "popular4": "Grand Mahaka",
     "popular5": "Residenza Lunaria",
     "popular6": "Case Stephen Alexander"
+  },
+  "index3": {
+    "accessibility": {
+      "ariaLabel": "Informazioni sull'accessibilità",
+      "badge": "Navigazione da Tastiera",
+      "note": "Puoi navigare questa pagina usando la tastiera (premi Tab per avanzare, Shift+Tab per tornare indietro)."
+    }
   }
 }

@@ -227,3 +227,7 @@ python main.py
 - AI service responds on `http://127.0.0.1:8000/docs`
 - Frontend opens on `http://localhost:3000`
 - Backoffice opens on Vite URL (`http://localhost:5173`)
+
+
+## Lighthouse
+![Lighthouse](./lighthouse.png)

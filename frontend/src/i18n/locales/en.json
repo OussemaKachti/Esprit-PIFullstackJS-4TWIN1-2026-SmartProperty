@@ -660,6 +660,11 @@
     "contactForm": {
       "title": "Let's Stay in Touch",
       "subtitle": "Receive news, stay informed and enjoy special offers"
+    },
+    "accessibility": {
+      "ariaLabel": "Accessibility information",
+      "badge": "Keyboard Friendly",
+      "note": "You can navigate this page using the keyboard (press Tab to move, Shift+Tab to go back)."
     }
   }
 }

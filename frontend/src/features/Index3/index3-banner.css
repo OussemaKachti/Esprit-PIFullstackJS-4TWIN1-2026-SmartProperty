@@ -93,6 +93,38 @@
   padding-top: 0;
 }
 
+.index3-accessibility-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.index3-accessibility-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f5132;
+  background: #d1f7e7;
+  border: 1px solid #9ee3cb;
+  white-space: nowrap;
+}
+
+.index3-accessibility-note p {
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
 .index3-search-form .form-label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -159,4 +191,29 @@
   .index3-search-btn {
     margin-top: 0.25rem;
   }
+
+  .index3-accessibility-note {
+    align-items: flex-start;
+  }
+}
+
+/* WCAG: visible keyboard focus for all interactive controls in Index3 */
+.index3-page a:focus-visible,
+.index3-page button:focus-visible,
+.index3-page input:focus-visible,
+.index3-page select:focus-visible,
+.index3-page textarea:focus-visible {
+  outline: 3px solid #00c2a8;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.index3-page .icon-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  line-height: 1;
 }
