@@ -6,7 +6,7 @@ Smart Property – Intelligent Real Estate Management & Rental Matching Platform
 
 ## Overview
 
-Smart Property is a full-stack real estate management system developed as part of the PIDEV – 3rd Year Engineering Program at Esprit School of Engineering (Academic Year 2025–2026).
+Smart Property is a full-stack real estate management system developed as part of the PIDEV – 4th Year Engineering Program at Esprit School of Engineering (Academic Year 2025–2026).
 
 The platform combines AI-powered rental matching with a modern web application to simplify property listing, management, and rental processes.
 
