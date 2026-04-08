@@ -1,4 +1,4 @@
-const { Transaction, TransactionStatus, TransactionType, Property, User } = require('../models');
+const { Transaction, TransactionStatus, TransactionType, Property, User, Lease, LeaseStatus } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 const { addTimelineEntry, recalcPropertyStatus, hasOverlappingConfirmedRent } = require('../services/transaction.service');
 
@@ -11,6 +11,29 @@ const ensureAccess = (transaction, user, property) => {
   const isParty = transaction.partyId && transaction.partyId.equals(user._id);
   const admin = isAdminish(user.role);
   return { isOwner, isParty, admin };
+};
+
+const syncLinkedLeaseStatus = async (transaction) => {
+  if (transaction.type !== TransactionType.RENT) return null;
+
+  const lease = await Lease.findOne({ transactionId: transaction._id });
+  if (!lease) return null;
+
+  const nextLeaseStatus =
+    transaction.status === TransactionStatus.CONFIRMED
+      ? LeaseStatus.CONFIRMED
+      : transaction.status === TransactionStatus.COMPLETED
+        ? LeaseStatus.COMPLETED
+        : transaction.status === TransactionStatus.CANCELLED
+          ? LeaseStatus.CANCELLED
+          : LeaseStatus.PENDING;
+
+  if (lease.status !== nextLeaseStatus) {
+    lease.status = nextLeaseStatus;
+    await lease.save();
+  }
+
+  return lease;
 };
 
 exports.createTransaction = async (req, res, next) => {
@@ -191,6 +214,7 @@ exports.updateTransactionStatus = async (req, res, next) => {
     }
 
     await transaction.save();
+    await syncLinkedLeaseStatus(transaction);
     await recalcPropertyStatus(transaction.propertyId);
 
     const populated = await Transaction.findById(transaction._id)

@@ -115,15 +115,17 @@ const AdminSidebar: React.FC = () => {
         >
           <Link to="/admin" className="block w-full">
             <img 
-              src="/img/logo-removebg-preview.png" 
+              src={isMobileOpen ? "/images/logo/smartpropertylogohorizantal.png" : "/img/logo-removebg-preview.png"}
               alt="Smart Property" 
               className={`object-contain ${
-                isExpanded || isHovered
+                isMobileOpen
+                  ? "w-full max-w-[250px] h-auto mx-auto"
+                  : isExpanded || isHovered
                   ? "w-full max-w-[280px] h-auto"
                   : "mx-auto w-[90px] h-auto max-h-14"
               }`}
-              width={isExpanded || isHovered ? 280 : 90}
-              height={isExpanded || isHovered ? 110 : 36}
+              width={isMobileOpen ? 250 : isExpanded || isHovered ? 280 : 90}
+              height={isMobileOpen ? 72 : isExpanded || isHovered ? 110 : 36}
             />
           </Link>
         </div>

@@ -12,6 +12,12 @@ const FRONTEND_ROLES = ['TENANT', 'BUYER'];
 
 const normalizeRole = (role) => String(role || '').toUpperCase();
 
+const getBackofficePathByRole = (role) => {
+  const r = normalizeRole(role);
+  if (r === 'ADMIN') return '/admin';
+  return '/';
+};
+
 /** Only agency & property owners can start the “list your property” flow from the homepage */
 export const canListPropertyFromHomepage = (role) => {
   const r = normalizeRole(role);
@@ -97,9 +103,13 @@ export const redirectToBackoffice = (backofficeUrl) => {
  * Note: localStorage is NOT shared across different localhost ports.
  * @param {string} backofficeUrl - Backoffice base URL
  * @param {string} token - JWT token
+ * @param {string} [role] - User role used to compute role-specific landing route
  */
-export const redirectToBackofficeWithToken = (backofficeUrl, token) => {
-  const base = (backofficeUrl || '').replace(/\/$/, '');
-  const url = `${base}/?token=${encodeURIComponent(token)}`;
-  window.location.href = url;
+export const redirectToBackofficeWithToken = (backofficeUrl, token, role) => {
+  const fallback = process.env.REACT_APP_BACKOFFICEE_URL || 'http://localhost:5173';
+  const baseUrl = backofficeUrl || fallback;
+  const target = new URL(baseUrl);
+  target.pathname = getBackofficePathByRole(role);
+  target.searchParams.set('token', token);
+  window.location.href = target.toString();
 };

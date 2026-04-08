@@ -30,6 +30,7 @@
     "listing": "Angebote",
     "buyProperty": "Immobilie Kaufen",
     "rentProperty": "Immobilie Mieten",
+    "rentalMatch": "Rental Match",
     "agent": "Makler",
     "agency": "Agentur",
     "pages": "Seiten",
@@ -327,6 +328,141 @@
     "comprehensivePlanning": "Umfassende Planung",
     "clientSatisfaction": "Kundenzufriedenheit",
     "support247": "24/7 Support"
+  },
+  "rentalMatch": {
+    "pageTitle": "Rental Match",
+    "error": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    },
+    "common": {
+      "month": "Monat"
+    },
+    "candidate": {
+      "step": "Schritt 1",
+      "title": "Kandidatenprofil",
+      "description": "Definieren Sie Suchgrenzen und das gewuenschte Mietprofil.",
+      "preferredTypes": "Bevorzugte Typen",
+      "selectedCount": "{{count}} ausgewaehlt",
+      "fields": {
+        "fullName": "Vollstaendiger Name",
+        "maxBudget": "Max. Budget (TND / Monat)",
+        "city": "Stadt",
+        "minRooms": "Min. Zimmer",
+        "minSize": "Min. Flaeche (m2)"
+      },
+      "placeholders": {
+        "fullName": "Ahmed Ben Ali",
+        "city": "Tunis"
+      }
+    },
+    "propertyTypes": {
+      "apartments": "Wohnungen",
+      "housesVillas": "Haeuser und Villen",
+      "holidayRentals": "Ferienmieten"
+    },
+    "credit": {
+      "step": "Schritt 2",
+      "title": "Kreditvertrauen",
+      "description": "Bewerten Sie Bonitaet und Unterlagen vor dem Absenden.",
+      "guarantorAvailable": "Buerge verfuegbar",
+      "emptySummary": "Die Kreditzusammenfassung erscheint nach der Bewertung.",
+      "decision": "Kreditentscheidung",
+      "verdictEyebrow": "Kredit",
+      "verdictTitle": "Ihre Entscheidung",
+      "verdictCopy": "Diese Ansicht fasst Bonitaet, Unterlagen und die finale Empfehlung zusammen.",
+      "pendingTitle": "Entscheidung ausstehend",
+      "pendingCopy": "Fuellen Sie das Formular aus, um die Kreditempfehlung zu erhalten.",
+      "fields": {
+        "monthlyIncome": "Nettoeinkommen pro Monat (TND)",
+        "rentAsked": "Geplante Miete (TND)",
+        "monthlyDebts": "Monatliche Schulden (TND)",
+        "employmentType": "Beschaeftigungsart",
+        "monthsEmployed": "Beschaeftigungsdauer (Monate)",
+        "guarantor": "Buerge"
+      },
+      "employmentOptions": {
+        "cdi": "Unbefristet",
+        "cdd": "Befristet",
+        "freelance": "Freelance",
+        "retired": "Rentner",
+        "unemployed": "Arbeitslos"
+      },
+      "summary": {
+        "accept": "Stark: Score {{score}}. Das Dossier wirkt ohne groessere Vorbehalte bereit.",
+        "guarantee": "Gemischt: Score {{score}}. Ein Buerge oder mehr Unterlagen koennen helfen.",
+        "reject": "Schwach: Score {{score}}. Niedrigere Miete oder ein Buerge verbessern die Chancen."
+      },
+      "meta": {
+        "accept": {
+          "label": "Starkes Profil",
+          "note": "Das Dossier ist bereit fuer den naechsten Schritt."
+        },
+        "guarantee": {
+          "label": "Gemischtes Profil",
+          "note": "Ein Buerge oder mehr Unterlagen wuerden helfen."
+        },
+        "reject": {
+          "label": "Schwaches Profil",
+          "note": "Miete senken oder Nachweise staerken."
+        }
+      }
+    },
+    "documents": {
+      "title": "Dokumente",
+      "confirmedCount": "{{count}} bestaetigt",
+      "nationalId": "Personalausweis",
+      "payslips3months": "3 Gehaltsabrechnungen",
+      "bankStatement": "Kontoauszug",
+      "employmentContract": "Arbeitsvertrag",
+      "taxNotice": "Steuerbescheid"
+    },
+    "insights": {
+      "step": "Schritt 3",
+      "title": "Engine-Zusammenfassung",
+      "description": "Kurzer Ueberblick, was die Engine vor dem Start erkennt.",
+      "anyCity": "Beliebige Stadt",
+      "searchHint": "Suchhinweis",
+      "creditInsight": "Kredit-Hinweis",
+      "tiles": {
+        "budgetCeiling": "Budgetgrenze",
+        "preferredCity": "Bevorzugte Stadt",
+        "roomTarget": "Zimmerziel",
+        "selectedDocs": "Ausgewaehlte Dokumente"
+      },
+      "hints": {
+        "noCity": "Tipp: Geben Sie Ihre Stadt an, um bessere Treffer zu erhalten.",
+        "lowBudget": "Knappes Budget fuer {{city}}. Erweitern Sie auf 1-2 Zimmer oder Randlagen.",
+        "highBudget": "Komfortables Budget fuer {{city}}. Pruefen Sie zentrale und neuere Viertel.",
+        "midBudget": "Ausgewogenes Budget fuer {{city}}. Typische 2-3 Zimmer liegen bei etwa {{budget}} TND."
+      }
+    },
+    "actions": {
+      "loading": "Wird berechnet...",
+      "submit": "Meine Top-3-Angebote holen",
+      "loadingTitle": "Berechnung laeuft",
+      "loadingCopy": "Wir bewerten Ihr Profil und Ihr Kreditdossier."
+    },
+    "results": {
+      "eyebrow": "Ergebnisse",
+      "title": "Top 3 Treffer",
+      "copy": "Jedes Ergebnis wird nach Score, Zimmern, Flaeche und Budget sortiert.",
+      "badge": "Kompatibilitaet",
+      "emptySummary": "Treffer erscheinen hier nach der Suche.",
+      "summary": "Top-Auswahl: {{category}} in {{city}} (Score {{score}}%). Durchschnitt {{avg}}%.",
+      "exploreCityListings": "Angebote der Stadt ansehen",
+      "bestMatch": "Bester Treffer",
+      "noMatchesTitle": "Noch keine Treffer",
+      "noMatchesCopy": "Starten Sie eine Suche, um passende Mietobjekte zu sehen."
+    },
+    "breakdownLabels": {
+      "budget": "budget",
+      "city": "stadt",
+      "rooms": "zimmer",
+      "size": "flaeche",
+      "documents": "dokumente",
+      "stability": "stabilitaet",
+      "debt_ratio": "schuldquote"
+    }
   },
   "faqPage": {
     "title": "Smart Property FAQ - Tunesien",

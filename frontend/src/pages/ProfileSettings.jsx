@@ -139,7 +139,7 @@ const ProfileSettings = () => {
   const openBackoffice = () => {
     const token = localStorage.getItem('token');
     if (!token || !shouldAccessBackoffice(form.role)) return;
-    redirectToBackofficeWithToken(getRedirectUrl(form.role), token);
+    redirectToBackofficeWithToken(getRedirectUrl(form.role), token, form.role);
   };
 
   if (loading) {
