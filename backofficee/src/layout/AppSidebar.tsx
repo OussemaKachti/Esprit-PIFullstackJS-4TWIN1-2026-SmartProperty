@@ -400,15 +400,17 @@ const AppSidebar: React.FC = () => {
       >
         <Link to={userRole === "ADMIN" ? "/admin" : "/"} className="block w-full">
           <img
-            src="/img/logo-removebg-preview.png"
+            src={isMobileOpen ? "/images/logo/smartpropertylogohorizantal.png" : "/img/logo-removebg-preview.png"}
             alt="Smart Property"
             className={`object-contain object-left ${
-              isExpanded || isHovered || isMobileOpen
+              isMobileOpen
+                ? "w-full max-w-[250px] h-auto mx-auto object-center"
+                : isExpanded || isHovered
                 ? "w-full max-w-[310px] h-auto"
                 : "mx-auto w-[100px] h-auto max-h-16"
             }`}
-            width={isExpanded || isHovered || isMobileOpen ? 340 : 100}
-            height={isExpanded || isHovered || isMobileOpen ? 140 : 40}
+            width={isMobileOpen ? 250 : isExpanded || isHovered ? 340 : 100}
+            height={isMobileOpen ? 72 : isExpanded || isHovered ? 140 : 40}
           />
         </Link>
       </div>

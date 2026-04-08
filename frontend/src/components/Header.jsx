@@ -60,7 +60,7 @@ const Header = () => {
     if (!token || !canAccessBackoffice) return;
 
     const backofficeUrl = getRedirectUrl(currentUser.role);
-    redirectToBackofficeWithToken(backofficeUrl, token);
+    redirectToBackofficeWithToken(backofficeUrl, token, currentUser.role);
   };
 
   const handleLogout = () => {

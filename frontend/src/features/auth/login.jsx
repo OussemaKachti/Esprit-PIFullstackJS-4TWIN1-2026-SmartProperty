@@ -80,7 +80,7 @@ export default function Login() {
       const userRole = data.user?.role;
       if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole)) {
         const backofficeUrl = getRedirectUrl(userRole);
-        redirectToBackofficeWithToken(backofficeUrl, data.token);
+        redirectToBackofficeWithToken(backofficeUrl, data.token, userRole);
       } else {
         navigate("/");
       }
@@ -145,7 +145,13 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("Login successful");
-      navigate("/form?step=1");
+      const userRole = data.user?.role;
+      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole)) {
+        const backofficeUrl = getRedirectUrl(userRole);
+        redirectToBackofficeWithToken(backofficeUrl, data.token, userRole);
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       setTwoFAError("An error occurred. Please try again.");
       setIsLoading(false);
