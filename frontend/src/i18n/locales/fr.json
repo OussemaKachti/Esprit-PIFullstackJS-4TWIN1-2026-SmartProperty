@@ -591,5 +591,73 @@
     "popular4": "Grand Mahaka",
     "popular5": "Residence Lunaria",
     "popular6": "Maisons Stephen Alexander"
+  },
+  "index3": {
+    "featureProperty": {
+      "title": "Types de Propriétés Vedettes",
+      "subtitle": "Explorez notre sélection soignée de propriétés premium en Tunisie"
+    },
+    "postProperty": {
+      "badge": "Publiez Votre Propriété",
+      "title": "Cherchez-vous à Publier votre Propriété Existante",
+      "subtitle": "Smart Property offre la solution idéale",
+      "cta": "Commencer à Publier Votre Propriété"
+    },
+    "propertyCards": {
+      "section1": "Propriétés Vedettes à Louer",
+      "subtitle1": "Les emplacements soigneusement choisis soulignent notre présence la plus forte et notre plus grande satisfaction client.",
+      "section2": "Propriétés Vedettes à Vendre",
+      "subtitle2": "Découvrez des annonces exclusives de propriétés premium disponibles à l'achat",
+      "month": "/ Mois",
+      "viewMore": "Voir Plus"
+    },
+    "howItWorks": {
+      "badge": "Comment Cela Fonctionne",
+      "title": "Vous pouvez personnaliser cela davantage pour un créneau spécifique",
+      "step1Label": "Étape 1",
+      "step1Title": "Recherchez par Emplacement",
+      "step1Desc": "Recherchez par emplacement, catégorie, budget et équipements. Trouvez des annonces qui correspondent à vos besoins, qu'il s'agisse d'une maison, d'un bureau ou d'un terrain.",
+      "step2Label": "Étape 2",
+      "step2Title": "Sélectionnez votre type de propriété",
+      "step2Desc": "Choisissez parmi des appartements modernes, des maisons spacieuses, des condos élégants ou des espaces commerciaux qui répondent à vos besoins spécifiques.",
+      "step3Label": "Étape 3",
+      "step3Title": "Réservez Votre Propriété",
+      "step3Desc": "Sélectionnez votre type de propriété préféré, fournissez vos détails et confirmez votre réservation en quelques étapes faciles.",
+      "ratingText": "Approuvé par plus de 50K+ clients en Tunisie"
+    },
+    "testimonials": {
+      "title": "Histoires de succès de nos clients",
+      "subtitle": "Découvrez ce que nos clients satisfaits disent de leurs expériences avec Smart Property.",
+      "customer1Name": "Aïda Belaid",
+      "customer1Location": "Tunis, Tunisie",
+      "customer1Review": "Trouver ma maison parfaite en Tunisie a été incroyablement facile avec Smart Property. L'interface est conviviale et intuitive.",
+      "customer2Name": "Karim Khalfi",
+      "customer2Location": "Sousse, Tunisie",
+      "customer2Review": "Smart Property a rendu la location immobilière très facile. Super simple et sans stress!",
+      "customer3Name": "Maher Damak",
+      "customer3Location": "Sfax, Tunisie",
+      "customer3Review": "Réserver ma future propriété a été si simple avec Smart Property. Le site est très facile à utiliser!",
+      "customer4Name": "Sonia Ben Ali",
+      "customer4Location": "Hammamet, Tunisie",
+      "customer4Review": "Smart Property a rendu la recherche immobilière sans effort. L'interface est tellement facile à naviguer!",
+      "viewMore": "Voir Plus",
+      "trustedCount": "Approuvé par plus de 50K+ clients en Tunisie",
+      "reviewCount": "3,857 Avis"
+    },
+    "blog": {
+      "title": "",
+      "subtitle": "",
+      "blog1Title": "Top 10 Conseils pour les Primo-Accédants en Tunisie",
+      "blog1Desc": "Découvrez comment bien budgéter, choisir le bon emplacement et éviter les erreurs courantes dans l'immobilier tunisien.",
+      "blog2Title": "Les Meilleurs Emplacements pour Investir en 2025",
+      "blog2Desc": "Découvrez les zones en rapide croissance en Tunisie offrant des rendements élevés pour les investissements immobiliers cette année.",
+      "blog3Title": "Louer vs. Acheter : Quel est le Bon Choix pour Vous ?",
+      "blog3Desc": "Un guide pratique pour vous aider à décider si louer ou acheter en fonction de votre mode de vie et vos finances.",
+      "viewMore": "Voir Plus"
+    },
+    "contactForm": {
+      "title": "Restons en Contact",
+      "subtitle": "Recevez les actualités, restez informé et bénéficiez d'offres spéciales"
+    }
   }
 }

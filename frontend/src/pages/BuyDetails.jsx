@@ -1589,7 +1589,7 @@ const BuyDetails = () => {
 
 
 
-									<div className="row row-gap-4 custom-properties-items">
+									{/* <div className="row row-gap-4 custom-properties-items">
 
 
 										<div className="col-xl-3 col-lg-6 col-md-6 d-flex">
@@ -1871,7 +1871,7 @@ const BuyDetails = () => {
 											</div>
 										</div>
 
-									</div>
+									</div> */}
 								</>
 							)}
 

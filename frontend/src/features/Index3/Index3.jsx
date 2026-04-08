@@ -584,8 +584,8 @@ const Index3 = () => {
 							<span className="sec-line1"></span>
 							<span className="sec-line2"></span>
 						</div>
-						<h2>Featured Property Type</h2>
-						<p>Explore Our Curated Selection of Premium Properties for Unmatched Luxury</p>
+						<h2>{t('index3.featureProperty.title')}</h2>
+						<p>{t('index3.featureProperty.subtitle')}</p>
 					</div>
 					
 
@@ -728,9 +728,9 @@ const Index3 = () => {
 									<span className="sec-line1"></span>
 									<span className="sec-line2"></span>
 								</div>
-								<span className="text-white d-block mb-3">Post Your Property</span>
-								<h2 className="text-white">Looking to Post your Exsisting Property  We Provide Awesome Solution</h2>
-								<Link to="/add-property-buy" className="btn btn-primary d-inline-flex">Start Post Your Property</Link>
+								<span className="text-white d-block mb-3">{t('index3.postProperty.badge')}</span>
+								<h2 className="text-white">{t('index3.postProperty.title')}  {t('index3.postProperty.subtitle')}</h2>
+								<Link to="/add-property-buy" className="btn btn-primary d-inline-flex">{t('index3.postProperty.cta')}</Link>
 							</div>
 							
 
@@ -753,8 +753,8 @@ const Index3 = () => {
 							<span className="sec-line1"></span>
 							<span className="sec-line2"></span>
 						</div>
-						<h2>Featured Properties For Rentals</h2>
-						<p>Hand-picked locations highlight our strongest presence, and highest customer satisfaction.</p>
+						<h2>{t('index3.propertyCards.section1')}</h2>
+						<p>{t('index3.propertyCards.subtitle1')}</p>
 					</div>
 					
 
@@ -799,7 +799,7 @@ const Index3 = () => {
 												<p className="d-inline-flex align-items-center"><i className="material-icons-outlined me-1">location_on</i>{prop.address || `${prop.city}, ${prop.country}`}</p>
 											</div>
 											<div className="d-flex align-items-center justify-content-between">
-												<p className="rate-info mb-0"><span>${prop.price?.toLocaleString() || '0'} </span> {prop.listingType === 'FOR_RENT' ? '/ Month' : ''}</p>
+												<p className="rate-info mb-0"><span>{prop.price?.toLocaleString() || '0'} TND</span> {prop.listingType === 'FOR_RENT' ? '/ Mois' : ''}</p>
 												<div className="d-flex align-items-center gap-1">
 													{[...Array(5)].map((_, i) => (
 														<i key={i} className={`material-icons-outlined ${i < Math.round(prop.avgRating || 0) ? 'text-warning' : 'text-secondary'}`}>star</i>
@@ -825,7 +825,7 @@ const Index3 = () => {
 					
 
 					<div className="text-center mt-4 pt-3">
-						<Link to="/rent-property-grid" className="btn btn-dark d-inline-flex align-items-center">View More<i className="material-icons-outlined ms-1">north_east</i></Link>
+						<Link to="/rent-property-grid" className="btn btn-dark d-inline-flex align-items-center">Voir Plus<i className="material-icons-outlined ms-1">north_east</i></Link>
 					</div>
 				</div>
 			</section>
@@ -862,7 +862,7 @@ const Index3 = () => {
 											<i className="material-icons-outlined text-warning">star</i>
 											<i className="material-icons-outlined text-warning">star</i>
 										</div>
-										<p className="mb-0 text-white">Trusted By 1000+ Client</p>
+										<p className="mb-0 text-white">{t('index3.howItWorks.ratingText')}</p>
 									</div>
 								</div>
 								<div className="shape-3"><img src="/assets/img/home-3/bg/shape-03.svg" alt="" /></div>
@@ -872,28 +872,28 @@ const Index3 = () => {
 						<div className="col-lg-5">
 							<div>
 								<div className="section-headings mb-4">
-									<span className="text-primary d-block mb-3">How it Works</span>
+									<span className="text-primary d-block mb-3">{t('index3.howItWorks.badge')}</span>
 									<div className="sec-line-three justify-content-start">
 										<span className="sec-line1"></span>
 										<span className="sec-line2"></span>
 									</div>
-									<h2 className="mb-3 text-white">Want tailor this more for a specific niche</h2>
+									<h2 className="mb-3 text-white">{t('index3.howItWorks.title')}</h2>
 								</div>
 								<div>
 									<div className="work-steps mb-4">
-										<span className="d-block mb-2 text-orange">Step 1</span>
-										<h6 className="mb-2 text-white">Search for Location</h6>
-										<p className="text-white">Search by location, category, budget, and amenities. Find listings that match your needsÃ¢â‚¬â€whether it's a home, office, or land.</p>
+										<span className="d-block mb-2 text-orange">{t('index3.howItWorks.step1Label')}</span>
+										<h6 className="mb-2 text-white">{t('index3.howItWorks.step1Title')}</h6>
+										<p className="text-white">{t('index3.howItWorks.step1Desc')}</p>
 									</div>
 									<div className="work-steps mb-4">
-										<span className="d-block mb-2 text-pink">Step 2</span>
-										<h6 className="mb-2 text-white">Select Property Type</h6>
-										<p className="text-white">Choose from modern apartments, spacious houses, stylish condos, or commercial spaces that meet your specific needs.</p>
+										<span className="d-block mb-2 text-pink">{t('index3.howItWorks.step2Label')}</span>
+										<h6 className="mb-2 text-white">{t('index3.howItWorks.step2Title')}</h6>
+										<p className="text-white">{t('index3.howItWorks.step2Desc')}</p>
 									</div>
 									<div className="work-steps mb-0">
-										<span className="d-block mb-2 text-teal">Step 3</span>
-										<h6 className="mb-2 text-white">Book Your Property</h6>
-										<p className="text-white">Select your preferred property type, provide your details, and confirm your booking in just a few easy steps.</p>
+										<span className="d-block mb-2 text-teal">{t('index3.howItWorks.step3Label')}</span>
+										<h6 className="mb-2 text-white">{t('index3.howItWorks.step3Title')}</h6>
+										<p className="text-white">{t('index3.howItWorks.step3Desc')}</p>
 									</div>
 								</div>
 							</div>
@@ -916,8 +916,8 @@ const Index3 = () => {
 							<span className="sec-line1"></span>
 							<span className="sec-line2"></span>
 						</div>
-						<h2>Featured Properties For Sale</h2>
-						<p>Discover Exclusive Listings of Premium Properties Available for Purchase</p>
+						<h2>{t('index3.propertyCards.section2')}</h2>
+						<p>{t('index3.propertyCards.subtitle2')}</p>
 					</div>
 					
 
@@ -955,7 +955,7 @@ const Index3 = () => {
 										<h5><Link to="/buy-details">Royal Apartment</Link></h5>
 									</div>
 									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">$400 </span></p>
+										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">2000 TND</span></p>
 										<div className="d-flex align-items-center gap-1">
 											<i className="material-icons-outlined text-warning">star</i>
 											<i className="material-icons-outlined text-warning">star</i>
@@ -1005,7 +1005,7 @@ const Index3 = () => {
 										<h5><Link to="/buy-details">Grand Villa House</Link></h5>
 									</div>
 									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">$2200 </span></p>
+										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">11000 TND</span></p>
 										<div className="d-flex align-items-center gap-1">
 											<i className="material-icons-outlined text-warning">star</i>
 											<i className="material-icons-outlined text-warning">star</i>
@@ -1055,7 +1055,7 @@ const Index3 = () => {
 										<h5><Link to="/buy-details">Elite Suite Room</Link></h5>
 									</div>
 									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">$1680</span></p>
+										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">8400 TND</span></p>
 										<div className="d-flex align-items-center gap-1">
 											<i className="material-icons-outlined text-warning">star</i>
 											<i className="material-icons-outlined text-warning">star</i>
@@ -1105,7 +1105,7 @@ const Index3 = () => {
 										<h5><Link to="/buy-details">Celestial Residency</Link></h5>
 									</div>
 									<div className="d-flex align-items-center justify-content-between">
-										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">$1800</span></p>
+										<p className="rate-info d-inline-flex align-items-center mb-0">Starts From <span className="ms-2">9000 TND</span></p>
 										<div className="d-flex align-items-center gap-1">
 											<i className="material-icons-outlined text-warning">star</i>
 											<i className="material-icons-outlined text-warning">star</i>
@@ -1128,7 +1128,7 @@ const Index3 = () => {
 					
 
 					<div className="text-center mt-4 pt-3">
-						<Link to="/buy-property-grid" className="btn btn-dark d-inline-flex align-items-center">View More<i className="material-icons-outlined ms-1">north_east</i></Link>
+						<Link to="/buy-property-grid" className="btn btn-dark d-inline-flex align-items-center">Voir Plus<i className="material-icons-outlined ms-1">north_east</i></Link>
 					</div>
 				</div>
 			</section>
@@ -1152,12 +1152,12 @@ const Index3 = () => {
 										<span className="sec-line1"></span>
 										<span className="sec-line2"></span>
 									</div>
-									<h2 className="mb-2">Success stories in their own words</h2>
-									<p className="mb-4">Read what our satisfied clients have to say about their experiences with our platform.</p>
-									<a href="#" className="btn btn-dark d-inline-flex align-items-center">View More<i className="material-icons-outlined ms-1">north_east</i></a>
+									<h2 className="mb-2">Histoires de succès de nos clients</h2>
+									<p className="mb-4">Découvrez ce que nos clients satisfaits disent de leurs expériences avec Smart Property.</p>
+									<a href="#" className="btn btn-dark d-inline-flex align-items-center">Voir Plus<i className="material-icons-outlined ms-1">north_east</i></a>
 								</div>
 								<div className="success-customer mb-4">
-									<h6>Trusted by 50K+ customers</h6>
+									<h6>Approuv\u00e9 par plus de 50K+ clients en Tunisie</h6>
 									<div className="d-flex align-items-center rating mb-1">
 										<i className="material-icons-outlined text-warning">star</i>
 										<i className="material-icons-outlined text-warning">star</i>
@@ -1165,7 +1165,7 @@ const Index3 = () => {
 										<i className="material-icons-outlined text-warning">star</i>
 										<i className="material-icons-outlined text-warning">star</i>
 										4.4/5.0
-										<span className="border-start ps-2 ms-2">3,857 Reviews</span>
+										<span className="border-start ps-2 ms-2">{t('index3.testimonials.reviewCount')}</span>
 									</div>
 								</div>
 								<div className="arrow-bottom"><img src="/assets/img/home-3/bg/arrow.svg" alt="" /></div>
@@ -1188,13 +1188,13 @@ const Index3 = () => {
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
 											</div>
-											<p>Booking our dream home was incredibly easy with Dreams Estate The interface was user-friendly</p>
+											<p>Trouver ma maison parfaite en Tunisie a été incroyablement facile avec Smart Property. L'interface est conviviale et intuitive.</p>
 											<div className="review-customer">
 												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
 													<img src="/assets/img/users/user-02.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
 												</a>
-												<h6 className="me-2"><a href="#">Lily Brooks</a></h6>
-												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>South Africa</span>
+												<h6 className="me-2"><a href="#">Aïda Belaid</a></h6>
+												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer1Location')}</span>
 											</div>
 										</div>
 										<div className="review-item mb-4">
@@ -1206,13 +1206,13 @@ const Index3 = () => {
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
 											</div>
-											<p>Dreams Estate made home booking a breeze. Super easy and stress-free!</p>
+											<p>Smart Property a rendu la location immobilière très facile. Super simple et sans stress!</p>
 											<div className="review-customer">
 												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
 													<img src="/assets/img/users/user-04.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
 												</a>
-												<h6 className="me-2"><a href="#">Daniel Cooper</a></h6>
-												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>United States of America</span>
+												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer2Name')}</a></h6>
+												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer2Location')}</span>
 											</div>
 										</div>
 									</div> 
@@ -1227,13 +1227,13 @@ const Index3 = () => {
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
 											</div>
-											<p>Booking our dream home was so simple with Dreams Estate. The site was easy to use!</p>
+											<p>Réserver ma future propriété a été si simple avec Smart Property. Le site est très facile à utiliser!</p>
 											<div className="review-customer">
 												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
 													<img src="/assets/img/users/user-06.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
 												</a>
-												<h6 className="me-2"><a href="#">Ethan Wells</a></h6>
-												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>United Kingdom</span>
+												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer3Name')}</a></h6>
+												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer3Location')}</span>
 											</div>
 										</div>
 										<div className="review-item mb-4">
@@ -1245,13 +1245,13 @@ const Index3 = () => {
 												<i className="material-icons-outlined text-warning">star</i>
 												<i className="material-icons-outlined text-warning">star</i>
 											</div>
-											<p>Dreams Estate made booking our dream home effortless. The interface was so easy to navigate!</p>
+											<p>Smart Property a rendu la recherche immobilière sans effort. L'interface est tellement facile à naviguer!</p>
 											<div className="review-customer">
 												<a href="#" className="avatar avatar-md rounded-circle flex-shrink-0 me-2">
 													<img src="/assets/img/users/user-17.jpg" className="img-fluid border border-white rounded-circle" alt="Img" />
 												</a>
-												<h6 className="me-2"><a href="#">Emma Davidson</a></h6>
-												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>Japan</span>
+												<h6 className="me-2"><a href="#">{t('index3.testimonials.customer4Name')}</a></h6>
+												<span className="d-inline-flex align-items-center"><i className="fa-solid fa-circle me-2"></i>{t('index3.testimonials.customer4Location')}</span>
 											</div>
 										</div>
 									</div> 
@@ -1299,106 +1299,8 @@ const Index3 = () => {
 			</div>
 			
 
-			
-			<section className="latest-blog-section">
-				<div className="container">
-
-					
-					<div className="section-heading-three">
-						<div className="sec-line-three">
-							<span className="sec-line1"></span>
-							<span className="sec-line2"></span>
-						</div>
-						<h2>Latest Blogs</h2>
-						<p>Explore our featured blog posts on premium properties for sales & rents</p>
-					</div>
-					
-
-					
-					<div className="row">
-
-						<div className="col-xl-6 d-flex">
-							<div className="blog-item mb-4 flex-fill">
-								<div className="blog-img">
-									<Link to="/blog-details">
-										<img src="/assets/img/home-3/blog/blog-01.jpg" alt="" />
-									</Link>
-									<span className="badge bg-secondary badge-top">Booking Tips</span>
-								</div>
-								<div className="blog-content">
-									<h5 className="mb-2"><Link to="/blog-details">Top 10 Tips for First-Time Homebuyers</Link></h5>
-									<p className="mb-2">Buying your first home? Learn how to budget, choose the right location, and avoid common mistakes.</p>
-									<span className="d-inline-flex align-items-center"><i className="material-icons-outlined me-2">event</i>27 Sep 2025</span>
-								</div>
-							</div>
-						</div> 
-
-						<div className="col-xl-6 d-flex">
-							<div className="flex-fill">
-								<div className="blog-item blog-item-2 mb-4">
-
-									
-									<div className="row">
-
-										<div className="col-md-6 d-flex">
-											<div className="blog-img flex-fill">
-												<Link to="/blog-details">
-													<img src="/assets/img/home-3/blog/blog-02.jpg" alt="" />
-												</Link>
-												<span className="badge bg-secondary badge-top">Invest</span>
-											</div>
-										</div> 
-										<div className="col-md-6 d-flex">
-											<div className="blog-content flex-fill">
-												<h5 className="mb-2"><Link to="/blog-details">Best Emerging Locations to Invest in 2025</Link></h5>
-												<p className="mb-2">Discover fast-growing areas offering high returns on real estate investments this year.</p>
-												<span className="d-inline-flex align-items-center"><i className="material-icons-outlined me-2">event</i>27 Sep 2025</span>
-											</div>
-										</div> 
-
-									</div>
-									
-
-								</div>
-								<div className="blog-item blog-item-2 mb-4">
-
-									
-									<div className="row">
-
-										<div className="col-md-6 d-flex">
-											<div className="blog-img flex-fill">
-												<Link to="/blog-details">
-													<img src="/assets/img/home-3/blog/blog-03.jpg" alt="" />
-												</Link>
-												<span className="badge bg-secondary badge-top">Renting</span>
-											</div>
-										</div> 
-
-										<div className="col-md-6 d-flex">
-											<div className="blog-content flex-fill">
-												<h5 className="mb-2"><Link to="/blog-details">Renting vs. Buying: Which Is Right for You?</Link></h5>
-												<p className="mb-2">A practical guide to help you decide whether to rent or buy based on your lifestyle and finances.</p>
-												<span className="d-inline-flex align-items-center"><i className="material-icons-outlined me-2">event</i>17 Jan 2025</span>
-											</div>
-										</div> 
-
-									</div>
-									
-
-								</div>
-							</div>
-						</div> 
-
-					</div>
-					
-
-					<div className="text-center mt-3">
-						<Link to="/blog-grid" className="btn btn-dark d-inline-flex align-items-center">View More<i className="material-icons-outlined ms-1">north_east</i></Link>
-					</div>
-				</div>
-			</section>
-			
-
+			<br />
+			<br />
 			
 			<div className="contact-field-section">
 				<div className="container">
@@ -1410,8 +1312,8 @@ const Index3 = () => {
 
 							<div className="col-lg-5">
 								<div>
-									<h2 className="text-white mb-2">Let's Stay in Touch</h2>
-									<p className="text-white">Receive news, stay updated, and special offers</p>
+									<h2 className="text-white mb-2">{t('index3.contactForm.title')}</h2>
+									<p className="text-white">{t('index3.contactForm.subtitle')}</p>
 								</div>
 							</div> 
 
@@ -1422,7 +1324,7 @@ const Index3 = () => {
 											<span className="input-icon d-inline-flex align-items-center"><i className="material-icons-outlined">email</i></span>
 											<input type="email" className="form-control" placeholder="Enter Email Address" />
 										</div>
-										<button type="submit"><i class='material-icons-outlined'>send</i></button>
+										<button type="submit"><i className="material-icons-outlined">send</i></button>
 									</div>
 								</form>
 							</div> 
@@ -1446,7 +1348,7 @@ const Index3 = () => {
 						<div className="modal-body search-wrap">
 							<form className="search-form" id="search-form" action="rent-property-grid.html">
 								<div className="d-flex align-items-center justify-content-between mb-4">
-									<h5>What Are You Looking for?</h5>
+									<h5>Que recherchez-vous ?</h5>
 									<a href="#" className="close" data-bs-dismiss="modal"><i className="material-icons-outlined">close</i></a>
 								</div>
 								<div className="input-group input-group-flat">
@@ -1455,9 +1357,9 @@ const Index3 = () => {
 										<i className="material-icons-outlined">search</i>
 									</span>
 								</div>
-								<h6>Popular Properties</h6>
+								<h6>Propri\u00e9t\u00e9s Populaires</h6>
 								<div className="search-list">
-									<p><Link to="/rent-property-grid">Beautiful Condo Room</Link></p>
+									<p><Link to="/rent-property-grid">Appartement Condo Beau</Link></p>
 									<p><Link to="/rent-property-grid">Royal Apartment</Link></p>
 									<p><Link to="/rent-property-grid">Grand Villa House</Link></p>
 									<p><Link to="/rent-property-grid">Grand Mahaka</Link></p>
@@ -1474,3 +1376,7 @@ const Index3 = () => {
 };
 
 export default Index3;
+
+
+
+
