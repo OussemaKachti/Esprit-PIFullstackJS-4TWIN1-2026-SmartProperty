@@ -457,5 +457,73 @@
     "popular4": "Grand Mahaka",
     "popular5": "Lunaria Residence",
     "popular6": "Stephen Alexander Homes"
+  },
+  "index3": {
+    "featureProperty": {
+      "title": "Featured Property Types",
+      "subtitle": "Explore our curated selection of premium properties in Tunisia"
+    },
+    "postProperty": {
+      "badge": "Post Your Property",
+      "title": "Looking to Post your Existing Property",
+      "subtitle": "We Provide Awesome Solution",
+      "cta": "Start Post Your Property"
+    },
+    "propertyCards": {
+      "section1": "Featured Properties For Rentals",
+      "subtitle1": "Hand-picked locations highlight our strongest presence, and highest customer satisfaction.",
+      "section2": "Featured Properties For Sale",
+      "subtitle2": "Discover Exclusive Listings of Premium Properties Available for Purchase",
+      "month": "/ Month",
+      "viewMore": "View More"
+    },
+    "howItWorks": {
+      "badge": "How It Works",
+      "title": "You can customize this further for a specific niche",
+      "step1Label": "Step 1",
+      "step1Title": "Search by Location",
+      "step1Desc": "Search by location, category, budget, and amenities. Find listings that match your needs—whether it's a home, office, or land.",
+      "step2Label": "Step 2",
+      "step2Title": "Select Your Property Type",
+      "step2Desc": "Choose from modern apartments, spacious homes, elegant condos or commercial spaces that meet your specific needs.",
+      "step3Label": "Step 3",
+      "step3Title": "Book Your Property",
+      "step3Desc": "Select your preferred property type, provide your details and confirm your booking in just a few easy steps.",
+      "ratingText": "Approved by more than 50K+ clients in Tunisia"
+    },
+    "testimonials": {
+      "title": "Our Customers' Success Stories",
+      "subtitle": "Discover what our satisfied customers say about their experiences with Smart Property.",
+      "customer1Name": "Aïda Belaid",
+      "customer1Location": "Tunis, Tunisia",
+      "customer1Review": "Finding my perfect home in Tunisia was incredibly easy with Smart Property. The interface is user-friendly and intuitive.",
+      "customer2Name": "Karim Khalfi",
+      "customer2Location": "Sousse, Tunisia",
+      "customer2Review": "Smart Property made property rental so easy. Super simple and stress-free!",
+      "customer3Name": "Maher Damak",
+      "customer3Location": "Sfax, Tunisia",
+      "customer3Review": "Booking my future property was so simple with Smart Property. The site is very easy to use!",
+      "customer4Name": "Sonia Ben Ali",
+      "customer4Location": "Hammamet, Tunisia",
+      "customer4Review": "Smart Property made real estate search effortless. The interface is so easy to navigate!",
+      "viewMore": "View More",
+      "trustedCount": "Approved by more than 50K+ clients in Tunisia",
+      "reviewCount": "3,857 Reviews"
+    },
+    "blog": {
+      "title": "",
+      "subtitle": "",
+      "blog1Title": "Top 10 Tips for First-Time Homebuyers in Tunisia",
+      "blog1Desc": "Discover how to properly budget, choose the right location and avoid common mistakes in Tunisian real estate.",
+      "blog2Title": "Best Emerging Locations to Invest in 2025",
+      "blog2Desc": "Discover rapidly growing areas in Tunisia offering high returns for real estate investments this year.",
+      "blog3Title": "Renting vs. Buying: What's the Right Choice for You?",
+      "blog3Desc": "A practical guide to help you decide whether to rent or buy based on your lifestyle and finances.",
+      "viewMore": "View More"
+    },
+    "contactForm": {
+      "title": "Let's Stay in Touch",
+      "subtitle": "Receive news, stay informed and enjoy special offers"
+    }
   }
 }
