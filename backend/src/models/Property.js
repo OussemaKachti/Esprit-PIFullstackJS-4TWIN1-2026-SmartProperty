@@ -201,8 +201,8 @@ propertySchema.statics.generateReference = async function () {
     .lean();
 
   let nextSequence = 1;
-  if (latest && latest.reference) {
-    const match = String(latest.reference).match(/(\d+)$/);
+  if (latest?.reference) {
+    const match = /(\d+)$/.exec(String(latest.reference));
     if (match) {
       nextSequence = Number(match[1]) + 1;
     }

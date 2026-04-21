@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+﻿import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -331,6 +331,7 @@ const BuyDetails = () => {
 		if (addr) return addr;
 		return [property.city, property.region, property.country || t('propertyPages.countryFallback')].filter(Boolean).join(', ');
 	}, [property, t]);
+	const ownerEmailSubject = encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`);
 
 	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
 	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
@@ -423,7 +424,7 @@ const BuyDetails = () => {
 					const summary = await getFeedbackSummaryByPropertyIds([id]);
 					setRatingSummary(summary?.[id] || { averageRating: '0.0', totalReviews: 0 });
 				}
-			} catch (e) {
+			} catch {
 				if (!cancelled) setError(t('propertyDetails.failedToLoadProperty'));
 			} finally {
 				if (!cancelled) setLoading(false);
@@ -976,7 +977,7 @@ const BuyDetails = () => {
 													<div id="accordion-9" className="accordion-collapse collapse show">
 														<div className="accordion-body">
 															<ReviewSection propertyId={id} currentUser={currentUser} />
-															{false && (<>
+															{Boolean(0) && (<>
 																<div className="sub-head d-flex align-items-center justify-content-between mb-4">
 																	<h6 className="fs-16 fw-semibold mb-0"> Reviews (45) </h6>
 																	<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
@@ -1214,7 +1215,7 @@ const BuyDetails = () => {
 
 												<div className="card-body">
 
-													<ul className="nav nav-pills listing-nav flex-nowrap" role="tablist">
+													<ul className="nav nav-pills listing-nav flex-nowrap">
 														<li className="nav-item me-2 w-100" role="presentation">
 															<Link className="nav-link active fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-1" aria-selected="true">
 																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>{t('propertyDetails.requestInfo')}
@@ -1491,7 +1492,7 @@ const BuyDetails = () => {
 														)}
 														{ownerProfile.email ? (
 															<a
-																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
+																href={`mailto:${ownerProfile.email}?subject=${ownerEmailSubject}`}
 																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
 															>
 																
@@ -1966,7 +1967,7 @@ const BuyDetails = () => {
 																						<h6 className="fw-bold mb-3">{t('propertyDetails.selectStyle')}</h6>
 											<div className="d-flex flex-column gap-3 mb-4">
 												{['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
-													<label key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
+													<div key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
 														<div className="d-flex align-items-center gap-2">
 															<input
 																type="radio"
@@ -1977,7 +1978,7 @@ const BuyDetails = () => {
 															/>
 															<span className="text-capitalize fw-semibold text-dark fs-15">{style}</span>
 														</div>
-													</label>
+													</div>
 												))}
 											</div>
 

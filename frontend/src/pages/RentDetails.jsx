@@ -40,7 +40,7 @@ const FALLBACK_HERO_SLIDES = [
 const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
 const toDateInputValue = (value) => {
-	const date = value instanceof Date ? new Date(value) : new Date(value);
+	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return '';
 	date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
 	return date.toISOString().slice(0, 10);
@@ -66,7 +66,7 @@ const RentDetails = () => {
 	const { t } = useTranslation();
 	const location = useLocation();
 	const { id: routeId } = useParams();
-	const [currentUser, setCurrentUser] = useState(() => getUserData());
+	const [currentUser] = useState(() => getUserData());
 	const [isSending, setIsSending] = useState(false);
 	const [successMessage, setSuccessMessage] = useState('');
 	const [errorMessage, setErrorMessage] = useState('');
@@ -200,6 +200,7 @@ const RentDetails = () => {
 		if (addr) return addr;
 		return [property.city, property.region, property.country || t('propertyPages.countryFallback')].filter(Boolean).join(', ');
 	}, [property, t]);
+	const ownerEmailSubject = encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`);
 
 	const mapLat = mapPosition ? mapPosition[0] : DEFAULT_MAP_CENTER[0];
 	const mapLng = mapPosition ? mapPosition[1] : DEFAULT_MAP_CENTER[1];
@@ -288,7 +289,7 @@ const RentDetails = () => {
 					const summary = await getFeedbackSummaryByPropertyIds([propertyId]);
 					setRatingSummary(summary?.[propertyId] || { averageRating: '0.0', totalReviews: 0 });
 				}
-			} catch (e) {
+			} catch {
 				if (!cancelled) {
 					setProperty(null);
 					setLoadError(t('propertyDetails.failedToLoadProperty'));
@@ -962,7 +963,7 @@ const RentDetails = () => {
 													<div id="accordion-9" className="accordion-collapse collapse show">
 														<div className="accordion-body">
 															<ReviewSection propertyId={property?._id || propertyId} currentUser={currentUser} />
-															{false && (<div style={{ display: 'none' }}>
+															{Boolean(0) && (<div style={{ display: 'none' }}>
 																<div className="sub-head d-flex align-items-center justify-content-between mb-4">
 																	<h6 className="fs-16 fw-semibold"> Reviews (45) </h6>
 																	<a href="#" className="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#add_review"> <i className="material-icons-outlined me-1 fs-13">edit_note</i>  Write a Review </a>
@@ -1254,7 +1255,7 @@ const RentDetails = () => {
 														)}
 														{ownerProfile.email ? (
 															<a
-																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(`Regarding listing: ${property?.reference || property?.title || ''}`)}`}
+																href={`mailto:${ownerProfile.email}?subject=${ownerEmailSubject}`}
 																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
 															>
 																{t('propertyDetails.emailOwner')}

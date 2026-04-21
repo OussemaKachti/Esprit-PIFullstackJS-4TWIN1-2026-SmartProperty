@@ -1,0 +1,6 @@
+projectKey=smartproperty-backoffice-properties
+serverUrl=http://localhost:9000
+serverVersion=26.4.0.121862
+dashboardUrl=http://localhost:9000/dashboard?id=smartproperty-backoffice-properties
+ceTaskId=f2022d8a-009d-4f66-b271-e1c56a6970ad
+ceTaskUrl=http://localhost:9000/api/ce/task?id=f2022d8a-009d-4f66-b271-e1c56a6970ad

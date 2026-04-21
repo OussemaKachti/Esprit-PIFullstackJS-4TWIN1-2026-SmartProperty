@@ -4,12 +4,8 @@
   "description": "SmartProperty - AI-Powered Property Management Platform Backend",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "init-user": "node init-static-user.js",
-    "create-admin": "node create-admin.js",
-    "import-data": "node import-csv-data.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "test:coverage": "jest --coverage --runInBand"
   },
   "keywords": [
     "real-estate",
@@ -46,7 +42,10 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^30.3.0",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   },
   "engines": {
     "node": ">=18.0.0",

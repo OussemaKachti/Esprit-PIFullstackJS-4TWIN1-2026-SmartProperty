@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import BuyerTenantHome from "./BuyerTenantHome";
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import MonthlySalesChart from "../../components/ecommerce/MonthlySalesChart";
 import StatisticsChart from "../../components/ecommerce/StatisticsChart";
@@ -55,75 +54,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [userRole, setUserRole] = useState<string | null>(null);
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      setError("Not signed in");
-      return;
-    }
-
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        const storedRole = String(parsedUser.role || "").toUpperCase();
-        if (storedRole) {
-          setUserRole(storedRole);
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Fall through to profile lookup if stored user data is malformed.
-      }
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(`${API_URL}/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const json = await res.json();
-
-        if (!res.ok) {
-          throw new Error(json.message || "Failed to load profile");
-        }
-
-        const profileUser = json.user || null;
-        const resolvedRole = String(profileUser?.role || "").toUpperCase();
-
-        if (cancelled) return;
-
-        if (profileUser) {
-          localStorage.setItem("user", JSON.stringify(profileUser));
-        }
-        setUserRole(resolvedRole || null);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load profile");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!userRole) return;
-
-    if (userRole === "BUYER" || userRole === "TENANT") {
-      setLoading(false);
-      return;
-    }
-
     const token = localStorage.getItem("token");
     if (!token) {
       setLoading(false);
@@ -160,13 +91,9 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [userRole]);
+  }, []);
 
   const currency = stats?.currency ?? "TND";
-
-  if (userRole === "BUYER" || userRole === "TENANT") {
-    return <BuyerTenantHome />;
-  }
 
   return (
     <>

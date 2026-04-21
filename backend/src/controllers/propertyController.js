@@ -1,15 +1,108 @@
 const mongoose = require('mongoose');
+const { readFileSync } = require('node:fs');
 const { Property, Feedback } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 const { analyzeImageWithAI, generateHuggingFaceStaging } = require('../services/huggingface.service');
 const { getDashboardStatsForUser } = require('../services/dashboardStats.service');
+
+const DETECT_API_URL = 'http://127.0.0.1:8000/detect/';
+const MAX_REFERENCE_ATTEMPTS = 5;
+
+const appendUploadedImages = (propertyData, files) => {
+  if (!files?.length) return;
+  propertyData.images = files.map((file) => ({
+    url: file.path,
+    publicId: file.filename,
+    fieldName: file.fieldname, // Store which field was used
+  }));
+  console.log(`Uploaded ${files.length} image(s)`);
+};
+
+const getImagesToDetect = (files = []) => files.filter((file) => !file.fieldname?.startsWith('pano'));
+
+const detectSingleImage = async (imgFile) => {
+  const buffer = readFileSync(imgFile.path);
+  const mimeType = imgFile.mimetype || 'image/jpeg';
+  const blob = new Blob([buffer], { type: mimeType });
+  const formData = new FormData();
+  formData.append('file', blob, imgFile.originalname);
+
+  const detectRes = await fetch(DETECT_API_URL, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!detectRes.ok) {
+    console.warn(`Detect API returned ${detectRes.status} for ${imgFile.originalname}`);
+    return null;
+  }
+
+  return detectRes.json();
+};
+
+const aggregateDetections = (detectionResults) => {
+  const allObjectsSet = new Set();
+  const aggregatedRoomVotes = {};
+
+  for (const result of detectionResults) {
+    if (result.status !== 'fulfilled' || !result.value) continue;
+
+    const data = result.value;
+    (data.detected_objects || []).forEach((obj) => allObjectsSet.add(obj));
+    for (const [room, votes] of Object.entries(data.room_votes || {})) {
+      aggregatedRoomVotes[room] = (aggregatedRoomVotes[room] || 0) + votes;
+    }
+  }
+
+  const allObjects = Array.from(allObjectsSet);
+  const inferredRoom = Object.keys(aggregatedRoomVotes).length
+    ? Object.entries(aggregatedRoomVotes).sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+
+  return { allObjects, inferredRoom, aggregatedRoomVotes };
+};
+
+const applyAutoDetectionIfAvailable = async (propertyData, files) => {
+  const imagesToDetect = getImagesToDetect(files);
+  if (!imagesToDetect.length) return;
+
+  console.log(`Calling FastAPI detect endpoint for ${imagesToDetect.length} image(s)...`);
+  const detectionResults = await Promise.allSettled(imagesToDetect.map(detectSingleImage));
+  const { allObjects, inferredRoom, aggregatedRoomVotes } = aggregateDetections(detectionResults);
+
+  if (!allObjects.length && !inferredRoom) return;
+
+  propertyData.detectedFeatures = {
+    objects: allObjects,
+    inferredRoom,
+    roomVotes: aggregatedRoomVotes,
+  };
+  console.log(`AI Detection complete - objects: [${allObjects.join(', ')}], inferred room: ${inferredRoom}`);
+};
+
+const isDuplicateReferenceError = (err) =>
+  err?.code === 11000 && Boolean(err?.keyPattern?.reference);
+
+const createPropertyWithUniqueReference = async (propertyData) => {
+  for (let attempt = 0; attempt < MAX_REFERENCE_ATTEMPTS; attempt += 1) {
+    propertyData.reference = await Property.generateReference();
+    try {
+      return await Property.create(propertyData);
+    } catch (err) {
+      if (!isDuplicateReferenceError(err) || attempt === MAX_REFERENCE_ATTEMPTS - 1) {
+        throw err;
+      }
+    }
+  }
+  return null;
+};
 
 // @desc    Get featured properties based on smart algorithm (reviews, popularity, recency)
 // @route   GET /api/properties/featured
 // @access  Public
 exports.getFeaturedProperties = async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit) || 6;
+    const limit = Number.parseInt(String(req.query.limit), 10) || 6;
 
     const featuredProperties = await Property.aggregate([
       {
@@ -418,104 +511,16 @@ exports.createProperty = async (req, res, next) => {
     }
 
     // Handle image uploads - accepts any field names (image, image1, photo, etc.)
-    if (req.files && req.files.length > 0) {
-      propertyData.images = req.files.map(file => ({
-        url: file.path,
-        publicId: file.filename,
-        fieldName: file.fieldname, // Store which field was used
-      }));
-
-      console.log(`✅ Uploaded ${req.files.length} image(s)`);
-
-      // Attempt to auto-detect features using FastAPI /detect/ endpoint (all images)
-      try {
-        const fs = require('fs');
-        // Only process regular images (skip panoramas)
-        const imagesToDetect = req.files.filter(f => !f.fieldname || !f.fieldname.startsWith('pano'));
-
-        if (imagesToDetect.length > 0) {
-          console.log(`🔍 Calling FastAPI detect endpoint for ${imagesToDetect.length} image(s)...`);
-
-          // Run detection on every image in parallel
-          const detectionResults = await Promise.allSettled(
-            imagesToDetect.map(async (imgFile) => {
-              const buffer = fs.readFileSync(imgFile.path);
-              const mimeType = imgFile.mimetype || 'image/jpeg';
-
-              const blob = new Blob([buffer], { type: mimeType });
-              const formData = new FormData();
-              formData.append('file', blob, imgFile.originalname);
-
-              const detectRes = await fetch('http://127.0.0.1:8000/detect/', {
-                method: 'POST',
-                body: formData,
-              });
-
-              if (!detectRes.ok) {
-                console.warn(`⚠️ Detect API returned ${detectRes.status} for ${imgFile.originalname}`);
-                return null;
-              }
-              return detectRes.json();
-            })
-          );
-
-          // Aggregate results across all images
-          const allObjectsSet = new Set();
-          const aggregatedRoomVotes = {};
-
-          for (const result of detectionResults) {
-            if (result.status === 'fulfilled' && result.value) {
-              const data = result.value;
-              (data.detected_objects || []).forEach(obj => allObjectsSet.add(obj));
-              for (const [room, votes] of Object.entries(data.room_votes || {})) {
-                aggregatedRoomVotes[room] = (aggregatedRoomVotes[room] || 0) + votes;
-              }
-            }
-          }
-
-          const allObjects = Array.from(allObjectsSet);
-          const inferredRoom = Object.keys(aggregatedRoomVotes).length > 0
-            ? Object.entries(aggregatedRoomVotes).sort((a, b) => b[1] - a[1])[0][0]
-            : null;
-
-          if (allObjects.length > 0 || inferredRoom) {
-            propertyData.detectedFeatures = {
-              objects: allObjects,
-              inferredRoom,
-              roomVotes: aggregatedRoomVotes,
-            };
-            console.log(`✅ AI Detection complete — objects: [${allObjects.join(', ')}], inferred room: ${inferredRoom}`);
-          }
-        }
-      } catch (detectErr) {
-        console.warn('⚠️ Error calling auto-detect API:', detectErr.message);
-      }
+    appendUploadedImages(propertyData, req.files);
+    try {
+      await applyAutoDetectionIfAvailable(propertyData, req.files);
+    } catch (detectErr) {
+      console.warn('Error calling auto-detect API:', detectErr.message);
     }
-
-    let property = null;
-    const maxAttempts = 5;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      propertyData.reference = await Property.generateReference();
-
-      try {
-        property = await Property.create(propertyData);
-        break;
-      } catch (err) {
-        const duplicateReference =
-          err &&
-          err.code === 11000 &&
-          err.keyPattern &&
-          err.keyPattern.reference;
-
-        if (!duplicateReference || attempt === maxAttempts - 1) {
-          throw err;
-        }
-      }
-    }
+    const property = await createPropertyWithUniqueReference(propertyData);
 
     // Populate createdBy if it exists
-    if (property && property.createdBy) {
+    if (property?.createdBy) {
       await property.populate('createdBy', 'login email role firstName lastName');
     }
 
@@ -552,7 +557,7 @@ exports.updateProperty = async (req, res, next) => {
           fieldName: file.fieldname,
         };
 
-        if (file.fieldname && file.fieldname.startsWith('pano')) {
+        if (file.fieldname?.startsWith('pano')) {
           // It's a panorama
           newPanoramas.push({
             ...item,
