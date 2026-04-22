@@ -50,7 +50,7 @@ export const createFeedback = async (feedbackData) => {
         const data = await response.json();
 
         if (data.success) {
-            return data.data;
+            return { feedback: data.data, message: data.message || '' };
         } else {
             throw new Error(data.message || 'Failed to submit review');
         }

@@ -32,6 +32,11 @@ const feedbackSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** True when the stored comment was masked for inappropriate language */
+    profanityFiltered: {
+      type: Boolean,
+      default: false,
+    },
     complaintCategory: {
       type: String,
       enum: Object.values(ComplaintCategory),

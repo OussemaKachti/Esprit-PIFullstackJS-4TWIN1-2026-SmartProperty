@@ -1,5 +1,7 @@
 const { Feedback } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
+const { moderateReviewComment } = require('../services/reviewProfanity.service');
+const { sendReviewProfanityWarningEmail } = require('../services/email.service');
 
 // @desc    Get all feedbacks
 // @route   GET /api/feedbacks
@@ -154,13 +156,17 @@ exports.createFeedback = async (req, res, next) => {
       );
     }
 
+    const rawComment = typeof comment === 'string' ? comment.trim() : '';
+    const { maskedComment, hadProfanity } = moderateReviewComment(rawComment);
+
     const feedback = await Feedback.create({
       propertyId,
       agentId,
       authorId: authorToSave,
       rating,
-      comment,
+      comment: maskedComment,
       complaintCategory,
+      profanityFiltered: hadProfanity,
     });
 
     const populatedFeedback = await Feedback.findById(feedback._id)
@@ -168,8 +174,29 @@ exports.createFeedback = async (req, res, next) => {
       .populate('agentId', 'login email firstName lastName')
       .populate('authorId', 'login email firstName lastName');
 
+    if (hadProfanity && req.user?.email) {
+      const firstName = [req.user.firstName, req.user.lastName].filter(Boolean).join(' ').trim();
+      const displayName = firstName || req.user.login || 'Bonjour';
+      const propertyTitle = populatedFeedback.propertyId?.title || 'votre annonce';
+      setImmediate(() => {
+        sendReviewProfanityWarningEmail(req.user.email, {
+          displayName,
+          propertyTitle,
+          maskedPreview: maskedComment,
+        }).catch((err) => {
+          console.error('[feedback] profanity warning email failed', err.message);
+        });
+      });
+    }
+
     res.status(201).json(
-      apiResponse(true, 'Feedback created successfully', populatedFeedback)
+      apiResponse(
+        true,
+        hadProfanity
+          ? 'Votre avis a été publié ; certains termes ont été masqués pour respecter nos règles de courtoisie.'
+          : 'Feedback created successfully',
+        populatedFeedback
+      )
     );
   } catch (error) {
     next(error);
@@ -211,7 +238,28 @@ exports.updateFeedback = async (req, res, next) => {
     if (agentId !== undefined) feedback.agentId = agentId;
     if (authorId !== undefined) feedback.authorId = authorId;
     if (rating !== undefined) feedback.rating = rating;
-    if (comment !== undefined) feedback.comment = comment;
+    if (comment !== undefined) {
+      const { maskedComment, hadProfanity } = moderateReviewComment(comment);
+      feedback.comment = maskedComment;
+      feedback.profanityFiltered = hadProfanity;
+
+      if (hadProfanity && req.user?.email) {
+        const populatedForMail = await Feedback.findById(feedback._id)
+          .populate('propertyId', 'reference title city type');
+        const firstName = [req.user.firstName, req.user.lastName].filter(Boolean).join(' ').trim();
+        const displayName = firstName || req.user.login || 'Bonjour';
+        const propertyTitle = populatedForMail.propertyId?.title || 'votre annonce';
+        setImmediate(() => {
+          sendReviewProfanityWarningEmail(req.user.email, {
+            displayName,
+            propertyTitle,
+            maskedPreview: maskedComment,
+          }).catch((err) => {
+            console.error('[feedback] profanity warning email failed', err.message);
+          });
+        });
+      }
+    }
     if (complaintCategory !== undefined) feedback.complaintCategory = complaintCategory;
 
     await feedback.save();

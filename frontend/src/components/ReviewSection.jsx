@@ -52,13 +52,27 @@ const ReviewSection = ({ propertyId, currentUser }) => {
 
         setSubmitting(true);
         try {
-            await createFeedback({
+            const { feedback, message } = await createFeedback({
                 propertyId,
                 rating,
                 comment
             });
 
-            toast.success('Review submitted successfully!');
+            if (feedback?.profanityFiltered) {
+                toast(message || 'Your review was published with some wording adjusted to keep the community respectful.', {
+                    duration: 7000,
+                    icon: '⚠️',
+                    style: {
+                        borderRadius: '12px',
+                        background: '#fffbeb',
+                        border: '1px solid #fcd34d',
+                        color: '#78350f',
+                        padding: '14px 16px',
+                    },
+                });
+            } else {
+                toast.success(message || 'Review submitted successfully!');
+            }
             setComment('');
             setRating(5);
 
@@ -177,6 +191,13 @@ const ReviewSection = ({ propertyId, currentUser }) => {
                                             {renderStars(review.rating)}
                                         </div>
                                     </div>
+                                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                        {review.profanityFiltered ? (
+                                            <span className="badge rounded-pill text-bg-warning text-dark fw-semibold" title="Some words were hidden to match community guidelines">
+                                                Moderated
+                                            </span>
+                                        ) : null}
+                                    </div>
                                     <p className="mb-0 text-body fs-14">{review.comment}</p>
                                 </div>
                             ))
@@ -232,6 +253,9 @@ const ReviewSection = ({ propertyId, currentUser }) => {
                                         onChange={(e) => setComment(e.target.value)}
                                         required
                                     ></textarea>
+                                    <p className="form-text text-muted fs-12 mb-0 mt-1">
+                                        Reviews are checked automatically: offensive language may be masked and you may receive a courtesy email from SmartProperty.
+                                    </p>
                                 </div>
                                 {!currentUser && (
                                     <div className="alert alert-warning fs-14">
