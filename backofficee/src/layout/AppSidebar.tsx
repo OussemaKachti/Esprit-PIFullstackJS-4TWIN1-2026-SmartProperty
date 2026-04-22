@@ -13,6 +13,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  LockIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -79,11 +80,6 @@ const adminNavItems: NavItem[] = [
     path: "/admin",
   },
   {
-    icon: <UserCircleIcon />,
-    name: "Candidates",
-    path: "/admin/candidates",
-  },
-  {
     icon: <ListIcon />,
     name: "Rentals",
     path: "/admin/rentals",
@@ -97,6 +93,11 @@ const adminNavItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Users",
     path: "/admin/users",
+  },
+  {
+    icon: <LockIcon />,
+    name: "Verifications",
+    path: "/admin/verifications",
   },
   {
     icon: <TableIcon />,
@@ -360,21 +361,19 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`pt-4 pb-2 flex items-start shrink-0 ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
+        className="pt-4 pb-2 flex items-center justify-center shrink-0"
       >
         <Link to={userRole === "ADMIN" ? "/admin" : "/"} className="block w-full">
           <img
-            src="/images/logo/Smart.png"
+            src="/img/logo-removebg-preview.png"
             alt="Smart Property"
-            className={`object-contain object-left ${
+            className={`object-contain object-center mx-auto ${
               isExpanded || isHovered || isMobileOpen
-                ? "w-full max-w-[250px] h-auto"
-                : "mx-auto w-[72px] h-auto max-h-12"
+                ? "w-full max-w-[190px] h-auto"
+                : "mx-auto w-[56px] h-auto max-h-10"
             }`}
-            width={isExpanded || isHovered || isMobileOpen ? 250 : 72}
-            height={isExpanded || isHovered || isMobileOpen ? 98 : 28}
+            width={isExpanded || isHovered || isMobileOpen ? 190 : 56}
+            height={isExpanded || isHovered || isMobileOpen ? 74 : 26}
           />
         </Link>
       </div>
@@ -420,16 +419,18 @@ const AppSidebar: React.FC = () => {
         {/* Bottom: user profile + logout — toujours en bas */}
         {(isExpanded || isHovered || isMobileOpen) && (
           <div className="flex-shrink-0 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-            <button
-              type="button"
-              onClick={handleGoToFrontend}
-              className="w-full text-left menu-item group menu-item-inactive"
-            >
-              <span className="menu-item-icon-size menu-item-icon-inactive">
-                <GlobeIcon />
-              </span>
-              <span className="menu-item-text">Marketplace</span>
-            </button>
+            {userRole !== "ADMIN" && (
+              <button
+                type="button"
+                onClick={handleGoToFrontend}
+                className="w-full text-left menu-item group menu-item-inactive"
+              >
+                <span className="menu-item-icon-size menu-item-icon-inactive">
+                  <GlobeIcon />
+                </span>
+                <span className="menu-item-text">Marketplace</span>
+              </button>
+            )}
             <Link
               to="/profile"
               className={`menu-item group ${

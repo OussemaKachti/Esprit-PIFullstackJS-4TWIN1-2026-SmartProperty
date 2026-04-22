@@ -359,6 +359,10 @@ input{
   border-color: #000;
 }
 
+.role-select.error {
+  border-color: #ef4444;
+}
+
 
 .verification-code {
   display: flex;
@@ -574,6 +578,145 @@ input{
 .signup-form .terms-of-services {
   margin-top: 0;
   padding-top: 0;
+}
+
+/* Verify identity step (signup step 2) */
+.verify-header {
+  width: 100%;
+  max-width: var(--button-width-long);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.verify-step {
+  flex-shrink: 0;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  font-family: var(--font-form);
+  color: #475569;
+}
+
+.verify-card {
+  width: 100%;
+  max-width: var(--button-width-long);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  box-sizing: border-box;
+  margin-top: 14px;
+}
+
+.verify-card.error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12);
+}
+
+.verify-card-title {
+  font-size: 14px;
+  font-family: var(--font-form);
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.verify-card-subtitle {
+  font-size: 12.5px;
+  font-family: var(--font-form);
+  color: #64748b;
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.verify-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 520px) {
+  .verify-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.verify-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.verify-upload:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.verify-upload-top {
+  font-size: 12px;
+  font-family: var(--font-form);
+  color: #334155;
+  font-weight: 600;
+}
+
+.verify-upload-label {
+  font-size: 13px;
+  font-family: var(--font-form);
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.verify-upload-input {
+  display: none;
+}
+
+.verify-divider {
+  width: 100%;
+  max-width: var(--button-width-long);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.verify-divider span {
+  font-size: 12px;
+  font-family: var(--font-form);
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0 10px;
+  position: relative;
+}
+
+.verify-divider span:before,
+.verify-divider span:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 70px;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.verify-divider span:before {
+  right: 100%;
+}
+
+.verify-divider span:after {
+  left: 100%;
 }
 
 .reset-password-container{

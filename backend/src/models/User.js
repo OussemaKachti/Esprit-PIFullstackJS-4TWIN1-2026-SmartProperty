@@ -8,6 +8,20 @@ const UserRole = {
   BUYER: 'BUYER',
 };
 
+const IdentityVerificationStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+};
+
+const IdentityDocumentKind = {
+  CIN: 'CIN',
+  CIN_RECTO: 'CIN_RECTO',
+  CIN_VERSO: 'CIN_VERSO',
+  PASSPORT: 'PASSPORT',
+  AGENCY_REGISTRATION: 'AGENCY_REGISTRATION',
+};
+
 const userSchema = new mongoose.Schema(
   {
     login: {
@@ -74,7 +88,30 @@ const userSchema = new mongoose.Schema(
       type: [String],
       select: false,
       default: []
-    }
+    },
+    /** Pièces d’identité / immatriculation (inscription marketplace) */
+    identityDocuments: [
+      {
+        kind: {
+          type: String,
+          enum: Object.values(IdentityDocumentKind),
+          required: true,
+        },
+        url: { type: String, required: true },
+        filename: { type: String },
+      },
+    ],
+    identityVerificationStatus: {
+      type: String,
+      enum: Object.values(IdentityVerificationStatus),
+      default: IdentityVerificationStatus.APPROVED,
+    },
+    /** Motif affiché si refus (visible côté utilisateur au login) */
+    identityVerificationNote: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     timestamps: true,
@@ -98,4 +135,9 @@ userSchema.methods.getResetPasswordToken = function() {
 
 const User = mongoose.model('User', userSchema);
 
-module.exports = { User, UserRole };
+module.exports = {
+  User,
+  UserRole,
+  IdentityVerificationStatus,
+  IdentityDocumentKind,
+};

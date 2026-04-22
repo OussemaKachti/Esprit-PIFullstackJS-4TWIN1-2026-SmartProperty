@@ -68,6 +68,19 @@ export default function Login() {
         return;
       }
 
+      if (data.require2FA) {
+        setTwoFAEmail(data.email || email);
+        setShow2FA(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.token) {
+        toast.error(data.message || "Login failed");
+        setIsLoading(false);
+        return;
+      }
+
       // Store token and user data
       localStorage.setItem("token", data.token);
       if (data.user) {

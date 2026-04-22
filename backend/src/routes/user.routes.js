@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth.middleware');
+const { optionalIdentityUpload } = require('../middleware/uploadIdentity.middleware');
 const { UserRole } = require('../models/User');
 
-router.post('/register', userController.register);
+router.post('/register', optionalIdentityUpload, userController.register);
 
 // Public: list agencies (OWNER / AGENCY role users)
 router.get('/agencies', userController.getAgencies);
@@ -62,6 +63,19 @@ router.get(
 router.post('/complete-onboarding', protect, userController.completeOnboarding);
 
 // Admin routes
+router.get(
+  '/admin/verification-requests',
+  protect,
+  authorize(UserRole.ADMIN),
+  userController.listVerificationRequests
+);
+router.patch(
+  '/admin/verification-requests/:userId',
+  protect,
+  authorize(UserRole.ADMIN),
+  userController.updateVerificationStatus
+);
+
 router.get('/all', protect, authorize(UserRole.ADMIN), userController.getAllUsers);
 router.patch('/:id', protect, authorize(UserRole.ADMIN), userController.updateUser);
 router.delete('/:id', protect, authorize(UserRole.ADMIN), userController.deleteUser);

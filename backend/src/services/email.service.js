@@ -82,6 +82,65 @@ exports.sendPasswordResetEmail = async (to, resetUrl) => {
 };
 
 /**
+ * Email envoyé quand un compte est approuvé par un admin (vérification d'identité).
+ * @param {string} to
+ * @param {{ name?: string }} meta
+ */
+exports.sendAccountApprovedEmail = async (to, meta = {}) => {
+  if (!to) return;
+
+  const transporter = createTransporter();
+  const displayName = escapeHtml(meta.name || 'there');
+  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
+
+  const mailOptions = {
+    from: `"SmartProperty" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    to,
+    subject: 'SmartProperty — Your account has been approved',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            body { font-family: Inter, Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+            .container { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(15,23,42,0.08); }
+            .header { background: linear-gradient(120deg, #0f172a, #1e293b); padding: 30px 36px; }
+            .header h1 { color: #fff; margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+            .body { padding: 34px 36px 20px; }
+            .body p { color: #475569; font-size: 15px; line-height: 1.7; margin: 0 0 14px; }
+            .btn { display: inline-block; background: #2563eb; color: #fff !important; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; margin: 14px 0 18px; }
+            .note { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #64748b; }
+            .footer { padding: 18px 36px 30px; text-align: center; font-size: 12px; color: #94a3b8; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>SmartProperty</h1>
+            </div>
+            <div class="body">
+              <p>Hi ${displayName},</p>
+              <p>Your account has been approved. You can now sign in and start using SmartProperty.</p>
+              <a class="btn" href="${loginUrl}">Sign in</a>
+              <div class="note">
+                If you did not create this account, please ignore this email or contact our support team.
+              </div>
+            </div>
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} SmartProperty. All rights reserved.
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+/**
  * Envoie un email transactionnel pour une vente ou une location.
  * @param {Object} options
  * @param {string} options.to - Destinataire principal

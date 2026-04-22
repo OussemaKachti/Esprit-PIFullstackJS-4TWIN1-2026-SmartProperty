@@ -1,4 +1,5 @@
-const { User } = require('../models/User');
+const path = require('path');
+const { User, IdentityVerificationStatus, IdentityDocumentKind } = require('../models/User');
 const { Property } = require('../models/Property');
 const { Sale, Lease } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
@@ -8,6 +9,53 @@ const crypto = require('crypto');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const emailService = require('../services/email.service');
+
+const ROLES_REQUIRING_IDENTITY = new Set(['OWNER', 'BUYER', 'TENANT', 'AGENCY']);
+
+function getIdentityVerificationBlock(user) {
+  if (!user || !ROLES_REQUIRING_IDENTITY.has(user.role)) return null;
+  const st = user.identityVerificationStatus;
+  if (st == null || st === IdentityVerificationStatus.APPROVED) return null;
+  if (st === IdentityVerificationStatus.PENDING) {
+    return {
+      status: 403,
+      body: {
+        success: false,
+        code: 'VERIFICATION_PENDING',
+        message:
+          'Your account is pending approval. An administrator will verify your documents shortly. You will be able to sign in once approved.',
+      },
+    };
+  }
+  if (st === IdentityVerificationStatus.REJECTED) {
+    return {
+      status: 403,
+      body: {
+        success: false,
+        code: 'VERIFICATION_REJECTED',
+        message: user.identityVerificationNote
+          ? `Verification declined: ${user.identityVerificationNote}`
+          : 'Your verification request was declined. Please contact support if you need help.',
+      },
+    };
+  }
+  return null;
+}
+
+function buildAuthUserPayload(user) {
+  return {
+    id: user._id,
+    login: user.login,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    role: user.role,
+    twoFactorEnabled: user.twoFactorEnabled,
+    hasCompletedOnboarding: user.hasCompletedOnboarding,
+    identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
+  };
+}
 
 // Login user
 exports.login = async (req, res) => {
@@ -32,6 +80,11 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
+    const verificationBlock = getIdentityVerificationBlock(user);
+    if (verificationBlock) {
+      return res.status(verificationBlock.status).json(verificationBlock.body);
+    }
+
     // Vérifier si le 2FA est activé
     if (user.twoFactorEnabled) {
       return res.status(200).json({
@@ -52,17 +105,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        login: user.login,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled,
-        hasCompletedOnboarding: user.hasCompletedOnboarding,
-      }
+      user: buildAuthUserPayload(user),
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -109,7 +152,7 @@ exports.completeOnboarding = async (req, res) => {
   }
 };
 
-// Register a new user
+// Register a new user (multipart only — identity documents required for marketplace roles)
 exports.register = async (req, res) => {
   try {
     const { login, email, password, firstName, lastName, phone, role } = req.body;
@@ -118,13 +161,77 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Login, email, and password are required.' });
     }
 
+    if (!role || !ROLES_REQUIRING_IDENTITY.has(role)) {
+      return res.status(400).json({ message: 'A valid role is required (OWNER, BUYER, TENANT, or AGENCY).' });
+    }
+
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { login }] });
     if (existingUser) {
       return res.status(409).json({ message: 'User with this email or login already exists.' });
     }
 
-    // Hash password
+    const isMultipart = req.is('multipart/form-data');
+    if (!isMultipart) {
+      return res.status(400).json({
+        message:
+          'Please complete registration with document upload (use the signup form to submit your files).',
+      });
+    }
+
+    const identityDocuments = [];
+    const files = req.files || {};
+
+    if (role === 'AGENCY') {
+      const f = files.agencyRegistration?.[0];
+      if (!f) {
+        return res.status(400).json({
+          message:
+            'Please upload your agency registration document (e.g. extrait RNE / patente / KBIS equivalent).',
+        });
+      }
+      identityDocuments.push({
+        kind: IdentityDocumentKind.AGENCY_REGISTRATION,
+        url: `/uploads/${path.basename(f.path)}`,
+        filename: f.originalname,
+      });
+    } else {
+      const cinRecto = files.cinRecto?.[0];
+      const cinVerso = files.cinVerso?.[0];
+      const passport = files.passport?.[0];
+
+      // Either passport OR both CIN sides are required. Users may also provide both.
+      if (!passport && (!cinRecto || !cinVerso)) {
+        return res.status(400).json({
+          message:
+            'Please upload either a passport, or both sides of your national ID (CIN recto and verso).',
+        });
+      }
+      if (cinRecto) {
+        identityDocuments.push({
+          kind: IdentityDocumentKind.CIN_RECTO,
+          url: `/uploads/${path.basename(cinRecto.path)}`,
+          filename: cinRecto.originalname,
+        });
+      }
+      if (cinVerso) {
+        identityDocuments.push({
+          kind: IdentityDocumentKind.CIN_VERSO,
+          url: `/uploads/${path.basename(cinVerso.path)}`,
+          filename: cinVerso.originalname,
+        });
+      }
+      if (passport) {
+        identityDocuments.push({
+          kind: IdentityDocumentKind.PASSPORT,
+          url: `/uploads/${path.basename(passport.path)}`,
+          filename: passport.originalname,
+        });
+      }
+    }
+
+    const identityVerificationStatus = IdentityVerificationStatus.PENDING;
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       login,
@@ -133,11 +240,22 @@ exports.register = async (req, res) => {
       firstName,
       lastName,
       phone,
-      role
+      role,
+      identityDocuments,
+      identityVerificationStatus,
+      identityVerificationNote: '',
     });
     await user.save();
 
-    res.status(201).json({ message: 'User registered successfully.' });
+    const msg =
+      identityVerificationStatus === IdentityVerificationStatus.PENDING
+        ? 'Account created. Your documents are under review. You will be able to sign in after an administrator approves your profile.'
+        : 'User registered successfully.';
+
+    res.status(201).json({
+      message: msg,
+      identityVerificationStatus,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -498,6 +616,11 @@ exports.validate2FAToken = async (req, res) => {
       });
     }
 
+    const verificationBlock = getIdentityVerificationBlock(user);
+    if (verificationBlock) {
+      return res.status(verificationBlock.status).json(verificationBlock.body);
+    }
+
     // Générer JWT
     const jwtToken = jwt.sign(
       { userId: user._id, role: user.role },
@@ -509,17 +632,7 @@ exports.validate2FAToken = async (req, res) => {
       success: true,
       message: '2FA validé',
       token: jwtToken,
-      user: {
-        id: user._id,
-        login: user.login,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled,
-        hasCompletedOnboarding: user.hasCompletedOnboarding,
-      }
+      user: buildAuthUserPayload(user),
     });
 
   } catch (error) {
@@ -594,6 +707,9 @@ exports.getProfile = async (req, res) => {
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
+        identityVerificationNote: user.identityVerificationNote || '',
+        identityDocuments: user.identityDocuments || [],
       }
     });
   } catch (error) {
@@ -665,6 +781,108 @@ exports.logout = async (req, res) => {
 };
 
 // ============ ADMIN FUNCTIONS ============
+
+// Liste des comptes en attente de vérification d’identité
+exports.listVerificationRequests = async (req, res) => {
+  try {
+    const { status = 'PENDING' } = req.query;
+    const allowed = ['PENDING', 'REJECTED', 'ALL'];
+    const st = allowed.includes(String(status).toUpperCase()) ? String(status).toUpperCase() : 'PENDING';
+
+    const filter = { role: { $in: [...ROLES_REQUIRING_IDENTITY] } };
+    if (st === 'ALL') {
+      filter.identityVerificationStatus = { $in: [IdentityVerificationStatus.PENDING, IdentityVerificationStatus.REJECTED] };
+    } else {
+      filter.identityVerificationStatus = st;
+    }
+
+    const users = await User.find(filter)
+      .select('-password -twoFactorSecret -twoFactorBackupCodes')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification requests retrieved',
+      users,
+      total: users.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+// Approuver / refuser une demande de vérification
+exports.updateVerificationStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status, note } = req.body;
+
+    if (!['APPROVED', 'REJECTED'].includes(String(status || '').toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: 'status must be APPROVED or REJECTED',
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (!ROLES_REQUIRING_IDENTITY.has(user.role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This user role does not require identity verification',
+      });
+    }
+
+    user.identityVerificationStatus = String(status).toUpperCase();
+    if (user.identityVerificationStatus === IdentityVerificationStatus.REJECTED) {
+      user.identityVerificationNote = (note && String(note).trim()) || 'Documents could not be verified.';
+    } else {
+      user.identityVerificationNote = '';
+    }
+
+    await user.save();
+
+    if (user.identityVerificationStatus === IdentityVerificationStatus.APPROVED) {
+      // Best-effort email: approval should not fail if SMTP is down.
+      try {
+        if (typeof emailService.sendAccountApprovedEmail === 'function') {
+          await emailService.sendAccountApprovedEmail(user.email, {
+            name: user.firstName || user.login || user.email,
+          });
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to send approval email:', e?.message || e);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification status updated',
+      user: {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        identityVerificationStatus: user.identityVerificationStatus,
+        identityVerificationNote: user.identityVerificationNote,
+        identityDocuments: user.identityDocuments,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
 
 // Get all users (Admin only)
 exports.getAllUsers = async (req, res) => {
@@ -738,7 +956,13 @@ exports.getAgencies = async (req, res) => {
   try {
     const { city, role } = req.query;
 
-    let userQuery = { isActive: true };
+    let userQuery = {
+      isActive: true,
+      $or: [
+        { identityVerificationStatus: IdentityVerificationStatus.APPROVED },
+        { identityVerificationStatus: { $exists: false } },
+      ],
+    };
 
     if (role && role !== 'Select') {
       userQuery.role = role;
