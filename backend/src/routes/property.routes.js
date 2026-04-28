@@ -11,7 +11,7 @@ router.get('/', propertyController.getAllProperties);
 router.get(
   '/dashboard/stats',
   auth.protect,
-  auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
+  auth.authorize('ADMIN', 'AGENCY', 'OWNER', 'BUYER', 'TENANT'),
   propertyController.getDashboardStats
 );
 router.get('/my', auth.protect, propertyController.getMyProperties);
