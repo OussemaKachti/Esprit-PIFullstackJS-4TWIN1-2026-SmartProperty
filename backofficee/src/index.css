@@ -281,10 +281,11 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+    @apply bg-gray-200 rounded-full;
   }
 }
 
+/* Dark mode scrollbar thumb — kept outside @utility to avoid :is() minifier issue */
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #344054;
 }
@@ -843,7 +844,6 @@ span.flatpickr-weekday,
 
 .task {
   transition: all 0.2s ease;
-  /* Smooth transition for visual effects */
 }
 
 .task {
@@ -852,7 +852,6 @@ span.flatpickr-weekday,
     0px 1px 2px 0px rgba(16, 24, 40, 0.06);
   opacity: 0.8;
   cursor: grabbing;
-  /* Changes the cursor to indicate dragging */
 }
 
 .custom-calendar .fc-h-event {
@@ -866,13 +865,16 @@ span.flatpickr-weekday,
 }
 
 .simplebar-scrollbar::before {
-  @apply !bg-gray-200 !rounded-full dark:!bg-gray-700 !opacity-100;
+  background-color: #e4e7ec;
+  border-radius: 9999px;
+  opacity: 1;
 }
 
+/* Dark mode simplebar — kept as plain rule to avoid :is() minifier issue */
 .dark .simplebar-scrollbar::before {
-  @apply !bg-gray-700;
+  background-color: #344054;
 }
 
 .simplebar-scrollbar.simplebar-visible:before {
-  @apply opacity-100;
+  opacity: 1;
 }

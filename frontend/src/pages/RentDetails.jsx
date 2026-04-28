@@ -1279,7 +1279,7 @@ const RentDetails = () => {
 													</div>
 
 													{isBookingBlocked && (
-														<div className="alert alert-warning py-2 mb-3 small" role="alert">
+														<div id="booking-blocked-msg" className="alert alert-warning py-2 mb-3 small" role="alert" aria-live="assertive">
 															{blockingLease.status === 'PENDING' ? (
 																<>
 																	You already have a <strong>pending</strong> rental request for this listing.
@@ -1349,26 +1349,35 @@ const RentDetails = () => {
 													</div>
 
 													{successMessage && (
-														<div className="alert alert-success py-2 mb-3">{successMessage}</div>
+														<div id="booking-success-msg" className="alert alert-success py-2 mb-3" role="status" aria-live="polite">{successMessage}</div>
 													)}
 													{errorMessage && (
-														<div className="alert alert-danger py-2 mb-3">{errorMessage}</div>
+														<div id="booking-error-msg" className="alert alert-danger py-2 mb-3" role="alert" aria-live="assertive">{errorMessage}</div>
 													)}
 
 													<button
 														type="button"
 														className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-left justify-content-center gap-2 text-center"
+														style={{ color: '#fff' }}
 														aria-busy={isSending}
+														aria-disabled={isSending || isBookingBlocked}
+														aria-describedby={[
+															isBookingBlocked ? 'booking-blocked-msg' : null,
+															errorMessage ? 'booking-error-msg' : null,
+															successMessage ? 'booking-success-msg' : null,
+															!propertyId ? 'booking-open-from-card-msg' : null,
+															!currentUser ? 'booking-signin-msg' : null,
+														].filter(Boolean).join(' ') || undefined}
 														onClick={handleSendBooking}
 														disabled={isSending || isBookingBlocked}
 													>
-														<span>{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}</span>
+														<span className="text-white">{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}</span>
 													</button>
 													{!propertyId && (
-														<p className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>
+														<p id="booking-open-from-card-msg" className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>
 													)}
 													{!currentUser && (
-														<p className="text-muted small mt-2 mb-0">{t('propertyDetails.signInAutoAttach')}</p>
+														<p id="booking-signin-msg" className="text-muted small mt-2 mb-0">{t('propertyDetails.signInAutoAttach')}</p>
 													)}
 												</div>
 											</div>

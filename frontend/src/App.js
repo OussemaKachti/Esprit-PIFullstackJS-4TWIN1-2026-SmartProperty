@@ -87,6 +87,7 @@ import CINForm from "./features/auth/CINForm";
 import TwoFactorSetup from "./features/auth/TwoFactorSetup";
 import RentalMatch from "./pages/RentalMatch.jsx";
 import ProfileSettings from "./pages/ProfileSettings";
+import PriceEstimate from "./pages/PriceEstimate.jsx";
 
 // Component mapping
 const COMPONENT_MAP = {
@@ -107,6 +108,7 @@ const COMPONENT_MAP = {
   Notifications, Maintenance, ComingSoon,
   Signin, Index2, Index3, FirstStepForm, FormContainer, AgencyDoc, CINForm,
   RentalMatch, ProfileSettings,
+  PriceEstimate,
 }
 
 const LanguageDetector = () => {

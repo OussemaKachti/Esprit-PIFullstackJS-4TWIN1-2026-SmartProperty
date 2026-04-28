@@ -78,14 +78,32 @@
   transition: all 0.2s ease;
 }
 
+.index3-search-tabs .nav-link .material-icons-outlined,
+.index3-search-tabs .nav-link .white-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .index3-search-tabs .nav-link:hover {
   border-color: var(--gray-400, #999);
-  color: var(--dark, #000);
+  color: #fff;
+  background: var(--dark, #1a1a1a);
 }
 
 .index3-search-tabs .nav-link.active {
   background: var(--dark, #1a1a1a);
   border-color: var(--dark, #1a1a1a);
+  color: #fff;
+}
+
+.index3-search-tabs .nav-link:hover .material-icons-outlined,
+.index3-search-tabs .nav-link.active .material-icons-outlined,
+.index3-search-tabs .nav-link:hover .white-icon,
+.index3-search-tabs .nav-link.active .white-icon {
   color: #fff;
 }
 
@@ -216,4 +234,20 @@
   color: inherit;
   cursor: pointer;
   line-height: 1;
+}
+
+/* Keep city cards in the location section visually uniform */
+.index3-page .property-section .location-item {
+  height: 100%;
+}
+
+.index3-page .property-section .location-item .location-img {
+  aspect-ratio: 8 / 3;
+  height: 100%;
+}
+
+.index3-page .property-section .location-item .location-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
