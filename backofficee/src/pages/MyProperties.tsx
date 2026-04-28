@@ -158,6 +158,7 @@ function PropertyRatingSnippet({
 }
 
 export default function MyProperties() {
+  const FASTAPI_URL = (import.meta as any).env?.VITE_FASTAPI_URL || "http://127.0.0.1:8000";
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
@@ -200,6 +201,49 @@ export default function MyProperties() {
   const [feedbackByProperty, setFeedbackByProperty] = useState<
     Record<string, PropertyFeedbackSummary>
   >({});
+
+  // Per-user email notifications toggle (FastAPI)
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [emailNotifEnabled, setEmailNotifEnabled] = useState<boolean | null>(null);
+  const [emailNotifLoading, setEmailNotifLoading] = useState(false);
+
+  const loadEmailNotifStatus = async () => {
+    if (!userEmail) {
+      setEmailNotifEnabled(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${FASTAPI_URL}/email-notifications?email=${encodeURIComponent(userEmail)}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.detail || json?.message || "Failed to load email status");
+      setEmailNotifEnabled(Boolean(json?.enabled));
+    } catch (e: unknown) {
+      console.error(e);
+      setEmailNotifEnabled(null);
+    }
+  };
+
+  const toggleEmailNotifications = async () => {
+    if (emailNotifEnabled === null || !userEmail) return;
+    const next = !emailNotifEnabled;
+    setEmailNotifLoading(true);
+    try {
+      const res = await fetch(`${FASTAPI_URL}/email-notifications`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, enabled: next }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.detail || json?.message || "Failed to update email status");
+      setEmailNotifEnabled(Boolean(json?.enabled));
+      toast.success(next ? "Matching emails enabled for your account" : "Matching emails disabled for your account");
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to update email status");
+    } finally {
+      setEmailNotifLoading(false);
+    }
+  };
 
   // Advanced search filters
   const [showFilters, setShowFilters] = useState(false);
@@ -309,6 +353,27 @@ export default function MyProperties() {
   useEffect(() => {
     loadMyProperties();
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const email = parsed?.email || parsed?.user?.email || null;
+        setUserEmail(email ? String(email) : null);
+      } else {
+        setUserEmail(null);
+      }
+    } catch {
+      setUserEmail(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    loadEmailNotifStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmail]);
 
   const handleFieldChange = (
     field: keyof NewPropertyForm,
@@ -782,6 +847,35 @@ export default function MyProperties() {
                   {Object.values(filters).filter(v => v !== "").length}
                 </span>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={toggleEmailNotifications}
+              disabled={emailNotifLoading || emailNotifEnabled === null || !userEmail}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl shadow-sm border transition-colors ${
+                emailNotifEnabled
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40"
+                  : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-900/40"
+              } ${emailNotifLoading || emailNotifEnabled === null ? "opacity-70 cursor-not-allowed" : ""}`}
+              title={
+                !userEmail
+                  ? "No user email found in session"
+                  : emailNotifEnabled === null
+                    ? "FastAPI not reachable"
+                    : "Toggle your matching emails"
+              }
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8l-9 6-9-6" />
+              </svg>
+              {emailNotifLoading
+                ? "Updating..."
+                : emailNotifEnabled === null
+                  ? "Emails: Offline"
+                  : emailNotifEnabled
+                    ? "Emails: ON"
+                    : "Emails: OFF"}
             </button>
             <button
               className="px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm bg-brand-500 hover:bg-brand-600"
