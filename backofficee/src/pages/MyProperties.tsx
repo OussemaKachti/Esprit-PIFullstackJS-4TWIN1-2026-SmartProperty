@@ -207,6 +207,13 @@ export default function MyProperties() {
   const [emailNotifEnabled, setEmailNotifEnabled] = useState<boolean | null>(null);
   const [emailNotifLoading, setEmailNotifLoading] = useState(false);
 
+  // Rent price estimation (FastAPI)
+  const [rentEstimateLoading, setRentEstimateLoading] = useState(false);
+  const [rentEstimate, setRentEstimate] = useState<null | {
+    estimated_price_tnd: number;
+    accuracy_pct?: number;
+  }>(null);
+
   const loadEmailNotifStatus = async () => {
     if (!userEmail) {
       setEmailNotifEnabled(null);
@@ -242,6 +249,70 @@ export default function MyProperties() {
       toast.error(e instanceof Error ? e.message : "Failed to update email status");
     } finally {
       setEmailNotifLoading(false);
+    }
+  };
+
+  const _mapPropertyTypeToCategory = (propertyType: string) => {
+    // Map your backoffice property "type" to the ML model "category" labels.
+    // Fallback: Appartements (most common).
+    const t = String(propertyType || "").toUpperCase();
+    if (t === "HOUSE" || t === "VILLA") return "Maisons et Villas";
+    if (t === "APARTMENT" || t === "STUDIO") return "Appartements";
+    return "Appartements";
+  };
+
+  const canEstimateRent =
+    form.listingType === "FOR_RENT" &&
+    Boolean(form.type) &&
+    Boolean(form.city) &&
+    Boolean(form.country) &&
+    Number(form.surface) > 0 &&
+    Number(form.rooms) >= 0 &&
+    Number(form.bathrooms) >= 0;
+
+  const estimateRentPrice = async () => {
+    if (!canEstimateRent) {
+      toast.error("Fill type, city, country, surface, rooms and bathrooms to estimate rent.");
+      return;
+    }
+
+    setRentEstimateLoading(true);
+    try {
+      const payload = {
+        category: _mapPropertyTypeToCategory(form.type),
+        room_count: Number(form.rooms) || 0,
+        bathroom_count: Number(form.bathrooms) || 0,
+        size: Number(form.surface) || 0,
+        // user asked: use city and country here for region and city too
+        city: String(form.city),
+        region: String(form.country),
+        budget_hint: 800,
+      };
+
+      const res = await fetch(`${FASTAPI_URL}/api/price-estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.detail || json?.message || "Failed to estimate rent price");
+
+      const est = Number(json?.estimated_price_tnd);
+      if (!Number.isFinite(est)) throw new Error("Invalid estimation result");
+
+      setRentEstimate({
+        estimated_price_tnd: est,
+        accuracy_pct: Number(json?.accuracy_pct),
+      });
+
+      // Prefill the price field for rent listings
+      setForm((prev) => ({ ...prev, price: String(Math.round(est)) }));
+      toast.success("Estimated rent price added to the Price field.");
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to estimate price");
+    } finally {
+      setRentEstimateLoading(false);
     }
   };
 
@@ -1565,15 +1636,42 @@ export default function MyProperties() {
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                           Price <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="number"
-                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.price ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
-                          placeholder="e.g. 850000"
-                          value={form.price}
-                          onChange={(e) =>
-                            handleFieldChange("price", e.target.value)
-                          }
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.price ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
+                            placeholder={form.listingType === "FOR_RENT" ? "e.g. 900" : "e.g. 850000"}
+                            value={form.price}
+                            onChange={(e) =>
+                              handleFieldChange("price", e.target.value)
+                            }
+                          />
+                          {form.listingType === "FOR_RENT" && (
+                            <button
+                              type="button"
+                              onClick={estimateRentPrice}
+                              disabled={rentEstimateLoading || !canEstimateRent}
+                              className={`shrink-0 px-3 py-2 text-xs font-semibold rounded-xl border shadow-sm transition-colors ${
+                                rentEstimateLoading || !canEstimateRent
+                                  ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700"
+                                  : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+                              }`}
+                              title={
+                                !canEstimateRent
+                                  ? "Fill required fields to estimate"
+                                  : "Estimate monthly rent using AI model"
+                              }
+                            >
+                              {rentEstimateLoading ? "Estimating..." : "Estimate rent"}
+                            </button>
+                          )}
+                        </div>
+                        {form.listingType === "FOR_RENT" && rentEstimate?.estimated_price_tnd ? (
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Suggested rent: <span className="font-semibold text-gray-700 dark:text-gray-200">{Math.round(rentEstimate.estimated_price_tnd)} TND</span>
+                            
+                          </p>
+                        ) : null}
                         {formErrors.price && (
                           <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.price}</p>
                         )}

@@ -344,8 +344,6 @@ export default function PriceEstimate() {
                         )}
                       </div>
                     </div>
-
-                    
                   </div>
                 </div>
 
