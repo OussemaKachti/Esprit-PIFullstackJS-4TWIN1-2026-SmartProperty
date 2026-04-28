@@ -50,26 +50,20 @@ The platform combines AI-powered rental matching with a modern web application t
 - State Management: Context API
 - Architecture: Component-based
 
+### Backend
+- Runtime: Node.js
+- Framework: Express.js
+- Architecture: MVC pattern (controllers, models, services, routes, middleware)
+- Database: MongoDB
+- Authentication: JWT-based
+- Integrations: Email (SMTP), Pusher notifications (optional), Cloudinary (optional)
+
 ### Backoffice
 - Framework: React 18 + TypeScript
 - Build Tool: Vite
 - Styling: CSS/PostCSS
 - Linting: ESLint
 - TypeScript: Strict mode enabled
-
-### Backend
-- Runtime: Node.js
-- Framework: Express.js
-- Architecture: MVC pattern
-  - Controllers
-  - Models
-  - Services
-  - Routes
-  - Middleware
-  - Configuration
-  - Utilities
-- Database: MongoDB (or your choice)
-- Authentication: JWT-based
 
 ### AI/ML Component
 - Language: Python 3
@@ -86,6 +80,14 @@ The system follows a modular architecture:
 - AI/ML Service: Python microservice for image analysis and rental recommendations
 - Database: Centralized for users, properties, sales, and transactions
 - Notifications: Email and push notifications for sales and updates
+
+## Contributors
+
+- SmartProperty Team — PIDEV 4TWIN1 (2025–2026)
+
+## Academic Context
+
+This project was developed in the context of the **PIDEV (Projet Intégré de Développement)** within the 4th Year Engineering program at **Esprit School of Engineering**.
 
 ## Getting Started
 
@@ -228,6 +230,9 @@ python main.py
 - Frontend opens on `http://localhost:3000`
 - Backoffice opens on Vite URL (`http://localhost:5173`)
 
+## Acknowledgment
+
+We would like to thank our supervisors and the teaching staff at **Esprit School of Engineering** for their guidance and support throughout the development of this project.
 
 ## Lighthouse
 ![Lighthouse](./lighthouse.png)
