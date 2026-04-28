@@ -410,7 +410,7 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-01.jpg" alt="City view of Tunis" /></Link>
+									<Link to="/index-3"><img src="/cities/tunis.webp" alt="City view of Tunis" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location1')}</h5>
@@ -427,7 +427,7 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-02.jpg" alt="City view of Sousse" /></Link>
+									<Link to="/index-3"><img src="/cities/sousse.webp" alt="City view of Sousse" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location2')}</h5>
@@ -444,7 +444,7 @@ const Index3 = () => {
 						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-03.jpg" alt="City view of Sfax" /></Link>
+									<Link to="/index-3"><img src="/cities/monastir.webp" alt="City view of Monastir" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location3')}</h5>
@@ -458,10 +458,12 @@ const Index3 = () => {
 							</div>
 						</div> 
 
-						<div className="col-lg-6" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
+						<div className="w-100 d-none d-lg-block"></div>
+
+						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-04.jpg" alt="City view of Nabeul" /></Link>
+									<Link to="/index-3"><img src="/cities/mahdia.webp" alt="City view of Mahdia" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location4')}</h5>
@@ -475,10 +477,10 @@ const Index3 = () => {
 							</div>
 						</div> 
 
-						<div className="col-lg-6" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
+						<div className="col-lg-4" data-aos="fade-up" data-aos-duration="1200" data-aos-delay="200">
 							<div className="location-item">
 								<div className="location-img">
-									<Link to="/index-3"><img src="/assets/img/home-3/location/location-05.jpg" alt="City view of Hammamet" /></Link>
+									<Link to="/index-3"><img src="/cities/hammamet.webp" alt="City view of Hammamet" /></Link>
 									<div className="bottom-text">
 										<div className="location-name">
 											<h5>{t('propertySection.location5')}</h5>
