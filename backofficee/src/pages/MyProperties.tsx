@@ -286,7 +286,6 @@ export default function MyProperties() {
         // user asked: use city and country here for region and city too
         city: String(form.city),
         region: String(form.country),
-        budget_hint: 800,
       };
 
       const res = await fetch(`${FASTAPI_URL}/api/price-estimate`, {

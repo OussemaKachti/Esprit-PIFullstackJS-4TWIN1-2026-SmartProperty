@@ -10,7 +10,6 @@ const initialForm = {
   size: 80,
   city: "Tunis",
   region: "Tunis",
-  budget_hint: 800,
 };
 
 const formatTnd = (value) => {
@@ -99,7 +98,6 @@ export default function PriceEstimate() {
         room_count: Number(form.room_count) || 0,
         bathroom_count: Number(form.bathroom_count) || 0,
         size: Number(form.size) || 0,
-        budget_hint: form.budget_hint === "" || form.budget_hint == null ? null : Number(form.budget_hint),
       };
       const res = await estimateRentalPrice(payload);
       setResult(res);
@@ -264,19 +262,6 @@ export default function PriceEstimate() {
                                 value={form.size}
                                 onChange={(e) => onChange("size", e.target.value)}
                               />
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label">Budget hint (TND/month) (optional)</label>
-                              <input
-                                type="number"
-                                min="0"
-                                className="form-control"
-                                value={form.budget_hint}
-                                onChange={(e) => onChange("budget_hint", e.target.value)}
-                              />
-                              <div className="form-text">
-                                Helps the model infer your budget tier like training.
-                              </div>
                             </div>
                           </div>
 

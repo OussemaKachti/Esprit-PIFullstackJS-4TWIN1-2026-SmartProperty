@@ -162,13 +162,6 @@ class PriceEstimateRequest(BaseModel):
     size: float = Field(..., gt=0, description="Size in square meters")
     city: str = Field(...)
     region: str = Field(...)
-    budget_hint: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description=(
-            "Optional budget hint in TND/month. If provided, we derive budget_tier using the same bins as training."
-        ),
-    )
 
 
 class PriceEstimateResponse(BaseModel):
@@ -192,8 +185,6 @@ def _to_dict(model: BaseModel, **kwargs):
 # Price estimation helpers
 # ---------------------------------------------------------------------------
 
-_BUDGET_BINS = [0, 300, 700, 1500, 4000, float("inf")]
-_BUDGET_LABELS = ["very_low", "low", "medium", "high", "premium"]
 _SIZE_BINS = [0, 50, 100, 200, float("inf")]
 _SIZE_LABELS = ["small", "medium", "large", "extra_large"]
 _TIER_MAP = {"very_low": 0, "low": 1, "medium": 2, "high": 3, "premium": 4}
@@ -252,10 +243,9 @@ def _build_feature_row(req: PriceEstimateRequest) -> Tuple[pd.DataFrame, List[st
     """Build a single-row feature frame matching training preprocessing."""
     warnings: List[str] = []
 
-    budget_tier_label = _tier_from_value(req.budget_hint, _BUDGET_BINS, _BUDGET_LABELS)
-    if budget_tier_label is None:
-        warnings.append("budget_hint not provided; budget_tier will default to 'very_low' (may reduce accuracy).")
-        budget_tier_label = "very_low"
+    # Budget is intentionally not part of the public API for price estimation.
+    # The trained model expects a budget_tier feature, so we default it to a constant.
+    budget_tier_label = "very_low"
 
     size_tier_label = _tier_from_value(req.size, _SIZE_BINS, _SIZE_LABELS) or "small"
 
@@ -281,10 +271,8 @@ def _build_feature_row(req: PriceEstimateRequest) -> Tuple[pd.DataFrame, List[st
         if n_expected == 3:
             X[numeric_cols] = scaler.transform(X[numeric_cols])
         elif n_expected == 4:
+            # Only used to satisfy scaler shape; we do not accept budget as input.
             price_per_m2 = 0.0
-            if req.budget_hint is not None and req.size > 0:
-                # This is only used to satisfy scaler shape; the price model itself does not use price_per_m2.
-                price_per_m2 = float(req.budget_hint) / float(req.size)
             tmp = pd.DataFrame(
                 [[float(req.room_count), float(req.bathroom_count), float(req.size), float(price_per_m2)]],
                 columns=["room_count", "bathroom_count", "size", "price_per_m2"],
@@ -673,8 +661,6 @@ def price_estimate_options():
         "category": _classes("category"),
         "city": _classes("city"),
         "region": _classes("region"),
-        "budgetBins": _BUDGET_BINS[:-1],
-        "budgetLabels": _BUDGET_LABELS,
         "sizeBins": _SIZE_BINS[:-1],
         "sizeLabels": _SIZE_LABELS,
     }
