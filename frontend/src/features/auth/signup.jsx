@@ -18,6 +18,8 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
 
   const [cinRectoFile, setCinRectoFile] = useState(null);
   const [cinVersoFile, setCinVersoFile] = useState(null);
@@ -45,8 +47,24 @@ export default function Signup() {
 
   const passwordRuleStatus = PASSWORD_RULES.map((r) => ({ ...r, met: r.test(password) }));
   const passwordValid = passwordRuleStatus.every((r) => r.met);
+  const avatarInitials = `${firstname?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?';
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value?.trim() || "");
+
+  const handleAvatarChange = (file) => {
+    if (!file) {
+      setAvatarFile(null);
+      setAvatarPreview("");
+      return;
+    }
+
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(String(reader.result || ""));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const validateStep1 = () => {
     const errors = { login: "", email: "", password: "", phone: "", role: "", documents: "" };
@@ -100,6 +118,7 @@ export default function Signup() {
       formData.append("lastName", lastName);
       formData.append("role", role);
       if (phone.trim()) formData.append("phone", phone.trim());
+      if (avatarFile) formData.append("avatar", avatarFile);
 
       if (role === "AGENCY" && agencyFile) {
         formData.append("agencyRegistration", agencyFile);
@@ -196,27 +215,48 @@ export default function Signup() {
               </div>
             </div>
 
-            <div className="role-container">
-              Role
-              <div className={`role-select ${fieldErrors.role ? "error" : ""}`}>
-                <select
-                  value={role}
-                  onChange={(e) => {
-                    setRole(e.target.value);
-                    if (fieldErrors.role) setFieldErrors((prev) => ({ ...prev, role: "" }));
-                  }}
-                  aria-label="Select role"
-                >
-                  <option value="" disabled>
-                    Select role
-                  </option>
-                  <option value="TENANT">Tenant</option>
-                  <option value="AGENCY">Agency</option>
-                  <option value="OWNER">Owner</option>
-                  <option value="BUYER">Buyer</option>
-                </select>
+            <div className="role-phone-row">
+              <div className="role-column">
+                Role
+                <div className={`role-select ${fieldErrors.role ? "error" : ""}`}>
+                  <select
+                    value={role}
+                    onChange={(e) => {
+                      setRole(e.target.value);
+                      if (fieldErrors.role) setFieldErrors((prev) => ({ ...prev, role: "" }));
+                    }}
+                    aria-label="Select role"
+                  >
+                    <option value="" disabled>
+                      Select role
+                    </option>
+                    <option value="TENANT">Tenant</option>
+                    <option value="AGENCY">Agency</option>
+                    <option value="OWNER">Owner</option>
+                    <option value="BUYER">Buyer</option>
+                  </select>
+                </div>
+                {fieldErrors.role && <span className="field-error">{fieldErrors.role}</span>}
               </div>
-              {fieldErrors.role && <span className="field-error">{fieldErrors.role}</span>}
+
+              <div className="phone-column-role">
+                Phone <span className="field-optional">(optional)</span>
+                <div className={`email-input ${fieldErrors.phone ? "error" : ""}`}>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                      setPhone(v);
+                      if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                    }}
+                    placeholder="8 digits (e.g. 12345678)"
+                    inputMode="numeric"
+                    maxLength={8}
+                  />
+                </div>
+                {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+              </div>
             </div>
 
             <div className="email-container signup-field">
@@ -300,33 +340,44 @@ export default function Signup() {
               )}
             </div>
 
-            <div className="email-container signup-field">
-              Phone <span className="field-optional">(optional)</span>
-              <div className={`email-input ${fieldErrors.phone ? "error" : ""}`}>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                    setPhone(v);
-                    if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
-                  }}
-                  placeholder="8 digits (e.g. 12345678)"
-                  inputMode="numeric"
-                  maxLength={8}
-                />
+            <div className="signup-avatar-phone-row">
+              <div className="signup-avatar-section">
+                <div className="signup-avatar-label">Profile photo <span className="field-optional">(optional)</span></div>
+                <div className="signup-avatar-card simple">
+                  <div className="signup-avatar-preview" aria-hidden="true">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Profile preview" />
+                    ) : (
+                      <span>{avatarInitials}</span>
+                    )}
+                  </div>
+                  <div className="signup-avatar-copywrap">
+                    <div className="signup-avatar-title">Add a profile image</div>
+                    <div className="signup-avatar-actions">
+                      <label className="signup-avatar-button simple-btn">
+                        Choose image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => handleAvatarChange(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
-              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
             </div>
-
-            <button
-              type="button"
-              className="continue-button signup-continue-button"
-              onClick={!isLoading ? handleContinueStep1 : undefined}
-              disabled={isLoading}
-            >
-              {isLoading ? <div className="loader"></div> : <span className="continue-text">Continue</span>}
-            </button>
+            <div className="continue-row">
+              <button
+                type="button"
+                className="continue-button"
+                onClick={!isLoading ? handleContinueStep1 : undefined}
+                disabled={isLoading}
+              >
+                {isLoading ? <div className="loader"></div> : <span className="continue-text">Continue</span>}
+              </button>
+            </div>
           </>
         ) : (
           <>

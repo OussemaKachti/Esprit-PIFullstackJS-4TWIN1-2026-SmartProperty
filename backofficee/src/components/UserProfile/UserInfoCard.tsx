@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -6,6 +6,13 @@ import toast from "react-hot-toast";
 import type { ProfileUser } from "../../pages/UserProfiles";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const resolveAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return "";
+  if (/^data:/i.test(avatarUrl) || /^https?:\/\//i.test(avatarUrl)) return avatarUrl;
+  const base = API_URL.replace(/\/api$/, "");
+  return avatarUrl.startsWith("/") ? `${base}${avatarUrl}` : `${base}/${avatarUrl}`;
+};
 
 interface UserInfoCardProps {
   user: ProfileUser;
@@ -17,12 +24,23 @@ export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardPro
   const [firstName, setFirstName] = useState(user.firstName ?? "");
   const [lastName, setLastName] = useState(user.lastName ?? "");
   const [phone, setPhone] = useState(user.phone ?? "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState(resolveAvatarUrl(user.avatarUrl));
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setFirstName(user.firstName ?? "");
+    setLastName(user.lastName ?? "");
+    setPhone(user.phone ?? "");
+    setAvatarPreview(resolveAvatarUrl(user.avatarUrl));
+  }, [user]);
 
   const handleEdit = () => {
     setFirstName(user.firstName ?? "");
     setLastName(user.lastName ?? "");
     setPhone(user.phone ?? "");
+    setAvatarPreview(resolveAvatarUrl(user.avatarUrl));
+    setAvatarFile(null);
     setIsEditing(true);
   };
 
@@ -31,28 +49,36 @@ export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardPro
     setFirstName(user.firstName ?? "");
     setLastName(user.lastName ?? "");
     setPhone(user.phone ?? "");
+    setAvatarPreview(resolveAvatarUrl(user.avatarUrl));
+    setAvatarFile(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
+      const payload = new FormData();
+      payload.append("firstName", firstName.trim() || "");
+      payload.append("lastName", lastName.trim() || "");
+      payload.append("phone", phone.trim() || "");
+      if (avatarFile) payload.append("avatar", avatarFile);
       const res = await fetch(`${API_URL}/users/profile`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
-          phone: phone.trim() || undefined,
-        }),
+        body: payload,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error(data.message || "Failed to update profile.");
         return;
+      }
+      setAvatarPreview(resolveAvatarUrl(data.user?.avatarUrl) || avatarPreview);
+      setAvatarFile(null);
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        window.dispatchEvent(new Event("user-updated"));
       }
       toast.success("Profile updated successfully.");
       onProfileUpdated();
@@ -165,6 +191,46 @@ export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardPro
               <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90">
                 Personal Information
               </h5>
+
+              <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Profile preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-2xl font-semibold text-gray-500 dark:text-gray-400">
+                        {user.firstName?.[0] || user.lastName?.[0] || user.login?.[0] || "?"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white/90">Profile photo</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Upload a clear portrait to personalize your account.
+                    </p>
+                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                      Change photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setAvatarFile(file);
+                          if (!file) {
+                            setAvatarPreview(resolveAvatarUrl(user.avatarUrl));
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => setAvatarPreview(String(reader.result || ""));
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">PNG, JPG or WEBP up to 5 MB.</p>
+                  </div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                 <div className="col-span-2 lg:col-span-1">

@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     hasCompletedOnboarding: {
       type: Boolean,
       default: false,

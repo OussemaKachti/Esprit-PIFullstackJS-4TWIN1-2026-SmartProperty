@@ -16,7 +16,7 @@ export async function updateCurrentUserProfile(payload) {
   const data = await apiRequest('/api/users/profile', {
     method: 'PUT',
     base: 'backend',
-    body: JSON.stringify(payload),
+    body: payload instanceof FormData ? payload : JSON.stringify(payload),
   });
   return data.user;
 }

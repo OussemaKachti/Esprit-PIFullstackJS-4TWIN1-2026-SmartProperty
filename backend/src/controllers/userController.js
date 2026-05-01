@@ -50,11 +50,17 @@ function buildAuthUserPayload(user) {
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
+    avatarUrl: user.avatarUrl || '',
     role: user.role,
     twoFactorEnabled: user.twoFactorEnabled,
     hasCompletedOnboarding: user.hasCompletedOnboarding,
     identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
   };
+}
+
+function buildUploadedPath(file) {
+  if (!file || !file.path) return '';
+  return `/uploads/${path.basename(file.path)}`;
 }
 
 // Login user
@@ -181,6 +187,7 @@ exports.register = async (req, res) => {
 
     const identityDocuments = [];
     const files = req.files || {};
+    const avatarFile = files.avatar?.[0];
 
     if (role === 'AGENCY') {
       const f = files.agencyRegistration?.[0];
@@ -241,6 +248,7 @@ exports.register = async (req, res) => {
       lastName,
       phone,
       role,
+      avatarUrl: buildUploadedPath(avatarFile),
       identityDocuments,
       identityVerificationStatus,
       identityVerificationNote: '',
@@ -703,6 +711,7 @@ exports.getProfile = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
+        avatarUrl: user.avatarUrl || '',
         role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt,
@@ -721,7 +730,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// Update current user profile (firstName, lastName, phone only)
+// Update current user profile (supports avatar upload)
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone } = req.body;
@@ -737,6 +746,7 @@ exports.updateProfile = async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = phone;
+    if (req.file) user.avatarUrl = buildUploadedPath(req.file);
     await user.save();
 
     res.status(200).json({
@@ -749,6 +759,7 @@ exports.updateProfile = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
+        avatarUrl: user.avatarUrl || '',
         role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt,
@@ -927,6 +938,7 @@ exports.updateUser = async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = phone;
+    if (req.file) user.avatarUrl = buildUploadedPath(req.file);
 
     await user.save();
 
@@ -939,6 +951,7 @@ exports.updateUser = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
+        avatarUrl: user.avatarUrl || '',
         role: user.role,
         isActive: user.isActive
       }

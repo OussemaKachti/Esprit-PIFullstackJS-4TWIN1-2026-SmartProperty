@@ -24,9 +24,10 @@ export async function apiRequest(path, options = {}) {
     typeof window !== 'undefined' &&
     window.localStorage?.getItem('token');
 
+  const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...rest.headers,
   };
 

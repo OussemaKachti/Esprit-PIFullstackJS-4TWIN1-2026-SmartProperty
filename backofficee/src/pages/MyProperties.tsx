@@ -491,6 +491,20 @@ export default function MyProperties() {
       errors.surface = "Total area must be a positive number.";
     }
 
+    const roomsNum = form.rooms ? Number(form.rooms) : null;
+    if (!form.rooms.trim()) {
+      errors.rooms = "Rooms is required.";
+    } else if (!Number.isFinite(roomsNum) || roomsNum < 0) {
+      errors.rooms = "Rooms must be zero or a positive number.";
+    }
+
+    const bathroomsNum = form.bathrooms ? Number(form.bathrooms) : null;
+    if (!form.bathrooms.trim()) {
+      errors.bathrooms = "Bathrooms is required.";
+    } else if (!Number.isFinite(bathroomsNum) || bathroomsNum < 0) {
+      errors.bathrooms = "Bathrooms must be zero or a positive number.";
+    }
+
     const hasErrors = Object.keys(errors).length > 0;
     setFormErrors(errors);
     setFormAlert(
@@ -1745,31 +1759,37 @@ export default function MyProperties() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Rooms
+                          Rooms <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.rooms ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. 4"
                           value={form.rooms}
                           onChange={(e) =>
                             handleFieldChange("rooms", e.target.value)
                           }
                         />
+                        {formErrors.rooms && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.rooms}</p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Bathrooms
+                          Bathrooms <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                          className={`w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100 ${formErrors.bathrooms ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:border-red-700" : "border-gray-200 dark:border-gray-700"}`}
                           placeholder="e.g. 2"
                           value={form.bathrooms}
                           onChange={(e) =>
                             handleFieldChange("bathrooms", e.target.value)
                           }
                         />
+                        {formErrors.bathrooms && (
+                          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.bathrooms}</p>
+                        )}
                       </div>
                     </div>
 

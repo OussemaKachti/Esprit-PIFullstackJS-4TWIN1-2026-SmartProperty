@@ -15,6 +15,7 @@ export type ProfileUser = {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  avatarUrl?: string;
   role: string;
   twoFactorEnabled?: boolean;
   createdAt?: string;

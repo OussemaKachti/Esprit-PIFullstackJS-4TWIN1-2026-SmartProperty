@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth.middleware');
-const { optionalIdentityUpload } = require('../middleware/uploadIdentity.middleware');
+const { optionalRegistrationUpload, optionalAvatarUpload } = require('../middleware/uploadUser.middleware');
 const { UserRole } = require('../models/User');
 
-router.post('/register', optionalIdentityUpload, userController.register);
+router.post('/register', optionalRegistrationUpload, userController.register);
 
 // Public: list agencies (OWNER / AGENCY role users)
 router.get('/agencies', userController.getAgencies);
@@ -50,6 +50,7 @@ router.put(
     UserRole.TENANT,
     UserRole.BUYER
   ),
+  optionalAvatarUpload,
   userController.updateProfile
 );
 
@@ -77,7 +78,7 @@ router.patch(
 );
 
 router.get('/all', protect, authorize(UserRole.ADMIN), userController.getAllUsers);
-router.patch('/:id', protect, authorize(UserRole.ADMIN), userController.updateUser);
+router.patch('/:id', protect, authorize(UserRole.ADMIN), optionalAvatarUpload, userController.updateUser);
 router.delete('/:id', protect, authorize(UserRole.ADMIN), userController.deleteUser);
 
 module.exports = router;

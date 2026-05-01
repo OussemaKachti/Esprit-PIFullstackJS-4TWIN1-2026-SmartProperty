@@ -10,6 +10,14 @@ import {
   redirectToBackofficeWithToken,
 } from '../utils/auth';
 
+const API_ROOT = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+const resolveAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl) return '';
+  if (/^data:/i.test(avatarUrl) || /^https?:\/\//i.test(avatarUrl)) return avatarUrl;
+  return avatarUrl.startsWith('/') ? `${API_ROOT}${avatarUrl}` : `${API_ROOT}/${avatarUrl}`;
+};
+
 const Header = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -42,14 +50,52 @@ const Header = () => {
 
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Re-read auth state whenever the route changes
-  useEffect(() => {
+  const safeParseUser = (value) => {
     try {
-      const u = JSON.parse(localStorage.getItem('user'));
-      setCurrentUser(u || null);
+      return value ? JSON.parse(value) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const refreshCurrentUser = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('user'));
+      setCurrentUser(stored || null);
     } catch {
       setCurrentUser(null);
     }
+  };
+
+  // Re-read auth state whenever the route changes or profile data changes
+  useEffect(() => {
+    refreshCurrentUser();
+
+    const handleUserUpdated = () => refreshCurrentUser();
+    window.addEventListener('user-updated', handleUserUpdated);
+    window.addEventListener('storage', handleUserUpdated);
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('http://localhost:5000/api/users/profile', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const data = await res.json().catch(() => ({}));
+          const mergedUser = { ...(safeParseUser(localStorage.getItem('user')) || {}), ...(data.user || data) };
+          localStorage.setItem('user', JSON.stringify(mergedUser));
+          setCurrentUser(mergedUser);
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('user-updated', handleUserUpdated);
+      window.removeEventListener('storage', handleUserUpdated);
+    };
   }, [location.pathname]);
 
   const canAccessBackoffice =
@@ -82,6 +128,8 @@ const Header = () => {
     if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     return user.email || '';
   };
+
+  const avatarSrc = resolveAvatarUrl(currentUser?.avatarUrl);
 
   const changeLanguage = async (lang) => {
     await i18n.changeLanguage(lang);
@@ -209,11 +257,14 @@ const Header = () => {
                 {currentUser ? (
                   <>
                     <div className="d-flex align-items-center mb-3 p-1">
-                      <div
-                        className="text-white d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ background: 'var(--bs-primary, #0d6efd)', width: '40px', height: '40px', borderRadius: '50%', fontWeight: 700, fontSize: '14px' }}
-                      >
-                        {getUserInitials(currentUser)}
+                      <div className="flex-shrink-0 overflow-hidden d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e5e7eb' }}>
+                        {avatarSrc ? (
+                          <img src={avatarSrc} alt={getUserDisplayName(currentUser)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div className="text-white d-flex align-items-center justify-content-center" style={{ background: 'var(--bs-primary, #0d6efd)', width: '100%', height: '100%', borderRadius: '50%', fontWeight: 700, fontSize: '14px' }}>
+                            {getUserInitials(currentUser)}
+                          </div>
+                        )}
                       </div>
                       <div className="ms-2">
                         <div style={{ fontWeight: 600, fontSize: '14px', color: '#1a1a2e' }}>{getUserDisplayName(currentUser)}</div>
@@ -311,20 +362,26 @@ const Header = () => {
               {currentUser ? (
                 <div className="dropdown topbar-profile d-flex">
                   <a href="#" className="avatar" data-bs-toggle="dropdown" onClick={(e) => e.preventDefault()}>
-                    <div
-                      className="avatar-md avatar-rounded text-white d-flex align-items-center justify-content-center"
-                      style={{ background: 'var(--bs-primary, #0d6efd)', width: '40px', height: '40px', borderRadius: '50%', fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px' }}
-                    >
-                      {getUserInitials(currentUser)}
+                    <div className="avatar-md avatar-rounded overflow-hidden d-flex align-items-center justify-content-center" style={{ background: '#e5e7eb', width: '40px', height: '40px', borderRadius: '50%' }}>
+                      {avatarSrc ? (
+                        <img src={avatarSrc} alt={getUserDisplayName(currentUser)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="text-white d-flex align-items-center justify-content-center" style={{ background: 'var(--bs-primary, #0d6efd)', width: '100%', height: '100%', borderRadius: '50%', fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px' }}>
+                          {getUserInitials(currentUser)}
+                        </div>
+                      )}
                     </div>
                   </a>
                   <div className="dropdown-menu dropdown-menu-end">
                     <div className="d-flex align-items-center user-profile">
-                      <div
-                        className="avatar-md avatar-rounded text-white d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ background: 'var(--bs-primary, #0d6efd)', width: '42px', height: '42px', borderRadius: '50%', fontWeight: 700, fontSize: '15px' }}
-                      >
-                        {getUserInitials(currentUser)}
+                      <div className="avatar-md avatar-rounded overflow-hidden d-flex align-items-center justify-content-center flex-shrink-0" style={{ background: '#e5e7eb', width: '42px', height: '42px', borderRadius: '50%' }}>
+                        {avatarSrc ? (
+                          <img src={avatarSrc} alt={getUserDisplayName(currentUser)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div className="text-white d-flex align-items-center justify-content-center" style={{ background: 'var(--bs-primary, #0d6efd)', width: '100%', height: '100%', borderRadius: '50%', fontWeight: 700, fontSize: '15px' }}>
+                            {getUserInitials(currentUser)}
+                          </div>
+                        )}
                       </div>
                       <div className="ms-2">
                         <h6 className="mb-1">{getUserDisplayName(currentUser)}</h6>

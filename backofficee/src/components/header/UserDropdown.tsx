@@ -13,9 +13,24 @@ type User = {
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const FRONTEND_SIGNIN_URL = import.meta.env.VITE_FRONTEND_URL || "http://localhost:3000";
 
+const resolveAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return "/images/user/owner.jpg";
+  if (/^data:/i.test(avatarUrl) || /^https?:\/\//i.test(avatarUrl)) return avatarUrl;
+  const base = API_URL.replace(/\/api$/, "");
+  return avatarUrl.startsWith("/") ? `${base}${avatarUrl}` : `${base}/${avatarUrl}`;
+};
+
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+
+  const safeParseUser = (value: string | null) => {
+    try {
+      return value ? JSON.parse(value) : null;
+    } catch {
+      return null;
+    }
+  };
 
   // Bootstrap auth: read token from URL, store it, then load current user
   useEffect(() => {
@@ -34,16 +49,13 @@ export default function UserDropdown() {
     // 2) Try to hydrate user from localStorage if already stored
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        // ignore parse errors and refetch
-      }
+      const parsedUser = safeParseUser(storedUser);
+      if (parsedUser) setUser(parsedUser);
     }
 
-    // 3) If we have a token but no user yet, fetch profile from backend
+    // 3) Always refresh profile from backend when a token is available so avatar/name stay current
     const token = tokenFromUrl || localStorage.getItem("token");
-    if (token && !storedUser) {
+    if (token) {
       fetch(`${API_URL}/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,6 +65,7 @@ export default function UserDropdown() {
           if (!res.ok) throw new Error("Failed to fetch profile");
           const data = await res.json();
           const userData: User = {
+            ...(safeParseUser(storedUser) || {}),
             ...(data.user || data),
             ...(roleFromUrl ? { role: roleFromUrl.toUpperCase() } : {}),
           };
@@ -63,6 +76,12 @@ export default function UserDropdown() {
           console.error("Failed to load user profile:", err);
         });
     }
+
+    const handleUserUpdated = () => {
+      const updatedUser = safeParseUser(localStorage.getItem("user"));
+      if (updatedUser) setUser(updatedUser);
+    };
+    window.addEventListener("user-updated", handleUserUpdated);
 
     if (tokenFromUrl || roleFromUrl) {
       // Clean URL (remove ?token=... and ?role=...)
@@ -75,6 +94,10 @@ export default function UserDropdown() {
         window.location.hash;
       window.history.replaceState({}, "", newUrl);
     }
+
+    return () => {
+      window.removeEventListener("user-updated", handleUserUpdated);
+    };
   }, []);
 
   const displayName =
@@ -84,7 +107,7 @@ export default function UserDropdown() {
 
   const displayEmail = user?.email || "";
 
-  const avatarSrc = user?.avatarUrl || "/images/user/owner.jpg";
+  const avatarSrc = resolveAvatarUrl(user?.avatarUrl);
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -122,8 +145,8 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src={avatarSrc} alt={displayName} />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-gray-100 flex items-center justify-center">
+          <img src={avatarSrc} alt={displayName} className="h-full w-full object-cover" />
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">

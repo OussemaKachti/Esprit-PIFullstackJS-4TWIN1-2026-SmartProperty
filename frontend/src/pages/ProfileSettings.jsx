@@ -15,6 +15,7 @@ import LocalizedLink from '../components/LocalizedLink';
 const ProfileSettings = () => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+  const API_ROOT = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,6 +33,14 @@ const ProfileSettings = () => {
   });
 
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+
+  const resolveAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl) return '';
+    if (/^data:/i.test(avatarUrl) || /^https?:\/\//i.test(avatarUrl)) return avatarUrl;
+    const base = API_ROOT.replace(/\/api$/, '');
+    return avatarUrl.startsWith('/') ? `${base}${avatarUrl}` : `${base}/${avatarUrl}`;
+  };
 
   useEffect(() => {
     const localUser = getUserData();
@@ -57,6 +66,7 @@ const ProfileSettings = () => {
           phone: user?.phone || '',
           createdAt: user?.createdAt || '',
         });
+        setAvatarPreview(resolveAvatarUrl(user?.avatarUrl) || savedAvatar || '');
         localStorage.setItem('user', JSON.stringify(user));
       } catch (err) {
         setAlert({ type: 'danger', message: err.message || 'Unable to load profile.' });
@@ -87,11 +97,11 @@ const ProfileSettings = () => {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const value = String(reader.result || '');
       setAvatarPreview(value);
-      localStorage.setItem('profileAvatarPreview', value);
     };
     reader.readAsDataURL(file);
   };
@@ -101,14 +111,20 @@ const ProfileSettings = () => {
     setSaving(true);
     setAlert({ type: '', message: '' });
     try {
-      const payload = {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        phone: form.phone,
-      };
+      const payload = new FormData();
+      payload.append('firstName', form.firstName);
+      payload.append('lastName', form.lastName);
+      payload.append('phone', form.phone);
+      if (avatarFile) payload.append('avatar', avatarFile);
       const updated = await updateCurrentUserProfile(payload);
       setForm((prev) => ({ ...prev, ...updated }));
+      setAvatarPreview(resolveAvatarUrl(updated?.avatarUrl) || avatarPreview);
+      setAvatarFile(null);
       localStorage.setItem('user', JSON.stringify(updated));
+      if (updated?.avatarUrl) {
+        localStorage.setItem('profileAvatarPreview', resolveAvatarUrl(updated.avatarUrl));
+      }
+      window.dispatchEvent(new Event('user-updated'));
       setAlert({ type: 'success', message: 'Profile updated successfully.' });
     } catch (err) {
       setAlert({ type: 'danger', message: err.message || 'Failed to update profile.' });
@@ -228,6 +244,7 @@ const ProfileSettings = () => {
                     Upload Photo
                     <input type="file" accept="image/*" hidden onChange={handleAvatarChange} />
                   </label>
+                  <div className="text-muted small mt-2">PNG, JPG or WEBP up to 5 MB.</div>
                 </div>
               </div>
             </div>
