@@ -111,5 +111,8 @@ export const redirectToBackofficeWithToken = (backofficeUrl, token, role) => {
   const target = new URL(baseUrl);
   target.pathname = getBackofficePathByRole(role);
   target.searchParams.set('token', token);
+  if (role) {
+    target.searchParams.set('role', normalizeRole(role));
+  }
   window.location.href = target.toString();
 };

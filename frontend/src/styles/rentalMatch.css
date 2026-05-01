@@ -1,704 +1,784 @@
 .rental-match-page {
-  background: #f8fbff;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  font-family: inherit;
+  color: #212529;
 }
 
 .rental-match-content {
-  padding-top: 20px;
+  padding-top: 40px;
+  padding-bottom: 60px;
 }
 
+/* 
+ * HERO / OVERVIEW
+ */
 .rental-match-overview {
-  background: #fff;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  margin-bottom: 24px;
 }
 
 .rental-match-hero__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .match-stat {
-  padding: 10px 12px;
-  border: 1px solid #edf2f7;
-  border-radius: 10px;
+  flex: 1;
+  padding: 16px 20px;
   background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
 }
 
 .match-stat__label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 0.78rem;
-  color: #5f6b7a;
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .match-stat__value {
-  display: block;
-  color: #212529;
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  color: #212529;
 }
 
 .match-stat__note {
+  font-size: 0.8rem;
+  color: #adb5bd;
+  margin-top: 4px;
   display: block;
-  margin-top: 2px;
-  color: #6b7685;
-  font-size: 0.85rem;
 }
 
-.rental-match-hero__signals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.rental-match-signal {
-  padding: 10px 12px;
-  border: 1px solid #edf2f7;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.rental-match-signal__label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 0.78rem;
-  color: #5f6b7a;
-  font-weight: 600;
-}
-
-.rental-match-signal strong {
-  display: block;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: #212529;
-  font-weight: 500;
-}
-
+/* 
+ * GRID & PANELS
+ */
 .rental-match-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
+  gap: 24px;
   align-items: start;
 }
 
 .rental-panel {
-  background: #fff;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  overflow: hidden;
 }
 
-.rental-panel--candidate {
-  grid-column: span 5;
-}
-
-.rental-panel--credit {
-  grid-column: span 4;
-}
-
+.rental-panel--candidate { grid-column: span 5; }
+.rental-panel--credit { grid-column: span 4; }
 .rental-panel--insights {
   grid-column: span 3;
   position: sticky;
   top: 24px;
-  align-self: start;
 }
 
 .rental-panel__header {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid #eef3f8;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f3f5;
+  background-color: #fff;
 }
 
 .rental-panel__eyebrow {
-  margin: 0 0 4px;
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d6efd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
 .rental-panel__title {
-  margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #212529;
+  margin: 0;
 }
 
 .rental-panel__description {
-  margin: 6px 0 0;
+  font-size: 0.875rem;
   color: #6c757d;
+  margin-top: 6px;
+  margin-bottom: 0;
   line-height: 1.5;
 }
 
-.rental-panel__body {
-  padding: 14px;
+.rental-panel__body { 
+  padding: 24px; 
 }
 
-.match-field {
-  margin-bottom: 14px;
-}
+/* 
+ * FORMS
+ */
+.match-field { margin-bottom: 16px; }
 
 .match-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .match-field .form-label {
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #212529;
-  margin-bottom: 6px;
+  color: #495057;
+  margin-bottom: 8px;
 }
 
-.rental-input,
-.rental-input.form-control,
-.rental-input.form-select {
-  min-height: 44px;
-  border-radius: 8px;
-  border-color: #dee2e6;
-  box-shadow: none;
+.rental-input {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #212529;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }
 
 .rental-input:focus {
+  color: #212529;
+  background-color: #fff;
   border-color: #86b7fe;
-  box-shadow: 0 0 0 0.18rem rgba(13, 110, 253, 0.12);
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
 }
 
-.match-section {
-  margin-top: 6px;
-}
+/* 
+ * CHIPS & TOGGLES
+ */
+.match-section { margin-top: 8px; }
 
 .match-section__heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .match-section__label {
-  margin: 0;
-  font-size: 0.8rem;
-  color: #6c757d;
+  font-size: 0.875rem;
   font-weight: 600;
+  color: #495057;
+  margin: 0;
 }
 
 .match-section__count {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6c757d;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
 }
 
-.rental-chip-group,
-.match-doc-grid,
-.match-breakdown,
-.credit-breakdown-grid,
-.match-summary-stack {
+.rental-chip-group, .match-doc-grid {
   display: grid;
   gap: 8px;
 }
 
-.rental-chip-group {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+.rental-chip-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.match-doc-grid { grid-template-columns: 1fr; }
 
-.match-doc-grid {
-  grid-template-columns: 1fr;
-}
-
-.rental-chip,
-.credit-doc-chip {
-  width: 100%;
-  border: 1px solid #dee2e6;
-  background: #fff;
-  border-radius: 8px;
+.rental-chip, .credit-doc-chip {
   padding: 10px 12px;
-  text-align: left;
-  color: #212529;
+  background: #ffffff;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 500;
-}
-
-.rental-chip.active,
-.credit-doc-chip.active {
-  border-color: #9ec5fe;
-  background: #eef5ff;
-}
-
-.rental-chip--toggle {
-  display: inline-flex;
+  color: #495057;
+  cursor: pointer;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
 }
 
-.rental-chip__indicator,
-.credit-doc-chip__indicator {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: inline-flex;
+.rental-chip:hover, .credit-doc-chip:hover {
+  background: #f8f9fa;
+}
+
+.rental-chip.active, .credit-doc-chip.active {
+  background: #f0f7ff;
+  border-color: #0d6efd;
+  color: #0d6efd;
+}
+
+.rental-chip__indicator, .credit-doc-chip__indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid #adb5bd;
+  display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid #ced4da;
-  background: #fff;
-  color: #212529;
   font-size: 10px;
-  font-weight: 700;
+  color: transparent;
+  background: #fff;
 }
 
-.rental-chip__label,
-.credit-doc-chip__label {
-  color: #212529;
+.rental-chip.active .rental-chip__indicator,
+.credit-doc-chip.active .credit-doc-chip__indicator {
+  border-color: #0d6efd;
+  background: #0d6efd;
+  color: #fff;
 }
 
+/* 
+ * INSIGHTS PANEL COMPONENT
+ */
 .match-summary-stack {
-  grid-template-columns: 1fr;
-  margin-bottom: 12px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
 .match-summary-tile {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid #edf2f7;
-  border-radius: 8px;
-  background: #fff;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
 }
 
 .match-summary-tile span {
-  color: #6c757d;
   font-size: 0.85rem;
+  color: #495057;
 }
 
 .match-summary-tile strong {
-  color: #212529;
   font-size: 0.9rem;
+  color: #212529;
   font-weight: 600;
-  text-align: right;
 }
 
 .rental-tip-card {
-  padding: 10px 12px;
-  border: 1px solid #edf2f7;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border: 1px solid #e9ecef;
   background: #fff;
-  margin-bottom: 8px;
+  border-left: 3px solid transparent;
+}
+
+.rental-tip-card--primary {
+  border-left-color: #0d6efd;
+}
+
+.rental-tip-card--secondary {
+  border-left-color: #6c757d;
 }
 
 .rental-tip-card__label {
-  margin: 0 0 4px;
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #495057;
+  letter-spacing: 0.5px;
+  margin: 0 0 4px 0;
 }
 
 .rental-tip-card__text {
-  margin: 0;
-  color: #495057;
+  font-size: 0.875rem;
   line-height: 1.5;
+  color: #495057;
+  margin: 0;
 }
 
 .rental-cta-stack {
-  margin-top: 12px;
+  margin-top: 24px;
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .rental-cta-button {
-  min-height: 46px;
-  border-radius: 8px;
+  min-height: 48px;
+  border-radius: 6px;
+  background: #212529;
+  border: 1px solid #212529;
+  font-size: 1rem;
   font-weight: 600;
+  color: #fff;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.rental-cta-button:hover:not(:disabled) {
+  background: #343a40;
+  border-color: #343a40;
+}
+
+.rental-cta-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .rental-cta-note {
-  margin: 0;
-  color: #6c757d;
+  text-align: center;
   font-size: 0.85rem;
-  line-height: 1.4;
+  color: #6c757d;
+  margin: 0;
 }
 
-.rental-results-section,
-.credit-verdict-section {
-  margin-top: 24px;
+/* 
+ * RESULTS SECTION
+ */
+.rental-results-section, .credit-verdict-section {
+  margin-top: 48px;
+}
+
+.rental-results-header {
+  margin-bottom: 24px;
 }
 
 .section-heading {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 12px;
 }
 
 .section-heading__eyebrow {
-  margin: 0 0 4px;
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d6efd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 6px 0;
 }
 
 .section-heading__title {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #212529;
+  font-size: 1.5rem;
   font-weight: 700;
+  color: #212529;
+  margin: 0;
 }
 
 .section-heading__copy {
-  margin: 6px 0 0;
-  max-width: 720px;
+  font-size: 0.95rem;
   color: #6c757d;
-  line-height: 1.5;
+  margin: 6px 0 0 0;
+  max-width: 600px;
 }
 
 .results-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  background: #eef5ff;
-  color: #2f5da8;
-  border: 1px solid #d6e7ff;
-  border-radius: 999px;
+  background: #f8f9fa;
+  color: #495057;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
+/* MATCH CARDS */
 .match-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 24px;
 }
 
 .match-card {
   background: #fff;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.match-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
 }
 
 .match-card__top {
+  padding: 20px 20px 0;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 14px 0;
+  align-items: flex-start;
 }
 
 .match-card__eyebrow {
-  margin: 0 0 4px;
-  color: #6c757d;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  color: #6c757d;
+  margin: 0 0 4px 0;
 }
 
 .match-card__city {
-  margin: 0;
-  color: #212529;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
+  color: #212529;
+  margin: 0;
 }
 
 .match-card__category {
-  margin: 4px 0 0;
+  font-size: 0.85rem;
   color: #6c757d;
-  font-size: 0.8rem;
-  font-weight: 500;
+  margin: 4px 0 0 0;
 }
 
+/* Simple circular score indicator */
 .match-score-ring {
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  display: block;
-  box-shadow: none;
-  background: none !important;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  position: relative;
 }
 
 .match-score-ring__inner {
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  background: none;
-  display: block;
-  text-align: right;
-}
-
-.match-score-ring__value {
-  display: inline;
-  color: #212529;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  color: #212529;
 }
 
 .match-score-ring__suffix {
+  font-size: 0.65rem;
   color: #6c757d;
-  font-size: 0.8rem;
-  font-weight: 500;
+  margin-left: 1px;
 }
 
-.match-card__body {
-  padding: 10px 14px 14px;
+/* Coloring based on tone class - keeping it subtle */
+.match-card--excellent .match-score-ring { border-color: #198754; }
+.match-card--good .match-score-ring { border-color: #0d6efd; }
+.match-card--fair .match-score-ring { border-color: #ffc107; }
+
+.match-card__body { 
+  padding: 16px 20px 20px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .match-card__price {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: #212529;
-  font-weight: 600;
 }
 
 .match-card__facts {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 
 .match-fact {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
   padding: 4px 8px;
-  color: #495057;
-  font-size: 0.82rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
   font-weight: 500;
-  background: #f8fbff;
-  border: 1px solid #edf2f7;
-  border-radius: 6px;
+  color: #495057;
+  display: flex;
+  align-items: center;
 }
 
 .match-card__explanation {
-  margin: 0 0 10px;
+  font-size: 0.875rem;
   color: #495057;
   line-height: 1.5;
+  margin: 0 0 16px 0;
+  flex-grow: 1;
 }
 
 .match-breakdown {
-  grid-template-columns: 1fr;
-  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
 }
 
 .match-breakdown__pill {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #e9ecef;
   padding: 4px 8px;
-  background: #f2f6fb;
-  color: #46576d;
-  border: 1px solid #e2ebf5;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .match-card__footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  border-top: 1px solid #f1f3f5;
+  padding-top: 16px;
+}
+
+.match-card__footer .btn {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .match-card__badge {
-  display: inline-flex;
-  align-items: center;
+  background: #eef2f5;
+  color: #495057;
   padding: 4px 8px;
-  background: #eef5ff;
-  color: #2f5da8;
-  border: 1px solid #d6e7ff;
-  border-radius: 999px;
-  font-size: 0.78rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
+/* Empty States */
 .rental-state-card {
-  display: grid;
-  place-items: center;
-  text-align: center;
-  padding: 24px 16px;
-  color: #495057;
   background: #fff;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #6c757d;
 }
 
 .rental-state-card__icon {
-  font-size: 36px;
-  color: #6c757d;
-  margin-bottom: 8px;
+  font-size: 32px;
+  color: #adb5bd;
+  margin-bottom: 12px;
 }
 
 .rental-state-card h3 {
-  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
   color: #212529;
-  font-weight: 700;
+  margin: 0 0 8px 0;
 }
 
 .rental-state-card p {
-  margin: 8px 0 0;
-  max-width: 480px;
+  font-size: 0.9rem;
   line-height: 1.5;
-  color: #6c757d;
+  max-width: 440px;
+  margin: 0 auto;
 }
 
+/* CREDIT VERDICT */
 .credit-verdict-card {
   background: #fff;
-  color: #212529;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid #e9ecef;
 }
 
-.credit-verdict-card--accept {
-  border-left: 3px solid #2e8b57;
-}
-
-.credit-verdict-card--warn {
-  border-left: 3px solid #d89b2b;
-}
-
-.credit-verdict-card--danger {
-  border-left: 3px solid #5b7dbd;
-}
+.credit-verdict-card--accept { border-top: 4px solid #198754; }
+.credit-verdict-card--warn { border-top: 4px solid #ffc107; }
+.credit-verdict-card--danger { border-top: 4px solid #dc3545; }
 
 .credit-verdict-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .credit-verdict-card__eyebrow {
-  margin: 0 0 4px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
   color: #6c757d;
-  font-weight: 600;
+  margin: 0 0 6px 0;
 }
 
 .credit-verdict-card__title {
-  margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #212529;
+  margin: 0;
 }
 
 .credit-verdict-card__copy {
-  margin: 8px 0 0;
-  max-width: 760px;
+  font-size: 0.95rem;
   color: #495057;
   line-height: 1.5;
+  margin: 8px 0 0 0;
+  max-width: 600px;
 }
 
 .credit-score-badge {
-  min-width: auto;
-  padding: 0;
   text-align: right;
-  background: none;
 }
 
 .credit-score-badge strong {
-  display: inline;
-  font-size: 1.2rem;
-  line-height: 1;
+  font-size: 2rem;
   font-weight: 700;
+  color: #212529;
+  display: inline-block;
+  line-height: 1;
 }
 
 .credit-score-badge span {
+  font-size: 0.9rem;
   color: #6c757d;
-  font-size: 0.82rem;
   font-weight: 500;
+  margin-left: 2px;
 }
 
 .credit-verdict-card__note {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 8px 10px;
+  align-items: flex-start;
+  gap: 10px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 12px 16px;
+  border-radius: 6px;
   color: #495057;
-  background: #f8fbff;
-  border: 1px solid #edf2f7;
-  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-top: 8px;
 }
 
 .credit-verdict-card__note i {
-  font-size: 18px;
+  font-size: 20px;
+  color: #6c757d;
 }
 
 .credit-breakdown-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+  border-top: 1px solid #e9ecef;
+  padding-top: 24px;
 }
 
 .credit-breakdown-item {
-  padding: 8px 10px;
-  background: #fff;
-  border: 1px solid #edf2f7;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .credit-breakdown-item__label {
-  display: block;
   font-size: 0.75rem;
-  color: #6c757d;
   font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
 }
 
 .credit-breakdown-item__value {
-  display: block;
-  margin-top: 4px;
-  color: #212529;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 1.4;
+  color: #212529;
+  margin-top: 4px;
 }
 
-@media (max-width: 1399px) {
-  .rental-panel--candidate,
-  .rental-panel--credit,
-  .rental-panel--insights {
-    grid-column: span 12;
-  }
+/* AI MATCH BANNER FOR LISTINGS */
+.ai-match-banner {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
 
-  .rental-panel--insights {
-    position: static;
-  }
+.ai-match-banner-content {
+  max-width: 600px;
+}
 
-  .credit-breakdown-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.ai-match-banner h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #212529;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-match-banner h3 i {
+  color: #0d6efd;
+}
+
+.ai-match-banner p {
+  font-size: 0.95rem;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-match-btn {
+  background: #0d6efd;
+  border: 1px solid #0d6efd;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ai-match-btn:hover {
+  background: #0b5ed7;
+  border-color: #0a58ca;
+  color: #fff;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .rental-panel--candidate, .rental-panel--credit, .rental-panel--insights { 
+    grid-column: span 12; 
+  }
+  .rental-panel--insights { 
+    position: static; 
+  }
+  .match-grid { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
   }
 }
 
 @media (max-width: 991px) {
-  .rental-match-hero__stats,
-  .rental-match-hero__signals,
-  .match-grid,
-  .credit-breakdown-grid,
-  .match-field-grid,
-  .rental-chip-group {
-    grid-template-columns: 1fr;
-  }
-
-  .section-heading,
-  .credit-verdict-card__header,
-  .match-card__top,
-  .match-card__footer,
-  .match-summary-tile {
+  .ai-match-banner {
     flex-direction: column;
+    text-align: center;
+    gap: 20px;
+    padding: 24px;
+  }
+  .credit-breakdown-grid { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
+  }
+  .section-heading, .credit-verdict-card__header { 
+    flex-direction: column; 
+    gap: 16px; 
     align-items: flex-start;
+  }
+  .credit-score-badge { 
+    text-align: left; 
   }
 }
 
-@media (max-width: 575px) {
-  .rental-match-overview .card-body,
-  .rental-panel__body,
-  .rental-panel__header,
-  .credit-verdict-card,
-  .match-card__body,
-  .match-card__top {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  .credit-score-badge {
-    width: 100%;
-    text-align: left;
-  }
+@media (max-width: 768px) {
+  .rental-match-grid { gap: 16px; }
+  .match-grid { grid-template-columns: 1fr; }
+  .match-field-grid { grid-template-columns: 1fr; }
+  .rental-chip-group { grid-template-columns: 1fr; }
 }

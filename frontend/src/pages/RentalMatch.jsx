@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchMatches, fetchCreditScore } from '../api/matching';
 import { getCurrentUser } from '../api/user';
@@ -122,12 +122,26 @@ function buildCreditSummary(result, t) {
 
 export default function RentalMatch() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [candidate, setCandidate] = useState(initialCandidate);
   const [credit, setCredit] = useState(initialCredit);
   const [matches, setMatches] = useState([]);
   const [creditResult, setCreditResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const city = searchParams.get('city');
+    const budget = searchParams.get('budget_max') || searchParams.get('budget');
+    if (city || budget) {
+      setCandidate((prev) => ({
+        ...prev,
+        city: city || prev.city,
+        budget_max: budget ? Number(budget) || prev.budget_max : prev.budget_max,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const enableScrolling = () => {
@@ -299,6 +313,41 @@ export default function RentalMatch() {
 
         <div className="content rental-match-content">
           <div className="container">
+
+            <div className="rental-match-overview p-4 p-lg-5 mb-4">
+              <div className="row align-items-center g-4">
+                <div className="col-lg-7">
+                  <h2 className="mb-2" style={{ fontWeight: 800 }}>
+                    {t('rentalMatch.hero.title', { defaultValue: 'Find your best rental match' })}
+                  </h2>
+                  <p className="text-muted mb-0" style={{ lineHeight: 1.7 }}>
+                    {t('rentalMatch.hero.subtitle', {
+                      defaultValue:
+                        'Tell us your needs and documents. We will recommend the most suitable listings and provide a clear credit decision.',
+                    })}
+                  </p>
+                </div>
+                <div className="col-lg-5">
+                  <div className="rental-match-hero__stats">
+                    <div className="match-stat">
+                      <span className="match-stat__label">{t('rentalMatch.hero.stats.city', { defaultValue: 'City' })}</span>
+                      <span className="match-stat__value">{candidate.city || t('rentalMatch.insights.anyCity')}</span>
+                      <span className="match-stat__note">{t('rentalMatch.hero.stats.cityNote', { defaultValue: 'Used to prioritize nearby listings' })}</span>
+                    </div>
+                    <div className="match-stat">
+                      <span className="match-stat__label">{t('rentalMatch.hero.stats.budget', { defaultValue: 'Budget' })}</span>
+                      <span className="match-stat__value">{formatTnd(candidate.budget_max)}</span>
+                      <span className="match-stat__note">{t('rentalMatch.hero.stats.budgetNote', { defaultValue: 'Maximum monthly rent' })}</span>
+                    </div>
+                    <div className="match-stat">
+                      <span className="match-stat__label">{t('rentalMatch.hero.stats.top', { defaultValue: 'Top matches' })}</span>
+                      <span className="match-stat__value">3</span>
+                      <span className="match-stat__note">{t('rentalMatch.hero.stats.topNote', { defaultValue: 'Ranked by fit score' })}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <form onSubmit={handleSubmit} className="rental-match-grid">
               <section className="rental-panel rental-panel--candidate">

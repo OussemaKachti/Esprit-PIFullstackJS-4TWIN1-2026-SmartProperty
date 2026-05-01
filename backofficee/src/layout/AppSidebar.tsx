@@ -114,20 +114,24 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
 
-  // Get user role from localStorage
-  const [userRole, setUserRole] = useState<string>("");
-
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      try {
+  const getInitialUserRole = () => {
+    try {
+      const user = localStorage.getItem("user");
+      if (user) {
         const userData = JSON.parse(user);
-        setUserRole(userData.role || "");
-      } catch (error) {
-        console.error("Error parsing user data:", error);
+        return String(userData.role || "").toUpperCase();
       }
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const roleFromUrl = searchParams.get("role");
+      return String(roleFromUrl || "").toUpperCase();
+    } catch (error) {
+      console.error("Error reading initial user role:", error);
+      return "";
     }
-  }, []);
+  };
+
+  const [userRole] = useState<string>(getInitialUserRole);
 
   // Determine which nav items to show based on user role
   const navItems = userRole === "ADMIN" ? adminNavItems : regularNavItems;

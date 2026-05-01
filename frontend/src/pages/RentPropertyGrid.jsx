@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getProperties, getImageUrl, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
 import PropertyListPagination from '../components/PropertyListPagination';
 import LocalizedLink from '../components/LocalizedLink';
+import '../styles/rentalMatch.css';
 
 const GRID_PAGE_SIZE = 12;
 
@@ -252,6 +253,14 @@ const RentPropertyGrid = () => {
 
                                 <div className="col-lg-9">
                                     <div className="d-flex align-items-center gap-3 flex-wrap justify-content-lg-end flex-lg-row flex-md-row flex-column">
+                                        <Link
+                                            to={`/rental-match${searchParams.get('city') ? `?city=${encodeURIComponent(searchParams.get('city'))}` : ''}`}
+                                            className="btn btn-dark d-inline-flex align-items-center"
+                                            style={{ borderRadius: 999, padding: '10px 16px' }}
+                                        >
+                                            <i className="material-icons-outlined me-2">auto_awesome</i>
+                                            {t('propertyPages.rentalMatchCta', { defaultValue: 'Rental Match' })}
+                                        </Link>
                                         <div className="result-list d-flex d-block flex-lg-row flex-md-row flex-column align-items-center gap-2">
                                             <h5>{t('propertyPages.sortBy')}</h5>
                                             <div className="result-select">
@@ -291,6 +300,19 @@ const RentPropertyGrid = () => {
 
                         </div>
                     </div> 
+
+                    {/* AI Match Banner */}
+                    <div className="ai-match-banner mb-4">
+                        <div className="ai-match-banner-content">
+                            <h3><i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyPages.tryRentalMatch', { defaultValue: 'Try our Rental Match Engine' })}</h3>
+                            <p>{t('propertyPages.tryRentalMatchDesc', { defaultValue: 'Tell us your needs and verify your credit score. We will instantly find and rank the best rental properties for you.' })}</p>
+                        </div>
+                        <div className="ai-match-banner-action">
+                            <Link to={`/rental-match${searchParams.get('city') ? `?city=${encodeURIComponent(searchParams.get('city'))}` : ''}`} className="ai-match-btn">
+                                {t('propertyPages.startMatching', { defaultValue: 'Start Matching' })}
+                            </Link>
+                        </div>
+                    </div>
 
                     {/* Loading State */}
                     {loading && (

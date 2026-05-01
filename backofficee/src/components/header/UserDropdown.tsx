@@ -22,16 +22,13 @@ export default function UserDropdown() {
     // 1) Read token from query string (coming from frontend redirect)
     const searchParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = searchParams.get("token");
+    const roleFromUrl = searchParams.get("role");
     if (tokenFromUrl) {
       localStorage.setItem("token", tokenFromUrl);
-      // Clean URL (remove ?token=...)
-      searchParams.delete("token");
-      const newSearch = searchParams.toString();
-      const newUrl =
-        window.location.pathname +
-        (newSearch ? `?${newSearch}` : "") +
-        window.location.hash;
-      window.history.replaceState({}, "", newUrl);
+    }
+
+    if (roleFromUrl) {
+      localStorage.setItem("userRole", roleFromUrl.toUpperCase());
     }
 
     // 2) Try to hydrate user from localStorage if already stored
@@ -55,13 +52,28 @@ export default function UserDropdown() {
         .then(async (res) => {
           if (!res.ok) throw new Error("Failed to fetch profile");
           const data = await res.json();
-          const userData: User = data.user || data;
+          const userData: User = {
+            ...(data.user || data),
+            ...(roleFromUrl ? { role: roleFromUrl.toUpperCase() } : {}),
+          };
           setUser(userData);
           localStorage.setItem("user", JSON.stringify(userData));
         })
         .catch((err) => {
           console.error("Failed to load user profile:", err);
         });
+    }
+
+    if (tokenFromUrl || roleFromUrl) {
+      // Clean URL (remove ?token=... and ?role=...)
+      searchParams.delete("token");
+      searchParams.delete("role");
+      const newSearch = searchParams.toString();
+      const newUrl =
+        window.location.pathname +
+        (newSearch ? `?${newSearch}` : "") +
+        window.location.hash;
+      window.history.replaceState({}, "", newUrl);
     }
   }, []);
 
