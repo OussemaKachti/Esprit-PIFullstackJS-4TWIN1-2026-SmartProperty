@@ -36,6 +36,9 @@ type LinkLandingFlowState =
     | { phase: 'choose'; sourceId: string; targetId: string; targetName: string; linkId: string; chainBackLink: boolean }
     | { phase: 'aim'; sourceId: string; targetId: string; targetName: string; linkId: string; chainBackLink: boolean };
 
+const HOTSPOT_PLACEMENT_ARM_DELAY_MS = 450;
+const HOTSPOT_PLACEMENT_MAX_DRIFT_PX = 8;
+
 const PanoViewer = forwardRef(function PanoViewer(
     { panoramas, onSceneChange, autorotateEnabled, apiBaseUrl }: { panoramas: Panorama[], onSceneChange: (name: string, sceneId: string) => void, autorotateEnabled: boolean, apiBaseUrl: string },
     ref
@@ -46,6 +49,9 @@ const PanoViewer = forwardRef(function PanoViewer(
     const autorotateRef = useRef<any>(null);
     const autorotateEnabledRef = useRef(autorotateEnabled);
     const placingCallbackRef = useRef<((coords: { yaw: number, pitch: number }) => void) | null>(null);
+    const placementReadyAtRef = useRef(0);
+    const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+    const pointerMovedRef = useRef(false);
 
     useEffect(() => {
         if (!panoRef.current || panoramas.length === 0) return;
@@ -96,18 +102,50 @@ const PanoViewer = forwardRef(function PanoViewer(
         }
 
         const panoEl = panoRef.current;
+        function handlePointerDown(e: PointerEvent) {
+            pointerDownRef.current = { x: e.clientX, y: e.clientY };
+            pointerMovedRef.current = false;
+        }
+
+        function handlePointerMove(e: PointerEvent) {
+            if (!pointerDownRef.current) return;
+            const dx = e.clientX - pointerDownRef.current.x;
+            const dy = e.clientY - pointerDownRef.current.y;
+            if (Math.hypot(dx, dy) > HOTSPOT_PLACEMENT_MAX_DRIFT_PX) {
+                pointerMovedRef.current = true;
+            }
+        }
+
+        function handlePointerUp() {
+            window.setTimeout(() => {
+                pointerDownRef.current = null;
+                pointerMovedRef.current = false;
+            }, 0);
+        }
+
         function handleCanvasClick(e: MouseEvent) {
             if (!placingCallbackRef.current) return;
+            if (Date.now() < placementReadyAtRef.current || pointerMovedRef.current) return;
+
             const coords = viewer.view().screenToCoordinates({
                 x: e.clientX,
                 y: e.clientY,
             });
             placingCallbackRef.current(coords);
             placingCallbackRef.current = null;
+            placementReadyAtRef.current = 0;
         }
+        panoEl.addEventListener('pointerdown', handlePointerDown);
+        panoEl.addEventListener('pointermove', handlePointerMove);
+        panoEl.addEventListener('pointerup', handlePointerUp);
+        panoEl.addEventListener('pointercancel', handlePointerUp);
         panoEl.addEventListener('click', handleCanvasClick);
 
         return () => {
+            panoEl.removeEventListener('pointerdown', handlePointerDown);
+            panoEl.removeEventListener('pointermove', handlePointerMove);
+            panoEl.removeEventListener('pointerup', handlePointerUp);
+            panoEl.removeEventListener('pointercancel', handlePointerUp);
             panoEl.removeEventListener('click', handleCanvasClick);
             if (viewerRef.current) {
                 viewerRef.current.destroy();
@@ -174,9 +212,16 @@ const PanoViewer = forwardRef(function PanoViewer(
         },
         startPlacingHotspot(callback: (coords: { yaw: number, pitch: number }) => void) {
             placingCallbackRef.current = callback;
+            placementReadyAtRef.current = Date.now() + HOTSPOT_PLACEMENT_ARM_DELAY_MS;
+            pointerDownRef.current = null;
+            pointerMovedRef.current = false;
+            viewerRef.current?.stopMovement();
         },
         cancelPlacingHotspot() {
             placingCallbackRef.current = null;
+            placementReadyAtRef.current = 0;
+            pointerDownRef.current = null;
+            pointerMovedRef.current = false;
         },
         addLinkHotspot(yaw: number, pitch: number, targetId: string, opts?: { targetViewParameters?: ViewParams; linkId?: string }) {
             const viewer = viewerRef.current;
@@ -427,8 +472,8 @@ export default function PanoramaManager({ propertyId, initialPanoramas, onSave, 
             window.setTimeout(() => {
                 const sourceScene = updated.find((s: any) => s.id === sourceId);
                 if (sourceScene) handleAddHotspot(sourceId, sourceScene.name, false);
-            }, 500);
-        }, 500);
+            }, 800);
+        }, 700);
     }
 
     const handleAddHotspot = (targetId: string, targetName: string, chainBackLink = true) => {
@@ -778,7 +823,7 @@ export default function PanoramaManager({ propertyId, initialPanoramas, onSave, 
                         onClick={() => { viewerRef.current?.cancelPlacingHotspot(); setPlacingHotspotFor(null); }}
                     >
                         <span>
-                            📍 Click on the panorama to place the <strong>{placingHotspotFor.name}</strong> link — click here to cancel
+                            Pan to aim, then click once on the panorama to place the <strong>{placingHotspotFor.name}</strong> link. Dragging will not place it. Click this bar to cancel.
                         </span>
                     </div>
                 )}
