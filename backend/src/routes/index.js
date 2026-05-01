@@ -13,6 +13,7 @@ const saleRoutes = require('./sale.routes');
 const transactionRoutes = require('./transaction.routes');
 const pusherRoutes = require('./pusher.routes');
 const notificationRoutes = require('./notification.routes');
+const biRoutes = require('./bi.routes');
 
 
 // Mount routes
@@ -27,6 +28,7 @@ router.use('/sales', saleRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/pusher', pusherRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/bi', biRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

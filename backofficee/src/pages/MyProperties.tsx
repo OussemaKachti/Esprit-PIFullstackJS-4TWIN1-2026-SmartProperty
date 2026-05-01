@@ -491,14 +491,14 @@ export default function MyProperties() {
       errors.surface = "Total area must be a positive number.";
     }
 
-    const roomsNum = form.rooms ? Number(form.rooms) : null;
+    const roomsNum = form.rooms?.trim() ? Number(form.rooms) : Number.NaN;
     if (!form.rooms.trim()) {
       errors.rooms = "Rooms is required.";
     } else if (!Number.isFinite(roomsNum) || roomsNum < 0) {
       errors.rooms = "Rooms must be zero or a positive number.";
     }
 
-    const bathroomsNum = form.bathrooms ? Number(form.bathrooms) : null;
+    const bathroomsNum = form.bathrooms?.trim() ? Number(form.bathrooms) : Number.NaN;
     if (!form.bathrooms.trim()) {
       errors.bathrooms = "Bathrooms is required.";
     } else if (!Number.isFinite(bathroomsNum) || bathroomsNum < 0) {

@@ -32,6 +32,7 @@ import AdminCandidates from "./pages/Admin/AdminCandidates";
 import AdminRentals from "./pages/Admin/AdminRentals";
 import AdminNotifications from "./pages/Admin/AdminNotifications";
 import AdminVerifications from "./pages/Admin/AdminVerifications";
+import AdminAnalytics from "./pages/Admin/AdminAnalytics";
 
 export default function App() {
   return (
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="/admin/properties" element={<AdminProperties />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/verifications" element={<AdminVerifications />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
           </Route>
 
           {/* Auth Layout */}
