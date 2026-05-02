@@ -1,0 +1,24 @@
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: mern-pipeline-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb+srv://db_user:kLzQMYHZ6CB2XpsX@cluster0.41omt1c.mongodb.net/db_user?appName=Cluster0
+      - GROQ_API_KEY=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
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: mern-pipeline-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+
