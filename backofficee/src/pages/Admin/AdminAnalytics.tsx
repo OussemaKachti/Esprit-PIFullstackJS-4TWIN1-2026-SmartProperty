@@ -102,11 +102,10 @@ function KpiCard({
         </div>
         {hasChange && (
           <div className="mt-3 flex items-center gap-1.5">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-              up
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${up
                 ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800"
                 : "bg-rose-50 text-rose-600 ring-1 ring-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:ring-rose-800"
-            }`}>
+              }`}>
               {up ? "▲" : "▼"} {Math.abs(change!)}%
             </span>
             <span className="text-[11px] text-gray-400">vs previous month</span>
@@ -399,7 +398,7 @@ export default function AdminAnalytics() {
             sub={`+${kpis.totalTransactions.thisMonth} this month`}
             change={kpis.totalTransactions.changePercent}
             trend={kpis.totalTransactions.trend}
-            accent="bg-gradient-to-r from-amber-400 to-amber-600"
+            gradient="bg-gradient-to-r from-amber-400 to-amber-600"
             icon={
               <img
                 src="/images/icons/transaction.png"
@@ -515,7 +514,7 @@ export default function AdminAnalytics() {
               height={250}
               options={donutOptions(
                 properties.byStatus.map((x) => x.label),
-                ["#14b8a6","#f59e0b","#3b82f6","#ef4444","#94a3b8"],
+                ["#14b8a6", "#f59e0b", "#3b82f6", "#ef4444", "#94a3b8"],
                 "Status"
               )}
               series={properties.byStatus.map((x) => x.value)}

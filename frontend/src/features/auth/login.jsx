@@ -180,7 +180,7 @@ export default function Login() {
           <img src="https://images.pexels.com/photos/7614534/pexels-photo-7614534.jpeg" alt="bg-login" />
         </div>
 
-        <div className="form-container">
+        <div className="form-container login-form">
           <h1 className="heading-title">Two-Factor Authentication</h1>
           <p className="text">
             {isBackupMode
@@ -276,7 +276,7 @@ export default function Login() {
         
       </div>
 
-      <div className="form-container">
+      <div className="form-container login-form">
         <h1 className="heading-title">Login to SmartProperty</h1>
 
         <p className="text">Sign in to your account</p>

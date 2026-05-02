@@ -340,43 +340,74 @@ export default function Signup() {
               )}
             </div>
 
-            <div className="signup-avatar-phone-row">
-              <div className="signup-avatar-section">
-                <div className="signup-avatar-label">Profile photo <span className="field-optional">(optional)</span></div>
-                <div className="signup-avatar-card simple">
-                  <div className="signup-avatar-preview" aria-hidden="true">
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Profile preview" />
-                    ) : (
-                      <span>{avatarInitials}</span>
-                    )}
-                  </div>
-                  <div className="signup-avatar-copywrap">
-                    <div className="signup-avatar-title">Add a profile image</div>
-                    <div className="signup-avatar-actions">
-                      <label className="signup-avatar-button simple-btn">
-                        Choose image
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) => handleAvatarChange(e.target.files?.[0] || null)}
-                        />
-                      </label>
+            <div className="signup-step1-actions">
+              <div className="signup-avatar-phone-row">
+                <div className="signup-avatar-section">
+                  <div className="signup-avatar-label">Profile photo <span className="field-optional">(optional)</span></div>
+                  <div className="signup-avatar-card signup-avatar-card--premium">
+                    <div className="signup-avatar-preview-wrap">
+                      <div className="signup-avatar-preview" aria-hidden="true">
+                        {avatarPreview ? (
+                          <img src={avatarPreview} alt="Profile preview" />
+                        ) : (
+                          <span className="signup-avatar-placeholder">{avatarInitials}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="signup-avatar-copywrap">
+                      <div className="signup-avatar-title">Profile picture</div>
+                      <p className="signup-avatar-hint">Helps others recognize you. PNG or JPG.</p>
+                      <div className="signup-avatar-actions">
+                        <label className="signup-avatar-button signup-avatar-button--premium">
+                          <span className="signup-avatar-button-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path
+                                d="M12 16V8M12 8L9 11M12 8L15 11"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M4 16.5V17C4 18.1046 4.89543 19 6 19H18C19.1046 19 20 18.1046 20 17V16.5"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          </span>
+                          Choose image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => handleAvatarChange(e.target.files?.[0] || null)}
+                          />
+                        </label>
+                        {avatarPreview ? (
+                          <button
+                            type="button"
+                            className="signup-avatar-remove"
+                            onClick={() => handleAvatarChange(null)}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="continue-row">
-              <button
-                type="button"
-                className="continue-button"
-                onClick={!isLoading ? handleContinueStep1 : undefined}
-                disabled={isLoading}
-              >
-                {isLoading ? <div className="loader"></div> : <span className="continue-text">Continue</span>}
-              </button>
+              <div className="continue-row">
+                <button
+                  type="button"
+                  className="continue-button"
+                  onClick={!isLoading ? handleContinueStep1 : undefined}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <div className="loader"></div> : <span className="continue-text">Continue</span>}
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -513,16 +544,16 @@ export default function Signup() {
           </>
         )}
 
+        <span className="terms-of-services">
+          By signing up you agree to our <span className="underline">Terms of service</span> &{" "}
+          <span className="underline">Privacy policy</span>
+        </span>
+
         <span className="signin-redirect">
           Already have an account?{" "}
           <span className="signin-link" onClick={() => navigate("/login")}>
             Sign in
           </span>
-        </span>
-
-        <span className="terms-of-services">
-          By signing up you agree to our <span className="underline">Terms of service</span> &{" "}
-          <span className="underline">Privacy policy</span>
         </span>
       </div>
     </div>

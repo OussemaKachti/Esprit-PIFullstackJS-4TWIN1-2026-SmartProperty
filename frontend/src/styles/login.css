@@ -103,6 +103,11 @@ body {
   scrollbar-color: rgba(15, 23, 42, 0.28) rgba(226, 232, 240, 0.85);
 }
 
+/* Login (and 2FA): shift content slightly down from the top */
+.form-container.login-form {
+  padding-top: clamp(64px, 11vh, 120px);
+}
+
 .form-container::-webkit-scrollbar {
   width: 10px;
 }
@@ -186,7 +191,7 @@ body {
 
 .firsname-lastname {
   display: flex;
-  gap: 38px;
+  gap: 20px;
   margin-top: 20px;
   width: 100%;
   max-width: var(--button-width-long);
@@ -212,7 +217,7 @@ body {
 
 .firstname-input {
   margin-top: 8px;
-  width: 200px;
+  width: 100%;
   height: var(--input-height);
   border: 1px solid #d1d1d1;
   display: flex;
@@ -241,7 +246,7 @@ input{
 
 .lastname-input {
   margin-top: 8px;
-  width: 200px;
+  width: 100%;
   height: var(--input-height);
   border: 1px solid #d1d1d1;
   display: flex;
@@ -446,7 +451,7 @@ input{
 .continue-button {
   width: 100%;
   max-width: var(--button-width-long);
-  height: var(--button-height);
+  height: 48px;
   background-color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -455,7 +460,35 @@ input{
   margin-bottom: var(--margin-bottom);
   cursor: pointer;
   border: none;
-  border-radius: 20px;
+  border-radius: 50px;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.continue-button:hover:not(:disabled) {
+  background-color: #1a1a1a;
+}
+
+.continue-button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 3px;
+}
+
+.continue-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.continue-text {
+  font-weight: 700;
+  color: #fff;
+  font-size: 16px;
+}
+
+/* Center label in primary CTA (global .continue-text has margin-left for legacy layouts) */
+.continue-button .continue-text {
+  margin-left: 0;
+  letter-spacing: 0.01em;
 }
 
 .signup-form {
@@ -603,20 +636,148 @@ input{
   border-radius: 999px;
   font-weight: 600;
 }
-.signup-avatar-preview img {
-  display: block;
+
+/* Premium profile photo block (signup step 1) */
+.signup-avatar-card--premium {
+  padding: 16px 18px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f9 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-.signup-avatar-preview {
-  width: 56px;
-  height: 56px;
+
+.signup-avatar-preview-wrap {
   flex-shrink: 0;
+  padding: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+}
+
+.signup-avatar-card--premium .signup-avatar-preview {
+  width: 64px;
+  height: 64px;
   border-radius: 9999px;
   overflow: hidden;
-  background: #f1f5f9;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 2px solid #fff;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.signup-avatar-card--premium .signup-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.signup-avatar-placeholder {
+  font-size: 20px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.signup-avatar-card--premium .signup-avatar-copywrap {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.signup-avatar-card--premium .signup-avatar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.signup-avatar-hint {
+  margin: 0 0 12px 0;
+  font-family: var(--font-form);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.signup-avatar-card--premium .signup-avatar-actions {
+  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.signup-avatar-button--premium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 16px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-family: var(--font-form);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.signup-avatar-button--premium:hover {
+  border-color: #0f172a;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.signup-avatar-button-icon {
+  display: flex;
+  color: #475569;
+}
+
+.signup-avatar-remove {
+  font-family: var(--font-form);
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.signup-avatar-remove:hover {
+  color: #0f172a;
+}
+
+@media (max-width: 520px) {
+  .signup-avatar-card--premium {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .signup-avatar-card--premium .signup-avatar-preview-wrap {
+    align-self: center;
+  }
+}
+
+.signup-avatar-preview img {
+  display: block;
 }
 
 .signup-avatar-title {
@@ -717,10 +878,10 @@ input{
   margin-top: 10px;
 }
 .role-column {
-  flex: 0 0 40%;
+  flex: 1;
 }
 .phone-column-role {
-  flex: 0 0 60%;
+  flex: 1;
 }
 .role-phone-row .role-select,
 .phone-column-role .email-input {
@@ -747,6 +908,55 @@ input{
 
 .continue-row {
   margin-top: 12px;
+}
+
+/* Signup step 1: same centered column as .email-container (no align-self: stretch — that full-bleeds left) */
+.signup-form .signup-step1-actions {
+  width: 100%;
+  max-width: var(--button-width-long);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+}
+
+.signup-form .signup-step1-actions .signup-avatar-phone-row {
+  margin-top: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.signup-form .signup-step1-actions .signup-avatar-section {
+  max-width: none;
+  width: 100%;
+  margin-top: 0;
+}
+
+/* Continue row: centered column like other fields (parent .signup-step1-actions already caps width) */
+.signup-form .continue-row {
+  width: 100%;
+  max-width: var(--button-width-long);
+  box-sizing: border-box;
+  margin-top: 0;
+}
+
+.signup-form .signup-step1-actions .continue-row {
+  margin-top: 20px;
+}
+
+.signup-form .continue-row .continue-button {
+  width: 100%;
+  max-width: none;
+}
+
+.signup-form .signup-step1-actions .continue-button {
+  margin-top: 0;
+}
+
+/* Step 2 submit: primary button is direct child of .signup-form */
+.signup-form > .continue-button {
+  width: 100%;
+  max-width: var(--button-width-long);
 }
 
 /* Password rules card */
@@ -842,13 +1052,23 @@ input{
   margin-top: 10px;
   margin-bottom: 0;
 }
-.signup-form .signin-redirect {
-  margin-top: 8px;
-  margin-bottom: 12px;
-}
+/* Footer: terms directly under primary button, then Sign in (compact so both stay visible) */
 .signup-form .terms-of-services {
-  margin-top: 0;
-  padding-top: 0;
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding: 0 8px;
+  width: 100%;
+  max-width: var(--button-width-long);
+  box-sizing: border-box;
+}
+
+.signup-form .signin-redirect {
+  margin-top: 10px;
+  margin-bottom: 18px;
+}
+
+.signup-form .continue-button {
+  margin-bottom: 6px;
 }
 
 /* Verify identity step (signup step 2) */
