@@ -6,16 +6,16 @@ import PageMeta from "../../components/common/PageMeta";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BI_COLORS = [
-  "#4A90D9", // Bleu Acier
-  "#3DB89A", // Teal Doux
-  "#7B6FD4", // Lavande
-  "#C2527A", // Framboise Douce
-  "#6BAF7A", // Vert Sauge
-  "#F2B960", // Ambre Chaud (principal)
-  "#5BA3B8", // Bleu Ciel
-  "#A0907A", // Taupe Chaud
+  "#4A90D9", // Steel Blue
+  "#3DB89A", // Soft Teal
+  "#7B6FD4", // Lavender
+  "#C2527A", // Soft Raspberry
+  "#6BAF7A", // Sage Green
+  "#F2B960", // Warm Amber (principal)
+  "#5BA3B8", // Sky Blue
+  "#A0907A", // Warm Taupe
 ];
 
 type AnalyticsData = {
@@ -63,7 +63,7 @@ function fmt(n: number) {
 function fmtTND(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M TND`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K TND`;
-  return `${Math.round(n).toLocaleString("fr-TN")} TND`;
+  return `${Math.round(n).toLocaleString("en-US")} TND`;
 }
 
 function isDark() {
@@ -109,7 +109,7 @@ function KpiCard({
             }`}>
               {up ? "▲" : "▼"} {Math.abs(change!)}%
             </span>
-            <span className="text-[11px] text-gray-400">vs mois précédent</span>
+            <span className="text-[11px] text-gray-400">vs previous month</span>
           </div>
         )}
       </div>
@@ -288,17 +288,17 @@ export default function AdminAnalytics() {
 
   const fetchData = async () => {
     const token = localStorage.getItem("token");
-    if (!token) { toast.error("Session expirée — veuillez vous reconnecter."); return; }
+    if (!token) { toast.error("Session expired — please sign in again."); return; }
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/bi/analytics`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Erreur API");
+      if (!res.ok) throw new Error(json.message || "API Error");
       setData(json.data ?? json);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur de chargement");
+      toast.error(e instanceof Error ? e.message : "Loading error");
     } finally {
       setLoading(false);
     }
@@ -309,7 +309,7 @@ export default function AdminAnalytics() {
   if (loading) return <Skeleton />;
   if (!data) return (
     <div className="flex h-64 items-center justify-center text-sm text-gray-400">
-      Aucune donnée disponible.
+      No data available.
     </div>
   );
 
@@ -319,7 +319,7 @@ export default function AdminAnalytics() {
     <>
       <PageMeta
         title="Analytics BI | Smart Property Admin"
-        description="Tableau de bord analytique avancé pour l'administrateur SmartProperty."
+        description="Advanced analytical dashboard for SmartProperty administrator."
       />
 
       <div className="space-y-5 pb-12">
@@ -342,10 +342,10 @@ export default function AdminAnalytics() {
                   Analytics Dashboard
                 </h1>
                 <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-                  Vue analytique complète — propriétés, utilisateurs, transactions &amp; satisfaction client.
+                  Complete analytical view — properties, users, transactions &amp; customer satisfaction.
                 </p>
                 <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">
-                  Généré le {new Date(data.meta.generatedAt).toLocaleString("fr-FR")}
+                  Generated on {new Date(data.meta.generatedAt).toLocaleString("en-US")}
                 </p>
               </div>
               <button
@@ -355,7 +355,7 @@ export default function AdminAnalytics() {
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Actualiser
+                Refresh
               </button>
             </div>
           </div>
@@ -364,9 +364,9 @@ export default function AdminAnalytics() {
         {/* ── KPI Cards ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard
-            title="Propriétés"
+            title="Properties"
             value={fmt(kpis.totalProperties.value)}
-            sub={`+${kpis.totalProperties.thisMonth} ce mois`}
+            sub={`+${kpis.totalProperties.thisMonth} this month`}
             change={kpis.totalProperties.changePercent}
             trend={kpis.totalProperties.trend}
             gradient="bg-gradient-to-r from-blue-500 to-blue-600"
@@ -379,9 +379,9 @@ export default function AdminAnalytics() {
             }
           />
           <KpiCard
-            title="Utilisateurs"
+            title="Users"
             value={fmt(kpis.totalUsers.value)}
-            sub={`+${kpis.totalUsers.thisMonth} ce mois`}
+            sub={`+${kpis.totalUsers.thisMonth} this month`}
             change={kpis.totalUsers.changePercent}
             trend={kpis.totalUsers.trend}
             gradient="bg-gradient-to-r from-teal-400 to-teal-600"
@@ -396,10 +396,10 @@ export default function AdminAnalytics() {
           <KpiCard
             title="Transactions"
             value={fmt(kpis.totalTransactions.value)}
-            sub={`+${kpis.totalTransactions.thisMonth} ce mois`}
+            sub={`+${kpis.totalTransactions.thisMonth} this month`}
             change={kpis.totalTransactions.changePercent}
             trend={kpis.totalTransactions.trend}
-            gradient="bg-gradient-to-r from-amber-400 to-amber-600"
+            accent="bg-gradient-to-r from-amber-400 to-amber-600"
             icon={
               <img
                 src="/images/icons/transaction.png"
@@ -409,9 +409,9 @@ export default function AdminAnalytics() {
             }
           />
           <KpiCard
-            title="Revenue ce mois"
+            title="Revenue this month"
             value={fmtTND(kpis.revenueThisMonth.value)}
-            sub="Transactions confirmées"
+            sub="Confirmed transactions"
             change={kpis.revenueThisMonth.changePercent}
             trend={kpis.revenueThisMonth.trend}
             gradient="bg-gradient-to-r from-sky-400 to-sky-600"
@@ -424,9 +424,9 @@ export default function AdminAnalytics() {
             }
           />
           <KpiCard
-            title="Prix moyen"
+            title="Average Price"
             value={fmtTND(kpis.avgPropertyPrice.value)}
-            sub={`Portefeuille: ${fmtTND(kpis.avgPropertyPrice.portfolioValue)}`}
+            sub={`Portfolio: ${fmtTND(kpis.avgPropertyPrice.portfolioValue)}`}
             gradient="bg-gradient-to-r from-violet-500 to-violet-700"
             icon={
               <img
@@ -439,31 +439,31 @@ export default function AdminAnalytics() {
         </div>
 
         {/* ── Section label ───────────────────────────────────────────────── */}
-        <SectionLabel>Évolution temporelle</SectionLabel>
+        <SectionLabel>Time Series</SectionLabel>
 
         {/* ── Row 1: Time series ─────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <ChartCard
-            title="Nouvelles annonces & Utilisateurs"
-            sub={`Évolution mensuelle — ${data.meta.year}`}
-            badge="12 mois"
+            title="New Listings & Users"
+            sub={`Monthly evolution — ${data.meta.year}`}
+            badge="12 months"
           >
             <ReactApexChart
               type="area"
               height={250}
               options={{
-                ...areaOptions("Annonces", "Utilisateurs", ["#3b82f6", "#14b8a6"]),
+                ...areaOptions("Listings", "Users", ["#3b82f6", "#14b8a6"]),
               }}
               series={[
-                { name: "Annonces", data: timeSeries.newListings },
-                { name: "Utilisateurs", data: timeSeries.newUsers },
+                { name: "Listings", data: timeSeries.newListings },
+                { name: "Users", data: timeSeries.newUsers },
               ]}
             />
           </ChartCard>
 
           <ChartCard
-            title="Volume de transactions"
-            sub={`Montants confirmés — ${data.meta.year}`}
+            title="Transaction Volume"
+            sub={`Confirmed amounts — ${data.meta.year}`}
             badge="k TND"
           >
             <ReactApexChart
@@ -492,11 +492,11 @@ export default function AdminAnalytics() {
         </div>
 
         {/* ── Section label ───────────────────────────────────────────────── */}
-        <SectionLabel>Répartition des propriétés</SectionLabel>
+        <SectionLabel>Property Distribution</SectionLabel>
 
         {/* ── Row 2: Property breakdown ──────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <ChartCard title="Types de propriétés" sub="Répartition du catalogue">
+          <ChartCard title="Property Types" sub="Catalog distribution">
             <ReactApexChart
               type="donut"
               height={250}
@@ -509,20 +509,20 @@ export default function AdminAnalytics() {
             />
           </ChartCard>
 
-          <ChartCard title="Statuts des propriétés" sub="État actuel du parc">
+          <ChartCard title="Property Status" sub="Current portfolio state">
             <ReactApexChart
               type="donut"
               height={250}
               options={donutOptions(
                 properties.byStatus.map((x) => x.label),
                 ["#14b8a6","#f59e0b","#3b82f6","#ef4444","#94a3b8"],
-                "Statuts"
+                "Status"
               )}
               series={properties.byStatus.map((x) => x.value)}
             />
           </ChartCard>
 
-          <ChartCard title="Vente vs Location" sub="Type de listing">
+          <ChartCard title="Sale vs Rent" sub="Listing type">
             <ReactApexChart
               type="donut"
               height={250}
@@ -537,11 +537,11 @@ export default function AdminAnalytics() {
         </div>
 
         {/* ── Section label ───────────────────────────────────────────────── */}
-        <SectionLabel>Géographie & Utilisateurs</SectionLabel>
+        <SectionLabel>Geography & Users</SectionLabel>
 
         {/* ── Row 3: Cities + Users ─────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ChartCard title="Top villes" sub="Nombre de propriétés par ville" badge="Top 8">
+          <ChartCard title="Top Cities" sub="Number of properties per city" badge="Top 8">
             <ReactApexChart
               type="bar"
               height={270}
@@ -563,7 +563,7 @@ export default function AdminAnalytics() {
                 },
                 tooltip: {
                   theme: isDark() ? "dark" : "light",
-                  y: { formatter: (v: number) => `${v} propriétés` },
+                  y: { formatter: (v: number) => `${v} properties` },
                 },
                 dataLabels: {
                   enabled: true,
@@ -573,18 +573,18 @@ export default function AdminAnalytics() {
                   offsetX: 0,
                 },
               }}
-              series={[{ name: "Propriétés", data: properties.topCities.map((x) => x.count) }]}
+              series={[{ name: "Properties", data: properties.topCities.map((x) => x.count) }]}
             />
           </ChartCard>
 
-          <ChartCard title="Répartition des utilisateurs" sub="Par rôle">
+          <ChartCard title="User Distribution" sub="By role">
             <ReactApexChart
               type="donut"
               height={270}
               options={donutOptions(
                 users.byRole.map((x) => x.label),
                 [BI_COLORS[0], BI_COLORS[1], BI_COLORS[2], BI_COLORS[3], BI_COLORS[5]],
-                "Rôles"
+                "Roles"
               )}
               series={users.byRole.map((x) => x.value)}
             />
@@ -596,7 +596,7 @@ export default function AdminAnalytics() {
 
         {/* ── Row 4: Transactions + Ratings ─────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <ChartCard title="Types de transactions" sub="SALE vs RENT">
+          <ChartCard title="Transaction Types" sub="SALE vs RENT">
             <ReactApexChart
               type="donut"
               height={230}
@@ -609,22 +609,22 @@ export default function AdminAnalytics() {
             />
           </ChartCard>
 
-          <ChartCard title="Statuts des transactions" sub="Répartition des dossiers">
+          <ChartCard title="Transaction Status" sub="Case distribution">
             <ReactApexChart
               type="donut"
               height={230}
               options={donutOptions(
                 transactions.byStatus.map((x) => x.label),
                 [BI_COLORS[5], BI_COLORS[1], BI_COLORS[2], BI_COLORS[3], BI_COLORS[7]],
-                "Statuts"
+                "Status"
               )}
               series={transactions.byStatus.map((x) => x.value)}
             />
           </ChartCard>
 
           <ChartCard
-            title="Distribution des avis"
-            sub={`Note moyenne ${feedback.avgRating}/5 · ${feedback.total} avis`}
+            title="Review Distribution"
+            sub={`Average Rating ${feedback.avgRating}/5 · ${feedback.total} reviews`}
             badge="⭐"
           >
             <ReactApexChart
@@ -650,21 +650,21 @@ export default function AdminAnalytics() {
                 },
                 tooltip: {
                   theme: isDark() ? "dark" : "light",
-                  y: { formatter: (v: number) => `${v} avis` },
+                  y: { formatter: (v: number) => `${v} reviews` },
                 },
                 theme: { mode: isDark() ? "dark" : "light" },
               }}
-              series={[{ name: "Avis", data: feedback.ratingDistribution.map((x) => x.count) }]}
+              series={[{ name: "Reviews", data: feedback.ratingDistribution.map((x) => x.count) }]}
             />
           </ChartCard>
         </div>
 
         {/* ── Section label ───────────────────────────────────────────────── */}
-        <SectionLabel>Analyse financière</SectionLabel>
+        <SectionLabel>Financial Analysis</SectionLabel>
 
         {/* ── Row 5: Price distribution + Revenue by type ────────────────── */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ChartCard title="Distribution des prix" sub="Fourchettes de prix — TND">
+          <ChartCard title="Price Distribution" sub="Price Ranges — TND">
             <ReactApexChart
               type="bar"
               height={250}
@@ -693,14 +693,14 @@ export default function AdminAnalytics() {
                 },
                 tooltip: {
                   theme: isDark() ? "dark" : "light",
-                  y: { formatter: (v: number) => `${v} propriétés` },
+                  y: { formatter: (v: number) => `${v} properties` },
                 },
               }}
-              series={[{ name: "Propriétés", data: properties.byPriceRange.map((x) => x.value) }]}
+              series={[{ name: "Properties", data: properties.byPriceRange.map((x) => x.value) }]}
             />
           </ChartCard>
 
-          <ChartCard title="Revenue par type" sub="SALE vs RENT — transactions confirmées">
+          <ChartCard title="Revenue by type" sub="SALE vs RENT — confirmed transactions">
             <ReactApexChart
               type="bar"
               height={250}
@@ -729,7 +729,7 @@ export default function AdminAnalytics() {
                 },
                 tooltip: {
                   theme: isDark() ? "dark" : "light",
-                  y: { formatter: (v: number) => `${Math.round(v).toLocaleString("fr-TN")} TND` },
+                  y: { formatter: (v: number) => `${Math.round(v).toLocaleString("en-US")} TND` },
                 },
                 theme: { mode: isDark() ? "dark" : "light" },
               }}
@@ -744,7 +744,7 @@ export default function AdminAnalytics() {
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-4 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/50">
           <span className="h-1.5 w-1.5 rounded-full bg-teal-400" />
-          Données temps réel · MongoDB Aggregation Pipelines · SmartProperty BI · {data.meta.year}
+          Real-time data · MongoDB Aggregation Pipelines · SmartProperty BI · {data.meta.year}
         </div>
 
       </div>
