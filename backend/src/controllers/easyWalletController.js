@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Lease, Sale, Property, User, RentPayment } = require('../models');
 const { apiResponse } = require('../utils/apiResponse');
 
