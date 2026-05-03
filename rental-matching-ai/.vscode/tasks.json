@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run rental-matching-ai API",
+			"type": "shell",
+			"command": "C:/Users/eunab/OneDrive/Desktop/PI/Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"api:app",
+				"--reload",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

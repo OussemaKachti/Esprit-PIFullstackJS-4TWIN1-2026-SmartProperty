@@ -85,6 +85,22 @@ export default function PriceEstimate() {
     return "low";
   }, [result]);
 
+  const confidenceTone = useMemo(() => {
+    const confidence = Number(result?.confidence_pct);
+    if (!Number.isFinite(confidence)) return "neutral";
+    if (confidence >= 80) return "good";
+    if (confidence >= 60) return "mid";
+    return "low";
+  }, [result]);
+
+  const estimateSourceLabel = useMemo(() => {
+    const source = String(result?.source || "");
+    if (source === "comparables") return "Mostly comparable listings";
+    if (source === "comparables_plus_model") return "Comparables + model blend";
+    if (source === "model_only") return "Model only";
+    return "Hybrid estimate";
+  }, [result]);
+
   const onChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const submit = async (e) => {
@@ -324,6 +340,87 @@ export default function PriceEstimate() {
                                 <span className="text-muted">/ month</span>
                               </div>
                             </div>
+
+                            <div className="row g-3 mb-3">
+                              <div className="col-6">
+                                <div className="p-3 rounded-3 border bg-white h-100">
+                                  <div className="text-muted small mb-1">Confidence</div>
+                                  <div className={`fw-semibold ${confidenceTone === "good" ? "text-success" : confidenceTone === "mid" ? "text-warning" : confidenceTone === "low" ? "text-danger" : "text-dark"}`}>
+                                    {Number.isFinite(Number(result?.confidence_pct)) ? `${Number(result.confidence_pct).toFixed(1)}%` : "—"}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="col-6">
+                                <div className="p-3 rounded-3 border bg-white h-100">
+                                  <div className="text-muted small mb-1">Validation</div>
+                                  <div className={`fw-semibold ${accuracyTone === "good" ? "text-success" : accuracyTone === "mid" ? "text-warning" : accuracyTone === "low" ? "text-danger" : "text-dark"}`}>
+                                    {Number.isFinite(Number(result?.accuracy_pct)) ? `${Number(result.accuracy_pct).toFixed(1)}%` : "—"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="p-3 rounded-3 border bg-white mb-3">
+                              <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                                <div>
+                                  <div className="text-muted small">Source</div>
+                                  <div className="fw-semibold">{estimateSourceLabel}</div>
+                                </div>
+                                <div className="text-end">
+                                  <div className="text-muted small">Comparables</div>
+                                  <div className="fw-semibold">{Number(result?.comparable_count || 0)} listings</div>
+                                </div>
+                              </div>
+
+                              <div className="row g-2 mt-2">
+                                <div className="col-md-6">
+                                  <div className="small text-muted">Model price</div>
+                                  <div className="fw-semibold">{formatTnd(result?.model_price_tnd)}</div>
+                                </div>
+                                <div className="col-md-6">
+                                  <div className="small text-muted">Comparable price</div>
+                                  <div className="fw-semibold">{formatTnd(result?.comparable_price_tnd)}</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {Array.isArray(result?.warnings) && result.warnings.length > 0 ? (
+                              <div className="alert alert-warning py-2 px-3 mb-3">
+                                <div className="fw-semibold mb-1">Notes</div>
+                                <ul className="mb-0 ps-3">
+                                  {result.warnings.slice(0, 3).map((warning, index) => (
+                                    <li key={`${warning}-${index}`}>{warning}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+
+                            {Array.isArray(result?.comparables) && result.comparables.length > 0 ? (
+                              <div className="mt-2">
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                  <div className="fw-semibold">Closest listings</div>
+                                  <small className="text-muted">Top {Math.min(3, result.comparables.length)} shown</small>
+                                </div>
+                                <div className="d-grid gap-2">
+                                  {result.comparables.slice(0, 3).map((item, index) => (
+                                    <div key={`${item.city}-${item.region}-${item.price_tnd}-${index}`} className="p-2 rounded-3 border bg-light">
+                                      <div className="d-flex justify-content-between gap-2">
+                                        <div>
+                                          <div className="fw-semibold small">{item.category}</div>
+                                          <div className="text-muted small">{item.city} · {item.region}</div>
+                                        </div>
+                                        <div className="text-end">
+                                          <div className="fw-semibold small">{formatTnd(item.price_tnd)}</div>
+                                          <div className="text-muted" style={{ fontSize: 12 }}>
+                                            {(Number(item.similarity) * 100).toFixed(0)}% match
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
 
                           </>
                         )}

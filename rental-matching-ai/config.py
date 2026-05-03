@@ -19,6 +19,7 @@ REPORT_PATH       = DATA_DIR / "cleaning_report.txt"
 # ── Model paths ───────────────────────────────────────────────────────────────
 MODELS_DIR        = BASE_DIR / "models"
 PRICE_MODEL_PATH  = MODELS_DIR / "price_predictor.pkl"
+PRICE_MODEL_METRICS_PATH = MODELS_DIR / "price_model_metrics.json"
 CLUSTER_MODEL_PATH= MODELS_DIR / "property_clusters.pkl"
 SCALER_PATH       = MODELS_DIR / "scaler.pkl"
 ENCODER_PATH      = MODELS_DIR / "encoders.pkl"

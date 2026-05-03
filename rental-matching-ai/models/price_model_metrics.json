@@ -1,0 +1,23 @@
+{
+  "model_name": "ExtraTreesRegressor",
+  "rows_used": 4716,
+  "feature_columns": [
+    "category",
+    "room_count",
+    "bathroom_count",
+    "size",
+    "city",
+    "region",
+    "rooms_per_100sqm",
+    "baths_per_room"
+  ],
+  "holdout_r2": 0.508717,
+  "holdout_mae_tnd": 342.4199,
+  "holdout_mape": 0.626503,
+  "holdout_accuracy_pct": 37.35,
+  "cv_r2_mean": 0.405488,
+  "cv_r2_std": 0.056536,
+  "cv_mape_mean": 0.088388,
+  "cv_mape_std": 0.006858,
+  "cv_accuracy_pct": 91.16
+}

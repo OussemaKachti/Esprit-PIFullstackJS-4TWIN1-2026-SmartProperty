@@ -212,6 +212,12 @@ export default function MyProperties() {
   const [rentEstimate, setRentEstimate] = useState<null | {
     estimated_price_tnd: number;
     accuracy_pct?: number;
+    confidence_pct?: number;
+    comparable_count?: number;
+    model_price_tnd?: number;
+    comparable_price_tnd?: number;
+    source?: string;
+    warnings?: string[];
   }>(null);
 
   const loadEmailNotifStatus = async () => {
@@ -283,9 +289,8 @@ export default function MyProperties() {
         room_count: Number(form.rooms) || 0,
         bathroom_count: Number(form.bathrooms) || 0,
         size: Number(form.surface) || 0,
-        // user asked: use city and country here for region and city too
         city: String(form.city),
-        region: String(form.country),
+        region: String(form.country || form.city),
       };
 
       const res = await fetch(`${FASTAPI_URL}/api/price-estimate`, {
@@ -302,6 +307,12 @@ export default function MyProperties() {
       setRentEstimate({
         estimated_price_tnd: est,
         accuracy_pct: Number(json?.accuracy_pct),
+        confidence_pct: Number(json?.confidence_pct),
+        comparable_count: Number(json?.comparable_count),
+        model_price_tnd: Number(json?.model_price_tnd),
+        comparable_price_tnd: Number(json?.comparable_price_tnd),
+        source: String(json?.source || ""),
+        warnings: Array.isArray(json?.warnings) ? json.warnings : [],
       });
 
       // Prefill the price field for rent listings
@@ -1680,10 +1691,26 @@ export default function MyProperties() {
                           )}
                         </div>
                         {form.listingType === "FOR_RENT" && rentEstimate?.estimated_price_tnd ? (
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                            Suggested rent: <span className="font-semibold text-gray-700 dark:text-gray-200">{Math.round(rentEstimate.estimated_price_tnd)} TND</span>
-                            
-                          </p>
+                          <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] text-gray-600 dark:border-indigo-900/40 dark:bg-indigo-900/15 dark:text-gray-300">
+                            <p className="mb-1">
+                              Suggested rent: <span className="font-semibold text-gray-700 dark:text-gray-100">{Math.round(rentEstimate.estimated_price_tnd)} TND</span>
+                            </p>
+                            <p className="mb-1">
+                              Confidence: <span className="font-semibold">{Number.isFinite(Number(rentEstimate.confidence_pct)) ? `${Number(rentEstimate.confidence_pct).toFixed(1)}%` : "—"}</span>
+                              {Number.isFinite(Number(rentEstimate.comparable_count)) ? ` · ${rentEstimate.comparable_count} comparable listing(s)` : ""}
+                            </p>
+                            <p className="mb-0">
+                              Source: <span className="font-semibold">{rentEstimate.source || "hybrid"}</span>
+                              {Number.isFinite(Number(rentEstimate.model_price_tnd)) && Number.isFinite(Number(rentEstimate.comparable_price_tnd))
+                                ? ` · model ${Math.round(Number(rentEstimate.model_price_tnd))} TND / comps ${Math.round(Number(rentEstimate.comparable_price_tnd))} TND`
+                                : ""}
+                            </p>
+                            {Array.isArray(rentEstimate.warnings) && rentEstimate.warnings.length > 0 ? (
+                              <p className="mt-1 mb-0 text-[10px] text-amber-700 dark:text-amber-300">
+                                {rentEstimate.warnings[0]}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                         {formErrors.price && (
                           <p className="text-[11px] font-medium text-red-600 dark:text-red-400">{formErrors.price}</p>

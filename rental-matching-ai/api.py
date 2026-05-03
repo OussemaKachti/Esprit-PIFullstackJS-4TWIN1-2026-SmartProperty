@@ -9,6 +9,7 @@ Environment:
     - .env can provide EMAIL_SENDER and EMAIL_PASSWORD for notifications
 """
 
+import json
 from typing import Any, Dict, List, Optional, Tuple
 from functools import lru_cache
 from pathlib import Path
@@ -20,10 +21,10 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from dotenv import load_dotenv
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
 
-from config import TOP_N_MATCHES, READABLE_DATA_PATH, PRICE_MODEL_PATH, ENCODER_PATH, SCALER_PATH
+from config import TOP_N_MATCHES, READABLE_DATA_PATH, PRICE_MODEL_PATH, PRICE_MODEL_METRICS_PATH
 from src.matching_engine import find_top_matches
 from src.credit_scorer import evaluate_candidate
 from src.notifier import send_match_email
@@ -166,9 +167,15 @@ class PriceEstimateRequest(BaseModel):
 
 class PriceEstimateResponse(BaseModel):
     estimated_price_tnd: float
-    accuracy_pct: float = Field(..., ge=0, le=100, description="Accuracy proxy from holdout MAPE: 100 - MAPE%")
-    metrics: Dict[str, float]
-    warnings: List[str] = []
+    confidence_pct: float = Field(..., ge=0, le=100, description="Confidence from local comparable listings and model support")
+    accuracy_pct: float = Field(..., ge=0, le=100, description="Model accuracy proxy from holdout validation")
+    model_price_tnd: Optional[float] = None
+    comparable_price_tnd: Optional[float] = None
+    comparable_count: int = 0
+    source: str = "hybrid"
+    metrics: Dict[str, float] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+    comparables: List[Dict[str, Any]] = Field(default_factory=list)
     model_version: str = "price_predictor.pkl"
 
 
@@ -181,222 +188,274 @@ def _to_dict(model: BaseModel, **kwargs):
     return model.dict(**kwargs)  # type: ignore[return-value]
 
 
-# ---------------------------------------------------------------------------
-# Price estimation helpers
-# ---------------------------------------------------------------------------
-
-_SIZE_BINS = [0, 50, 100, 200, float("inf")]
-_SIZE_LABELS = ["small", "medium", "large", "extra_large"]
-_TIER_MAP = {"very_low": 0, "low": 1, "medium": 2, "high": 3, "premium": 4}
-_SIZE_MAP = {"small": 0, "medium": 1, "large": 2, "extra_large": 3}
-_FEATURE_COLS = [
+_PRICE_FEATURES = [
     "category",
     "room_count",
     "bathroom_count",
     "size",
     "city",
     "region",
-    "budget_tier",
-    "size_tier",
+    "rooms_per_100sqm",
+    "baths_per_room",
 ]
 
+_SIZE_BINS = [0, 50, 100, 200, float("inf")]
+_SIZE_LABELS = ["small", "medium", "large", "extra_large"]
 
-def _tier_from_value(value: Optional[float], bins: List[float], labels: List[str]) -> Optional[str]:
-    if value is None:
-        return None
-    # pd.cut returns a Categorical; take first element
-    tier = pd.cut(pd.Series([value]), bins=bins, labels=labels, include_lowest=True).astype(str).iloc[0]
-    return tier if tier != "nan" else None
+
+def _normalize_text(value: Optional[Any]) -> str:
+    return str(value).strip().lower() if value is not None else ""
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except Exception:
+        return default
+    return number if np.isfinite(number) else default
 
 
 @lru_cache(maxsize=1)
-def _load_price_artifacts() -> Tuple[Any, Dict[str, Any], Any]:
-    """Load model + encoders + scaler once (joblib)."""
-    missing = [p for p in [PRICE_MODEL_PATH, ENCODER_PATH, SCALER_PATH] if not Path(p).exists()]
-    if missing:
+def _load_price_artifacts() -> Tuple[Any, Dict[str, Any]]:
+    """Load the trained price model and optional validation metadata once."""
+    if not Path(PRICE_MODEL_PATH).exists():
         raise FileNotFoundError(
-            "Missing trained artifacts. Run `python main.py` (or `python src/train_models.py`) to generate:\n"
-            f"- {PRICE_MODEL_PATH}\n- {ENCODER_PATH}\n- {SCALER_PATH}"
+            f"Missing trained price model at {PRICE_MODEL_PATH}. Run `python src/train_models.py` first."
         )
 
-    model = joblib.load(PRICE_MODEL_PATH)
-    encoders = joblib.load(ENCODER_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    return model, encoders, scaler
-
-
-def _encode_label(encoders: Dict[str, Any], col: str, value: str) -> int:
-    le = encoders.get(col)
-    if le is None:
-        raise ValueError(f"Missing encoder for column '{col}'")
-
-    classes = list(getattr(le, "classes_", []))
-    if value not in classes:
-        allowed_preview = classes[:25]
-        more = "" if len(classes) <= 25 else f" (showing 25/{len(classes)})"
-        raise ValueError(f"Unknown {col}='{value}'. Allowed values: {allowed_preview}{more}")
-
-    return int(le.transform([value])[0])
-
-
-def _build_feature_row(req: PriceEstimateRequest) -> Tuple[pd.DataFrame, List[str]]:
-    """Build a single-row feature frame matching training preprocessing."""
-    warnings: List[str] = []
-
-    # Budget is intentionally not part of the public API for price estimation.
-    # The trained model expects a budget_tier feature, so we default it to a constant.
-    budget_tier_label = "very_low"
-
-    size_tier_label = _tier_from_value(req.size, _SIZE_BINS, _SIZE_LABELS) or "small"
-
-    model, encoders, scaler = _load_price_artifacts()
-
-    row: Dict[str, Any] = {
-        "category": _encode_label(encoders, "category", req.category),
-        "room_count": float(req.room_count),
-        "bathroom_count": float(req.bathroom_count),
-        "size": float(req.size),
-        "city": _encode_label(encoders, "city", req.city),
-        "region": _encode_label(encoders, "region", req.region),
-        "budget_tier": float(_TIER_MAP.get(budget_tier_label, 0)),
-        "size_tier": float(_SIZE_MAP.get(size_tier_label, 0)),
-    }
-
-    X = pd.DataFrame([row], columns=_FEATURE_COLS)
-
-    # Mirror training: scaler was fit on either 3 cols (room,bath,size) or 4 cols (room,bath,size,price_per_m2).
-    numeric_cols = [c for c in ["room_count", "bathroom_count", "size"] if c in X.columns]
     try:
-        n_expected = int(getattr(scaler, "n_features_in_", len(numeric_cols)))
-        if n_expected == 3:
-            X[numeric_cols] = scaler.transform(X[numeric_cols])
-        elif n_expected == 4:
-            # Only used to satisfy scaler shape; we do not accept budget as input.
-            price_per_m2 = 0.0
-            tmp = pd.DataFrame(
-                [[float(req.room_count), float(req.bathroom_count), float(req.size), float(price_per_m2)]],
-                columns=["room_count", "bathroom_count", "size", "price_per_m2"],
-            )
-            tmp_scaled = scaler.transform(tmp)
-            X.loc[:, "room_count"] = float(tmp_scaled[0][0])
-            X.loc[:, "bathroom_count"] = float(tmp_scaled[0][1])
-            X.loc[:, "size"] = float(tmp_scaled[0][2])
-        else:
-            warnings.append(
-                f"Scaler expects {n_expected} features; skipping scaling for numeric inputs (artifacts may be out of sync)."
-            )
-    except Exception as exc:
-        warnings.append(f"Scaler transform failed; using unscaled numeric features ({exc}).")
+        model = joblib.load(PRICE_MODEL_PATH)
+    except Exception:
+        model = None
+    metadata: Dict[str, Any] = {}
 
-    return X, warnings
+    if Path(PRICE_MODEL_METRICS_PATH).exists():
+        try:
+            metadata = json.loads(Path(PRICE_MODEL_METRICS_PATH).read_text(encoding="utf-8"))
+        except Exception:
+            metadata = {}
+
+    return model, metadata
+
+
+@lru_cache(maxsize=1)
+def _load_price_reference_data() -> pd.DataFrame:
+    if not Path(READABLE_DATA_PATH).exists():
+        raise FileNotFoundError(f"Data file not found at {READABLE_DATA_PATH}")
+
+    df = pd.read_csv(READABLE_DATA_PATH).fillna(0)
+    required = {"category", "room_count", "bathroom_count", "size", "price", "city", "region"}
+    missing = required.difference(df.columns)
+    if missing:
+        raise FileNotFoundError(f"Readable dataset is missing required columns: {sorted(missing)}")
+
+    for col in ["room_count", "bathroom_count", "size", "price"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=["category", "room_count", "bathroom_count", "size", "price", "city", "region"]).copy()
+    df = df[(df["price"] > 0) & (df["size"] > 0)].copy()
+    df["rooms_per_100sqm"] = (df["room_count"] / df["size"].clip(lower=1)) * 100.0
+    df["baths_per_room"] = df["bathroom_count"] / df["room_count"].clip(lower=1)
+    return df
+
+
+def _build_price_feature_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=frame.index)
+    out["category"] = frame["category"].astype(str)
+    out["room_count"] = pd.to_numeric(frame["room_count"], errors="coerce")
+    out["bathroom_count"] = pd.to_numeric(frame["bathroom_count"], errors="coerce")
+    out["size"] = pd.to_numeric(frame["size"], errors="coerce")
+    out["city"] = frame["city"].astype(str)
+    out["region"] = frame["region"].astype(str)
+    out["rooms_per_100sqm"] = (out["room_count"] / out["size"].clip(lower=1)) * 100.0
+    out["baths_per_room"] = out["bathroom_count"] / out["room_count"].clip(lower=1)
+    return out
+
+
+def _build_price_feature_row(req: PriceEstimateRequest) -> pd.DataFrame:
+    return _build_price_feature_frame(
+        pd.DataFrame(
+            [
+                {
+                    "category": req.category,
+                    "room_count": float(req.room_count),
+                    "bathroom_count": float(req.bathroom_count),
+                    "size": float(req.size),
+                    "city": req.city,
+                    "region": req.region,
+                }
+            ]
+        )
+    )
+
+
+def _predict_price_with_model(req: PriceEstimateRequest) -> float:
+    model, _ = _load_price_artifacts()
+    if model is None:
+        comparable_data = _estimate_from_comparables(req, _load_price_reference_data())
+        fallback_price = comparable_data.get("estimate")
+        if fallback_price is not None:
+            return float(fallback_price)
+        df = _load_price_reference_data()
+        same_category = df[df["category"].astype(str).str.lower() == str(req.category).strip().lower()].copy()
+        price_per_m2 = float((same_category["price"] / same_category["size"].clip(lower=1)).median()) if not same_category.empty else float((df["price"] / df["size"].clip(lower=1)).median())
+        return float(price_per_m2 * float(req.size))
+    row = _build_price_feature_row(req)
+    try:
+        predicted_log_price = float(model.predict(row)[0])
+    except Exception:
+        comparable_data = _estimate_from_comparables(req, _load_price_reference_data())
+        fallback_price = comparable_data.get("estimate")
+        if fallback_price is not None:
+            return float(fallback_price)
+        df = _load_price_reference_data()
+        same_category = df[df["category"].astype(str).str.lower() == str(req.category).strip().lower()].copy()
+        price_per_m2 = float((same_category["price"] / same_category["size"].clip(lower=1)).median()) if not same_category.empty else float((df["price"] / df["size"].clip(lower=1)).median())
+        return float(price_per_m2 * float(req.size))
+    return float(np.expm1(predicted_log_price))
+
+
+def _estimate_from_comparables(req: PriceEstimateRequest, df: pd.DataFrame) -> Dict[str, Any]:
+    try:
+        working = df.copy()
+        category = _normalize_text(req.category)
+        city = _normalize_text(req.city)
+        region = _normalize_text(req.region)
+
+        working["category_norm"] = working["category"].astype(str).map(_normalize_text)
+        working["city_norm"] = working["city"].astype(str).map(_normalize_text)
+        working["region_norm"] = working["region"].astype(str).map(_normalize_text)
+
+        pool = working[working["category_norm"] == category].copy()
+        if city:
+            city_pool = pool[pool["city_norm"] == city]
+            if len(city_pool) >= 5:
+                pool = city_pool
+        if region and len(pool) < 5:
+            region_pool = working[(working["category_norm"] == category) & (working["region_norm"] == region)]
+            if len(region_pool) >= 5:
+                pool = region_pool
+        if len(pool) < 5:
+            pool = working.copy()
+
+        size_scale = max(20.0, float(working["size"].quantile(0.75) - working["size"].quantile(0.25)))
+        room_scale = max(1.0, float(working["room_count"].quantile(0.75) - working["room_count"].quantile(0.25)))
+        bath_scale = max(1.0, float(working["bathroom_count"].quantile(0.75) - working["bathroom_count"].quantile(0.25)))
+
+        if pool.empty:
+            return {
+                "estimate": None,
+                "count": 0,
+                "confidence_pct": 0.0,
+                "source": "model_only",
+                "comparables": [],
+            }
+
+        scored = pool.copy()
+        scored["category_match"] = (scored["category_norm"] == category).astype(float)
+        scored["city_match"] = (scored["city_norm"] == city).astype(float) if city else 0.5
+        scored["region_match"] = (scored["region_norm"] == region).astype(float) if region else 0.5
+
+        scored["room_distance"] = (scored["room_count"] - float(req.room_count)).abs() / room_scale
+        scored["bathroom_distance"] = (scored["bathroom_count"] - float(req.bathroom_count)).abs() / bath_scale
+        scored["size_distance"] = (scored["size"] - float(req.size)).abs() / size_scale
+
+        distance = (
+            (1.0 - scored["category_match"]) * 0.30
+            + (1.0 - scored["city_match"]) * 0.20
+            + (1.0 - scored["region_match"]) * 0.10
+            + scored["room_distance"].clip(0, 3) * 0.15
+            + scored["bathroom_distance"].clip(0, 3) * 0.10
+            + scored["size_distance"].clip(0, 3) * 0.15
+        )
+
+        scored["similarity"] = np.exp(-(distance * 1.8))
+        scored = scored.replace([np.inf, -np.inf], np.nan).dropna(subset=["similarity", "price"])
+        top = scored.sort_values("similarity", ascending=False).head(12).copy()
+
+        if top.empty or float(top["similarity"].sum()) <= 0:
+            return {
+                "estimate": None,
+                "count": 0,
+                "confidence_pct": 0.0,
+                "source": "model_only",
+                "comparables": [],
+            }
+
+        comparable_estimate = float(np.average(top["price"].astype(float), weights=top["similarity"].astype(float)))
+        confidence_pct = float(
+            min(
+                95.0,
+                round((float(top["similarity"].mean()) * 70.0) + (min(len(top), 12) / 12.0) * 25.0, 2),
+            )
+        )
+
+        comparables = []
+        for _, row in top.head(5).iterrows():
+            comparables.append(
+                {
+                    "price_tnd": round(float(row["price"]), 2),
+                    "similarity": round(float(row["similarity"]), 4),
+                    "category": str(row["category"]),
+                    "city": str(row["city"]),
+                    "region": str(row["region"]),
+                    "room_count": int(round(float(row["room_count"]))),
+                    "bathroom_count": int(round(float(row["bathroom_count"]))),
+                    "size": round(float(row["size"]), 2),
+                }
+            )
+
+        source = "comparables" if len(top) >= 8 else "comparables_plus_model"
+        return {
+            "estimate": comparable_estimate,
+            "count": int(len(top)),
+            "confidence_pct": confidence_pct,
+            "source": source,
+            "comparables": comparables,
+            "top_similarity": float(top["similarity"].max()),
+        }
+    except Exception:
+        return {
+            "estimate": None,
+            "count": 0,
+            "confidence_pct": 0.0,
+            "source": "model_only",
+            "comparables": [],
+        }
 
 
 @lru_cache(maxsize=1)
 def _price_model_metrics() -> Dict[str, float]:
-    """
-    Compute a cached holdout evaluation on the readable dataset to produce a meaningful
-    accuracy proxy. This runs once per process.
-    """
-    if not Path(READABLE_DATA_PATH).exists():
-        return {"r2": float("nan"), "mae_tnd": float("nan"), "mape": float("nan"), "accuracy_pct": float("nan")}
-
-    model, encoders, scaler = _load_price_artifacts()
-
-    df = pd.read_csv(READABLE_DATA_PATH).fillna(0)
-    required = {"category", "room_count", "bathroom_count", "size", "city", "region", "price", "budget_tier", "size_tier"}
-    if not required.issubset(set(df.columns)):
-        return {"r2": float("nan"), "mae_tnd": float("nan"), "mape": float("nan"), "accuracy_pct": float("nan")}
-
-    # Encode using saved encoders (skip rows with unknown labels)
-    def _safe_transform(col: str, series: pd.Series) -> pd.Series:
-        le = encoders.get(col)
-        if le is None:
-            raise ValueError(f"Missing encoder for '{col}'")
-        classes = set(getattr(le, "classes_", []))
-        mask = series.astype(str).isin(classes)
-        out = pd.Series(np.nan, index=series.index, dtype="float64")
-        out.loc[mask] = le.transform(series[mask].astype(str))
-        return out
-
-    df_feat = pd.DataFrame(index=df.index)
-    df_feat["category"] = _safe_transform("category", df["category"])
-    df_feat["city"] = _safe_transform("city", df["city"])
-    df_feat["region"] = _safe_transform("region", df["region"])
-    df_feat["room_count"] = df["room_count"].astype(float)
-    df_feat["bathroom_count"] = df["bathroom_count"].astype(float)
-    df_feat["size"] = df["size"].astype(float)
-    df_feat["budget_tier"] = df["budget_tier"].astype(str).map(_TIER_MAP).fillna(0).astype(float)
-    df_feat["size_tier"] = df["size_tier"].astype(str).map(_SIZE_MAP).fillna(0).astype(float)
-
-    mask_ok = df_feat.notnull().all(axis=1) & df["price"].notnull()
-    df_feat = df_feat.loc[mask_ok, _FEATURE_COLS]
-    y = np.log10(df.loc[mask_ok, "price"].astype(float).values + 1.0)
-
-    if len(df_feat) < 50:
-        return {"r2": float("nan"), "mae_tnd": float("nan"), "mape": float("nan"), "accuracy_pct": float("nan")}
-
-    X_train, X_test, y_train, y_test = train_test_split(df_feat, y, test_size=0.2, random_state=42)
-
-    # Scale numeric cols consistently
-    numeric_cols = [c for c in ["room_count", "bathroom_count", "size"] if c in X_train.columns]
+    """Return cached validation metrics for the trained price model."""
     try:
-        X_train = X_train.copy()
-        X_test = X_test.copy()
-        n_expected = int(getattr(scaler, "n_features_in_", len(numeric_cols)))
-        if n_expected == 3:
-            X_train[numeric_cols] = scaler.transform(X_train[numeric_cols])
-            X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
-        elif n_expected == 4:
-            # Provide price_per_m2 to satisfy scaler shape (model does not use it directly).
-            ppm2_train = (
-                df.loc[X_train.index, "price_per_m2"].astype(float)
-                if "price_per_m2" in df.columns
-                else (df.loc[X_train.index, "price"].astype(float) / df.loc[X_train.index, "size"].astype(float)).astype(float)
-            )
-            ppm2_test = (
-                df.loc[X_test.index, "price_per_m2"].astype(float)
-                if "price_per_m2" in df.columns
-                else (df.loc[X_test.index, "price"].astype(float) / df.loc[X_test.index, "size"].astype(float)).astype(float)
-            )
+        _, metadata = _load_price_artifacts()
+        if metadata:
+            accuracy_pct = _safe_float(metadata.get("cv_accuracy_pct", metadata.get("holdout_accuracy_pct", 0.0)), 0.0)
+            return {
+                "r2": _safe_float(metadata.get("holdout_r2", 0.0), 0.0),
+                "mae_tnd": _safe_float(metadata.get("holdout_mae_tnd", 0.0), 0.0),
+                "mape": _safe_float(metadata.get("holdout_mape", 0.0), 0.0),
+                "accuracy_pct": accuracy_pct,
+            }
+    except FileNotFoundError:
+        return {"r2": 0.0, "mae_tnd": 0.0, "mape": 0.0, "accuracy_pct": 0.0}
 
-            tmp_train = pd.DataFrame(
-                {
-                    "room_count": X_train["room_count"].astype(float),
-                    "bathroom_count": X_train["bathroom_count"].astype(float),
-                    "size": X_train["size"].astype(float),
-                    "price_per_m2": ppm2_train.values,
-                },
-                index=X_train.index,
-            )
-            tmp_test = pd.DataFrame(
-                {
-                    "room_count": X_test["room_count"].astype(float),
-                    "bathroom_count": X_test["bathroom_count"].astype(float),
-                    "size": X_test["size"].astype(float),
-                    "price_per_m2": ppm2_test.values,
-                },
-                index=X_test.index,
-            )
+    df = _load_price_reference_data()
+    if len(df) < 50:
+        return {"r2": 0.0, "mae_tnd": 0.0, "mape": 0.0, "accuracy_pct": 0.0}
 
-            scaled_train = scaler.transform(tmp_train)
-            scaled_test = scaler.transform(tmp_test)
-            X_train.loc[:, "room_count"] = scaled_train[:, 0]
-            X_train.loc[:, "bathroom_count"] = scaled_train[:, 1]
-            X_train.loc[:, "size"] = scaled_train[:, 2]
-            X_test.loc[:, "room_count"] = scaled_test[:, 0]
-            X_test.loc[:, "bathroom_count"] = scaled_test[:, 1]
-            X_test.loc[:, "size"] = scaled_test[:, 2]
-    except Exception:
-        pass
+    model, _ = _load_price_artifacts()
+    X = _build_price_feature_frame(df)
+    y = np.log1p(df["price"].astype(float))
 
-    y_pred = model.predict(X_test)
-    r2 = float(r2_score(y_test, y_pred))
-    y_true_tnd = (10 ** y_test) - 1
-    y_pred_tnd = (10 ** y_pred) - 1
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_pred_log = model.predict(X_test)
+    y_true_tnd = np.expm1(y_test)
+    y_pred_tnd = np.expm1(y_pred_log)
+
+    r2 = float(r2_score(y_test, y_pred_log))
     mae_tnd = float(mean_absolute_error(y_true_tnd, y_pred_tnd))
-
-    denom = np.maximum(1.0, np.abs(y_true_tnd))
-    mape = float(np.mean(np.abs((y_true_tnd - y_pred_tnd) / denom)))
+    mape = float(mean_absolute_percentage_error(y_true_tnd, y_pred_tnd))
     accuracy_pct = float(max(0.0, min(100.0, 100.0 - (mape * 100.0))))
 
     return {"r2": r2, "mae_tnd": mae_tnd, "mape": mape, "accuracy_pct": accuracy_pct}
@@ -610,57 +669,98 @@ async def detect_objects(file: UploadFile = File(...)):
 
 @app.post("/api/price-estimate", response_model=PriceEstimateResponse)
 def estimate_price(request: PriceEstimateRequest):
-    """Estimate fair monthly rental price using the trained RandomForest model."""
+    """Estimate fair monthly rental price using the trained model and real comparables."""
     try:
-        X, warnings = _build_feature_row(request)
-        model, _, _ = _load_price_artifacts()
-        pred_log = float(model.predict(X)[0])
-        estimated_price = float((10 ** pred_log) - 1.0)
-
+        model_price = _predict_price_with_model(request)
+        comparable_data = _estimate_from_comparables(request, _load_price_reference_data())
         metrics = _price_model_metrics()
-        accuracy_pct = float(metrics.get("accuracy_pct", float("nan")))
+        accuracy_pct = _safe_float(metrics.get("accuracy_pct", 0.0), 0.0)
 
-        # Basic sanity clamp
-        estimated_price = max(0.0, estimated_price)
+        comparable_price = comparable_data.get("estimate")
+        comparable_count = int(comparable_data.get("count", 0))
+        confidence_pct = _safe_float(comparable_data.get("confidence_pct", 0.0), 0.0)
+        source = str(comparable_data.get("source", "hybrid"))
+        comparables = comparable_data.get("comparables", []) if isinstance(comparable_data.get("comparables", []), list) else []
+        warnings: List[str] = []
+
+        if comparable_price is not None:
+            if comparable_count >= 8:
+                comparable_weight = 0.8
+            elif comparable_count >= 5:
+                comparable_weight = 0.7
+            elif comparable_count >= 3:
+                comparable_weight = 0.6
+            else:
+                comparable_weight = 0.45
+
+            estimated_price = (comparable_weight * float(comparable_price)) + ((1.0 - comparable_weight) * float(model_price))
+        else:
+            estimated_price = float(model_price)
+            comparable_weight = 0.0
+            warnings.append("No close historical comparables were found, so the estimate leans entirely on the trained model.")
+
+        estimated_price = max(0.0, float(estimated_price))
+
+        if comparable_count > 0:
+            warnings.append(
+                f"Based on {comparable_count} similar listing(s) from your dataset; comparable weight: {int(round(comparable_weight * 100))}%."
+            )
+
+        if not np.isfinite(confidence_pct):
+            confidence_pct = 0.0
 
         return PriceEstimateResponse(
             estimated_price_tnd=round(estimated_price, 2),
-            accuracy_pct=round(accuracy_pct, 2) if np.isfinite(accuracy_pct) else float("nan"),
-            metrics={k: (round(v, 6) if isinstance(v, float) and np.isfinite(v) else v) for k, v in metrics.items()},
+            confidence_pct=round(confidence_pct, 2),
+            accuracy_pct=round(accuracy_pct, 2),
+            model_price_tnd=round(float(model_price), 2),
+            comparable_price_tnd=round(float(comparable_price), 2) if comparable_price is not None else None,
+            comparable_count=comparable_count,
+            source=source,
+            metrics={k: round(float(v), 6) if isinstance(v, (int, float, np.number)) and np.isfinite(float(v)) else 0.0 for k, v in metrics.items()},
             warnings=warnings,
+            comparables=comparables,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=f"Price estimation failed: {exc}") from exc
+        fallback_metrics = _price_model_metrics()
+        fallback_price = _predict_price_with_model(request)
+        return PriceEstimateResponse(
+            estimated_price_tnd=round(max(0.0, float(fallback_price)), 2),
+            confidence_pct=0.0,
+            accuracy_pct=round(_safe_float(fallback_metrics.get("accuracy_pct", 0.0), 0.0), 2),
+            model_price_tnd=round(float(fallback_price), 2),
+            comparable_price_tnd=None,
+            comparable_count=0,
+            source="model_only",
+            metrics={k: round(float(v), 6) if isinstance(v, (int, float, np.number)) and np.isfinite(float(v)) else 0.0 for k, v in fallback_metrics.items()},
+            warnings=[f"Comparable-based estimate unavailable; fell back to a dataset-based estimate ({exc})."],
+            comparables=[],
+        )
 
 
 @app.get("/api/price-estimate/options")
 def price_estimate_options():
     """
-    Return allowed categorical values (from saved encoders) to prevent 422 errors
-    due to unknown labels.
+    Return dataset-backed categorical values to populate the price estimate UI.
     """
     try:
-        _, encoders, _ = _load_price_artifacts()
+        df = _load_price_reference_data()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=f"Failed to load model artifacts: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to load price reference data: {exc}") from exc
 
-    def _classes(col: str) -> List[str]:
-        le = encoders.get(col)
-        classes = getattr(le, "classes_", None)
-        if classes is None:
-            return []
-        return [str(x) for x in list(classes)]
+    def _sorted_unique(col: str) -> List[str]:
+        return sorted({str(x) for x in df[col].dropna().astype(str).tolist() if str(x).strip()})
 
     return {
-        "category": _classes("category"),
-        "city": _classes("city"),
-        "region": _classes("region"),
+        "category": _sorted_unique("category"),
+        "city": _sorted_unique("city"),
+        "region": _sorted_unique("region"),
         "sizeBins": _SIZE_BINS[:-1],
         "sizeLabels": _SIZE_LABELS,
     }

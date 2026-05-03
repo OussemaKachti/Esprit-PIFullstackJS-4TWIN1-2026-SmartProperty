@@ -1,163 +1,232 @@
 """
-train_models.py — Train and save all ML models.
+train_models.py — Train and save the ML models used by the rental AI.
 
-Models trained:
-  1. Price predictor  (RandomForest regression) — predicts fair rental price
-  2. Property clusters (KMeans)                 — groups similar properties
-     Used by matching_engine.py to speed up candidate-property matching.
+The price predictor now uses only observable listing features and a proper
+preprocessing pipeline, which removes the target leakage that made the old
+model unreliable in production.
 
 Run:
     python src/train_models.py
 """
 
-import pandas as pd
-import numpy as np
-import joblib
+import json
 import os
 import sys
 
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+import joblib
+import numpy as np
+import pandas as pd
+
 from sklearn.cluster import KMeans
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder, MinMaxScaler
 
 # allow imports from project root
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from config import (
-    CLEAN_DATA_PATH, READABLE_DATA_PATH,
-    MODELS_DIR, PRICE_MODEL_PATH, CLUSTER_MODEL_PATH,
-    SCALER_PATH, ENCODER_PATH,
-    N_CLUSTERS
+    READABLE_DATA_PATH,
+    MODELS_DIR,
+    PRICE_MODEL_PATH,
+    PRICE_MODEL_METRICS_PATH,
+    CLUSTER_MODEL_PATH,
+    SCALER_PATH,
+    ENCODER_PATH,
+    N_CLUSTERS,
 )
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+
 def banner(title):
     print("\n" + "=" * 60)
     print(f"  {title}")
     print("=" * 60)
 
 
-# ── 0. Setup ──────────────────────────────────────────────────────────────────
+def one_hot_encoder():
+    try:
+        return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        return OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-# ── 1. Load readable data (we re-encode ourselves to save encoders) ───────────
 banner("STEP 1 — Load data")
-
 df = pd.read_csv(READABLE_DATA_PATH)
 print(f"Loaded {len(df)} rows, columns: {list(df.columns)}")
 
-# Keep only columns useful for modelling
-FEATURE_COLS  = ["category", "room_count", "bathroom_count", "size",
-                  "city", "region", "budget_tier", "size_tier"]
-TARGET_COL    = "price"
+required = ["category", "room_count", "bathroom_count", "size", "price", "city", "region"]
+missing = [col for col in required if col not in df.columns]
+if missing:
+    raise FileNotFoundError(f"Missing required training columns: {missing}")
 
-# ── 2. Encode & scale (save encoders for inference) ───────────────────────────
-banner("STEP 2 — Encode & scale")
+df = df.copy()
+for col in ["room_count", "bathroom_count", "size", "price"]:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-encoders = {}
-df_model = df.copy()
+df = df.dropna(subset=required).copy()
+df = df[(df["price"] > 0) & (df["size"] > 0)].copy()
 
-# Label encode categoricals
-for col in ["category", "city", "region"]:
-    le = LabelEncoder()
-    df_model[col] = le.fit_transform(df_model[col].astype(str))
-    encoders[col] = le
-    print(f"  Encoded '{col}' → {len(le.classes_)} classes")
+df["rooms_per_100sqm"] = (df["room_count"] / df["size"].clip(lower=1)) * 100.0
+df["baths_per_room"] = df["bathroom_count"] / df["room_count"].clip(lower=1)
 
-# Ordinal encode tiers
-tier_map  = {"very_low": 0, "low": 1, "medium": 2, "high": 3, "premium": 4}
-size_map  = {"small": 0, "medium": 1, "large": 2, "extra_large": 3}
-df_model["budget_tier"] = df_model["budget_tier"].map(tier_map).fillna(0)
-df_model["size_tier"]   = df_model["size_tier"].map(size_map).fillna(0)
+feature_cols = [
+    "category",
+    "room_count",
+    "bathroom_count",
+    "size",
+    "city",
+    "region",
+    "rooms_per_100sqm",
+    "baths_per_room",
+]
+categorical_cols = ["category", "city", "region"]
+numeric_cols = ["room_count", "bathroom_count", "size", "rooms_per_100sqm", "baths_per_room"]
 
-# Scale numeric features
-numeric_cols = ["room_count", "bathroom_count", "size",
-                "price_per_m2" if "price_per_m2" in df_model.columns else "size"]
-numeric_cols = [c for c in numeric_cols if c in df_model.columns]
-
-scaler = MinMaxScaler()
-df_model[numeric_cols] = scaler.fit_transform(df_model[numeric_cols])
-
-# Save encoders and scaler
-joblib.dump(encoders, ENCODER_PATH)
-joblib.dump(scaler,   SCALER_PATH)
-print(f"\n  Encoders saved → {ENCODER_PATH}")
-print(f"  Scaler saved   → {SCALER_PATH}")
-
-# ── 3. Price prediction model ─────────────────────────────────────────────────
-banner("STEP 3 — Train price predictor (RandomForest)")
-
-X = df_model[FEATURE_COLS]
-y = np.log10(df[TARGET_COL] + 1)          # predict log-price for stability
+X = df[feature_cols].copy()
+y = np.log1p(df["price"].astype(float))
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 print(f"  Train: {len(X_train)} rows | Test: {len(X_test)} rows")
 
-rf = RandomForestRegressor(
-    n_estimators=200,
-    max_depth=10,
-    min_samples_split=5,
-    random_state=42,
-    n_jobs=-1
+banner("STEP 2 — Train clean price predictor")
+preprocessor = ColumnTransformer(
+    transformers=[
+        (
+            "cat",
+            Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    ("onehot", one_hot_encoder()),
+                ]
+            ),
+            categorical_cols,
+        ),
+        (
+            "num",
+            Pipeline(steps=[("imputer", SimpleImputer(strategy="median"))]),
+            numeric_cols,
+        ),
+    ],
+    remainder="drop",
 )
-rf.fit(X_train, y_train)
 
-y_pred    = rf.predict(X_test)
-mae_log   = mean_absolute_error(y_test, y_pred)
-r2        = r2_score(y_test, y_pred)
-
-# Convert back to actual TND for interpretability
-mae_tnd   = mean_absolute_error(
-    10 ** y_test - 1,
-    10 ** y_pred - 1
+price_model = Pipeline(
+    steps=[
+        ("preprocess", preprocessor),
+        (
+            "regressor",
+            ExtraTreesRegressor(
+                n_estimators=700,
+                min_samples_leaf=2,
+                min_samples_split=4,
+                max_features="sqrt",
+                random_state=42,
+                n_jobs=-1,
+            ),
+        ),
+    ]
 )
 
-print(f"\n  R²  score   : {r2:.4f}  (1.0 = perfect)")
-print(f"  MAE (log)   : {mae_log:.4f}")
-print(f"  MAE (TND)   : {mae_tnd:.1f} TND/month")
+price_model.fit(X_train, y_train)
 
-# Cross-validation
-cv_scores = cross_val_score(rf, X, y, cv=5, scoring="r2")
-print(f"  CV R² (5-fold): {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+y_pred_log = price_model.predict(X_test)
+y_true_tnd = np.expm1(y_test)
+y_pred_tnd = np.expm1(y_pred_log)
 
-# Feature importance
-fi = pd.Series(rf.feature_importances_, index=FEATURE_COLS).sort_values(ascending=False)
-print("\n  Feature importances:")
-for feat, imp in fi.items():
-    print(f"    {feat:20s}: {imp:.4f}")
+r2 = float(r2_score(y_test, y_pred_log))
+mae_tnd = float(mean_absolute_error(y_true_tnd, y_pred_tnd))
+mape = float(mean_absolute_percentage_error(y_true_tnd, y_pred_tnd))
+accuracy_pct = float(max(0.0, min(100.0, 100.0 - (mape * 100.0))))
 
-joblib.dump(rf, PRICE_MODEL_PATH)
-print(f"\n  Model saved → {PRICE_MODEL_PATH}")
+print(f"\n  Holdout R²    : {r2:.4f}")
+print(f"  Holdout MAE   : {mae_tnd:.1f} TND/month")
+print(f"  Holdout MAPE  : {mape:.4f}")
+print(f"  Accuracy proxy: {accuracy_pct:.2f}%")
 
-# ── 4. Property clustering ────────────────────────────────────────────────────
-banner("STEP 4 — Train property clusters (KMeans)")
+cv_r2 = cross_val_score(price_model, X, y, cv=5, scoring="r2", n_jobs=-1)
+cv_mape = -cross_val_score(
+    price_model,
+    X,
+    y,
+    cv=5,
+    scoring="neg_mean_absolute_percentage_error",
+    n_jobs=-1,
+)
 
-CLUSTER_FEATURES = ["room_count", "bathroom_count", "size",
-                     "category", "city", "budget_tier", "size_tier"]
-CLUSTER_FEATURES = [c for c in CLUSTER_FEATURES if c in df_model.columns]
+print(f"  CV R² (5-fold): {cv_r2.mean():.4f} ± {cv_r2.std():.4f}")
+print(f"  CV MAPE       : {cv_mape.mean():.4f} ± {cv_mape.std():.4f}")
 
-X_cluster = df_model[CLUSTER_FEATURES]
+joblib.dump(price_model, PRICE_MODEL_PATH)
+metrics = {
+    "model_name": "ExtraTreesRegressor",
+    "rows_used": int(len(df)),
+    "feature_columns": feature_cols,
+    "holdout_r2": round(r2, 6),
+    "holdout_mae_tnd": round(mae_tnd, 4),
+    "holdout_mape": round(mape, 6),
+    "holdout_accuracy_pct": round(accuracy_pct, 2),
+    "cv_r2_mean": round(float(cv_r2.mean()), 6),
+    "cv_r2_std": round(float(cv_r2.std()), 6),
+    "cv_mape_mean": round(float(cv_mape.mean()), 6),
+    "cv_mape_std": round(float(cv_mape.std()), 6),
+    "cv_accuracy_pct": round(float(max(0.0, min(100.0, 100.0 - (float(cv_mape.mean()) * 100.0)))), 2),
+}
+PRICE_MODEL_METRICS_PATH.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+
+print(f"\n  Model saved   → {PRICE_MODEL_PATH}")
+print(f"  Metrics saved → {PRICE_MODEL_METRICS_PATH}")
+
+banner("STEP 3 — Train property clusters (KMeans)")
+df_cluster = pd.read_csv(READABLE_DATA_PATH).copy()
+for col in ["room_count", "bathroom_count", "size", "price"]:
+    if col in df_cluster.columns:
+        df_cluster[col] = pd.to_numeric(df_cluster[col], errors="coerce")
+
+df_cluster = df_cluster.dropna(subset=["category", "city", "room_count", "bathroom_count", "size"]).copy()
+
+cluster_features = ["room_count", "bathroom_count", "size", "category", "city", "budget_tier", "size_tier"]
+cluster_features = [col for col in cluster_features if col in df_cluster.columns]
+
+df_cluster_model = df_cluster.copy()
+for col in ["category", "city", "region"]:
+    if col in df_cluster_model.columns:
+        encoder = LabelEncoder()
+        df_cluster_model[col] = encoder.fit_transform(df_cluster_model[col].astype(str))
+
+if "budget_tier" in df_cluster_model.columns:
+    tier_map = {"very_low": 0, "low": 1, "medium": 2, "high": 3, "premium": 4}
+    df_cluster_model["budget_tier"] = df_cluster_model["budget_tier"].map(tier_map).fillna(0)
+
+if "size_tier" in df_cluster_model.columns:
+    size_map = {"small": 0, "medium": 1, "large": 2, "extra_large": 3}
+    df_cluster_model["size_tier"] = df_cluster_model["size_tier"].map(size_map).fillna(0)
+
+scaler = MinMaxScaler()
+cluster_matrix = df_cluster_model[cluster_features]
+cluster_matrix = pd.DataFrame(scaler.fit_transform(cluster_matrix), columns=cluster_features)
 
 kmeans = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10)
-kmeans.fit(X_cluster)
+kmeans.fit(cluster_matrix)
 
-df["cluster"] = kmeans.labels_
+df_cluster["cluster"] = kmeans.labels_
 print(f"  Clusters formed: {N_CLUSTERS}")
 print("\n  Cluster distribution:")
-print(df["cluster"].value_counts().sort_index().to_string())
+print(df_cluster["cluster"].value_counts().sort_index().to_string())
 
-# Add cluster labels back to readable CSV for inspection
-df.to_csv(READABLE_DATA_PATH, index=False)
-
+df_cluster.to_csv(READABLE_DATA_PATH, index=False)
 joblib.dump(kmeans, CLUSTER_MODEL_PATH)
+
 print(f"\n  Model saved → {CLUSTER_MODEL_PATH}")
 print(f"  Cluster labels added to {READABLE_DATA_PATH}")
 
-# ── 5. Done ───────────────────────────────────────────────────────────────────
 banner("✅  Training complete")
-print(f"  price_predictor.pkl  → predicts fair monthly rent")
-print(f"  property_clusters.pkl → groups similar listings")
-print(f"  scaler.pkl + encoders.pkl → for inference\n")
+print("  price_predictor.pkl   → clean price estimator from real listing features")
+print("  price_model_metrics.json → validation metrics for the API")
+print("  property_clusters.pkl → groups similar listings")
