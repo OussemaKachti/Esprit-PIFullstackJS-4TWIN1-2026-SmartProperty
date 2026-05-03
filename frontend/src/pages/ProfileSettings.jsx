@@ -11,6 +11,7 @@ import {
 } from '../utils/auth';
 import { localizeRoute } from '../routes/routeConfig';
 import LocalizedLink from '../components/LocalizedLink';
+import WalletLinkingCard from '../components/WalletLinkingCard';
 
 const ProfileSettings = () => {
   const navigate = useNavigate();
@@ -173,11 +174,11 @@ const ProfileSettings = () => {
         </div>
         <div className="content">
           <div className="container text-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     );
   }
@@ -309,6 +310,14 @@ const ProfileSettings = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* EasyWallet Integration */}
+              <div className="mt-4">
+                <WalletLinkingCard
+                  user={{ ...form, _id: JSON.parse(localStorage.getItem('user'))?._id }}
+                  onUpdate={() => window.location.reload()}
+                />
               </div>
             </div>
           </div>

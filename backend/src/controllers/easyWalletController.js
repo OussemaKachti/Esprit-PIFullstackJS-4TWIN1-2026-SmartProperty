@@ -10,7 +10,7 @@ const { apiResponse } = require('../utils/apiResponse');
 // @access  Private
 exports.initiatePayment = async (req, res, next) => {
     try {
-        const { id, propertyId, amount, paymentType = 'LEASE' } = req.body;
+        const { id, propertyId, amount, paymentType = 'LEASE', startDate, endDate } = req.body;
 
         if ((!id && !propertyId) || !amount) {
             return res.status(400).json(
@@ -23,12 +23,35 @@ exports.initiatePayment = async (req, res, next) => {
 
         // 1. Fetch record based on type
         if (paymentType === 'LEASE') {
-            record = await Lease.findById(id).populate('propertyId');
-            if (!record) return res.status(404).json(apiResponse(false, 'Lease not found'));
-            if (!record.propertyId) {
-                return res.status(404).json(apiResponse(false, 'Associated property not found for this lease'));
+            if (propertyId) {
+                const property = await Property.findById(propertyId);
+                if (!property) return res.status(404).json(apiResponse(false, 'Property not found'));
+                ownerId = property.createdBy;
+
+                // Create or find a pending lease for this tenant/property
+                record = await Lease.fshoindOne({
+                    propertyId,
+                    tenantId: req.user._id,
+                    status: 'PENDING'
+                });
+
+                if (!record) {
+                    record = await Lease.create({
+                        propertyId,
+                        tenantId: req.user._id,
+                        rentAmount: Number(amount),
+                        startDate: startDate || new Date(),
+                        endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 1 month
+                        status: 'PENDING'
+                    });
+                }
+            } else {
+                record = await Lease.findById(id).populate('propertyId');
+                if (!record) return res.status(404).json(apiResponse(false, 'Lease not found'));
+                if (record.propertyId) {
+                    ownerId = record.propertyId.createdBy;
+                }
             }
-            ownerId = record.propertyId.createdBy;
         } else if (paymentType === 'SALE') {
             if (propertyId) {
                 // Insta-Pay flow: Create or find Sale record
@@ -71,12 +94,11 @@ exports.initiatePayment = async (req, res, next) => {
             owner = await User.findById(ownerId);
         }
 
-        // Fallback: If no owner found via createdBy, look for an AGENCY or ADMIN
-        if (!owner) {
-            console.warn(`Owner not found for ownerId: ${ownerId}. Searching for AGENCY/ADMIN fallback.`);
-            owner = await User.findOne({ role: 'AGENCY' });
+        if (!owner || !owner.walletNumber) {
+            console.warn(`Owner missing or lacks wallet for property. Fallback to AGENCY.`);
+            owner = await User.findOne({ role: 'AGENCY', walletNumber: { $ne: null, $ne: '' } });
             if (!owner || owner._id.equals(req.user._id)) {
-                owner = await User.findOne({ role: 'ADMIN' });
+                owner = await User.findOne({ role: 'ADMIN', walletNumber: { $ne: null, $ne: '' } });
             }
         }
 
@@ -109,7 +131,7 @@ exports.initiatePayment = async (req, res, next) => {
         }
 
         // 4. Call EasyWallet API (using /send for transfer)
-        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-8d5c.onrender.com/api/wallet';
+        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-production.up.railway.app/api/wallet';
 
         console.log(`INITIATING TRANSFER: From ${tenantWallet} (You) -> To ${ownerWallet} (Seller/Agency) Amount: ${amount}`);
 
@@ -177,18 +199,19 @@ exports.getPaymentStatus = async (req, res, next) => {
 
         let ownerId;
         let amount;
+        let activeRecord = null;
 
         if (paymentType === 'LEASE') {
-            const record = await Lease.findById(id).populate('propertyId');
-            if (record && record.propertyId) {
-                ownerId = record.propertyId.createdBy;
-                amount = record.rentAmount;
+            activeRecord = await Lease.findById(id).populate('propertyId');
+            if (activeRecord && activeRecord.propertyId) {
+                ownerId = activeRecord.propertyId.createdBy;
+                amount = activeRecord.rentAmount;
             }
         } else if (paymentType === 'SALE') {
-            let record = await Sale.findById(id).populate('propertyId');
-            if (record && record.propertyId) {
-                ownerId = record.propertyId.createdBy;
-                amount = record.salePrice;
+            activeRecord = await Sale.findById(id).populate('propertyId');
+            if (activeRecord && activeRecord.propertyId) {
+                ownerId = activeRecord.propertyId.createdBy;
+                amount = activeRecord.salePrice;
             } else {
                 const property = await Property.findById(id);
                 if (property) {
@@ -203,10 +226,11 @@ exports.getPaymentStatus = async (req, res, next) => {
             owner = await User.findById(ownerId);
         }
 
-        if (!owner) {
-            owner = await User.findOne({ role: 'AGENCY' });
+        // Fallback to Agency/Admin if owner is missing OR lacks a wallet
+        if (!owner || !owner.walletNumber) {
+            owner = await User.findOne({ role: 'AGENCY', walletNumber: { $ne: null, $ne: '' } });
             if (!owner || owner._id.equals(req.user._id)) {
-                owner = await User.findOne({ role: 'ADMIN' });
+                owner = await User.findOne({ role: 'ADMIN', walletNumber: { $ne: null, $ne: '' } });
             }
         }
 
@@ -216,7 +240,8 @@ exports.getPaymentStatus = async (req, res, next) => {
             tenantWallet: req.user.walletNumber,
             recipientName: owner ? `${owner.firstName || 'Agency'} ${owner.lastName || ''}` : 'Unknown Recipient',
             amount: amount || 0,
-            paymentType
+            paymentType,
+            activeRecord: activeRecord || null
         }));
     } catch (error) {
         next(error);
@@ -235,11 +260,14 @@ exports.createWalletAndLink = async (req, res, next) => {
             return res.status(400).json(apiResponse(false, 'You already have a wallet linked to your account', { walletNumber: user.walletNumber }));
         }
 
-        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-8d5c.onrender.com/api/wallet';
+        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-production.up.railway.app/api/wallet';
 
         // Prepare data for EasyWallet - we use the user's info
         // We generate a secure random password for the wallet side
         const walletPassword = Math.random().toString(36).slice(-10);
+        // We use a unique alias for the email to prevent 'user already exists' errors in EasyWallet 
+        // since we might have lost their previous wallet number before the schema was fixed
+        const uniqueEmailAlias = `ew_${Date.now()}_${user.email}`;
 
         const response = await fetch(`${easyWalletUrl}/create`, {
             method: 'POST',
@@ -249,7 +277,7 @@ exports.createWalletAndLink = async (req, res, next) => {
             body: JSON.stringify({
                 username: user.login || user.email.split('@')[0],
                 lastName: user.lastName || 'User',
-                email: user.email,
+                email: uniqueEmailAlias,
                 password: walletPassword
             }),
         });
@@ -299,7 +327,7 @@ exports.getBalance = async (req, res, next) => {
             );
         }
 
-        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-8d5c.onrender.com/api/wallet';
+        const easyWalletUrl = process.env.EASYWALLET_URL || 'https://easywallet-production.up.railway.app/api/wallet';
 
         console.log(`FETCHING BALANCE: For ${walletNumber}`);
 

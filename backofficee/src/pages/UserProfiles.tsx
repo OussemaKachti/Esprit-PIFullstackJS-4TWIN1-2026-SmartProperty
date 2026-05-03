@@ -3,6 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import UserMetaCard from "../components/UserProfile/UserMetaCard";
 import UserInfoCard from "../components/UserProfile/UserInfoCard";
 import UserAddressCard from "../components/UserProfile/UserAddressCard";
+import UserWalletCard from "../components/UserProfile/UserWalletCard";
 import TwoFactorAuth from "../components/UserProfile/TwoFactorAuth";
 import PageMeta from "../components/common/PageMeta";
 
@@ -17,6 +18,7 @@ export type ProfileUser = {
   phone?: string;
   avatarUrl?: string;
   role: string;
+  walletNumber?: string;
   twoFactorEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -93,8 +95,9 @@ export default function UserProfiles() {
           <div className="space-y-6">
             <UserMetaCard user={user} />
             <UserInfoCard user={user} onProfileUpdated={fetchProfile} />
-            <TwoFactorAuth 
-              twoFactorEnabled={user.twoFactorEnabled || false} 
+            <UserWalletCard user={user} onProfileUpdated={fetchProfile} />
+            <TwoFactorAuth
+              twoFactorEnabled={user.twoFactorEnabled || false}
               onUpdate={fetchProfile}
             />
             <UserAddressCard />

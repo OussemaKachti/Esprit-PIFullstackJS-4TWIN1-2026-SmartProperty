@@ -94,6 +94,11 @@ const userSchema = new mongoose.Schema(
       select: false,
       default: []
     },
+    walletNumber: {
+      type: String,
+      trim: true,
+      default: null
+    },
     /** Pièces d’identité / immatriculation (inscription marketplace) */
     identityDocuments: [
       {
@@ -123,18 +128,18 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.methods.getResetPasswordToken = function() {
+userSchema.methods.getResetPasswordToken = function () {
   const crypto = require('crypto');
-  
+
   const resetToken = crypto.randomBytes(20).toString('hex');
-  
+
   this.resetPasswordToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  
+
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
-  
+
   return resetToken;
 };
 

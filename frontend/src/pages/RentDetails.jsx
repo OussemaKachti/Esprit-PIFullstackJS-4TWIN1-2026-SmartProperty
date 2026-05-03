@@ -71,6 +71,7 @@ const RentDetails = () => {
 	const [successMessage, setSuccessMessage] = useState('');
 	const [errorMessage, setErrorMessage] = useState('');
 	const [blockingLease, setBlockingLease] = useState(null);
+	const [paymentStatus, setPaymentStatus] = useState({ loading: false, hasTenantWallet: false, hasOwnerWallet: false });
 	const [bookingForm, setBookingForm] = useState({
 		startDate: '',
 		endDate: '',
@@ -310,30 +311,60 @@ const RentDetails = () => {
 	}, [property?.price, bookingForm.rentAmount]);
 
 	useEffect(() => {
-		let cancelled = false;
-		const tenantId = currentUser?._id || currentUser?.id;
-		if (!propertyId || !tenantId) {
-			setBlockingLease(null);
-			return () => {
-				cancelled = true;
-			};
-		}
-		(async () => {
+		if (!propertyId || !currentUser) return;
+		const checkStatus = async () => {
+			setPaymentStatus(prev => ({ ...prev, loading: true }));
 			try {
-				const data = await apiRequest(
-					`/api/leases?propertyId=${encodeURIComponent(propertyId)}&tenantId=${encodeURIComponent(tenantId)}&limit=50`
-				);
-				const leases = data?.data?.leases || [];
-				const block = pickBlockingLease(leases);
-				if (!cancelled) setBlockingLease(block || null);
-			} catch {
-				if (!cancelled) setBlockingLease(null);
+				const res = await apiRequest(`/api/easy-wallet/status/${propertyId}?paymentType=LEASE`);
+				if (res.success) {
+					setPaymentStatus({
+						loading: false,
+						hasTenantWallet: res.data.hasTenantWallet,
+						hasOwnerWallet: res.data.hasOwnerWallet,
+						recipientName: res.data.recipientName,
+						amount: res.data.amount
+					});
+					if (res.data.activeRecord) {
+						setBlockingLease(res.data.activeRecord);
+					}
+				}
+			} catch (err) {
+				console.error("Failed to fetch payment status:", err);
+				setPaymentStatus(prev => ({ ...prev, loading: false }));
 			}
-		})();
-		return () => {
-			cancelled = true;
 		};
+		checkStatus();
 	}, [propertyId, currentUser]);
+
+	const handleInstaPay = async () => {
+		if (!window.confirm(t('propertyDetails.confirmInstaPay', { amount: paymentStatus.amount || property?.price }))) return;
+
+		setIsSending(true);
+		setErrorMessage('');
+		setSuccessMessage('');
+
+		try {
+			const res = await apiRequest('/api/easy-wallet/pay', {
+				method: 'POST',
+				body: JSON.stringify({
+					propertyId: propertyId,
+					amount: paymentStatus.amount || property?.price,
+					paymentType: 'LEASE',
+					startDate: bookingForm.startDate,
+					endDate: bookingForm.endDate
+				})
+			});
+
+			if (res.success) {
+				setSuccessMessage(t('propertyDetails.paymentSuccessful'));
+				setBlockingLease({ status: 'CONFIRMED', startDate: bookingForm.startDate, endDate: bookingForm.endDate });
+			}
+		} catch (err) {
+			setErrorMessage(err.message || t('propertyDetails.paymentFailed'));
+		} finally {
+			setIsSending(false);
+		}
+	};
 
 	const closeTourModal = useCallback(() => setIsTourModalOpen(false), []);
 
@@ -362,71 +393,6 @@ const RentDetails = () => {
 		});
 	};
 
-	const handleSendBooking = async () => {
-		setErrorMessage('');
-		setSuccessMessage('');
-
-		const userId = currentUser?._id || currentUser?.id;
-
-		if (!propertyId) {
-			setErrorMessage(t('propertyDetails.missingPropertyIdentifier'));
-			return;
-		}
-
-		if (!currentUser || !userId) {
-			setErrorMessage(t('propertyDetails.signInToBook'));
-			return;
-		}
-
-		if (!bookingForm.startDate || !bookingForm.endDate || !bookingForm.rentAmount) {
-			setErrorMessage(t('propertyDetails.chooseDatesBudget'));
-			return;
-		}
-
-		if (bookingForm.startDate < TODAY_DATE_INPUT) {
-			setErrorMessage('Start date cannot be earlier than today.');
-			return;
-		}
-
-		if (bookingForm.endDate <= bookingForm.startDate) {
-			setErrorMessage('End date must be after the start date.');
-			return;
-		}
-
-		const offerPrice = Number(bookingForm.rentAmount);
-		if (!Number.isFinite(offerPrice) || offerPrice <= 0) {
-			setErrorMessage('Offer price must be greater than 0.');
-			return;
-		}
-
-		setIsSending(true);
-		try {
-			const payload = {
-				propertyId,
-				tenantId: userId,
-				startDate: bookingForm.startDate,
-				endDate: bookingForm.endDate,
-				rentAmount: Number(bookingForm.rentAmount),
-				charges: 0,
-				status: 'PENDING',
-			};
-
-			await apiRequest('/api/leases', {
-				method: 'POST',
-				body: JSON.stringify(payload),
-			});
-
-			setBlockingLease({
-				status: 'PENDING',
-				endDate: bookingForm.endDate,
-				startDate: bookingForm.startDate,
-			});
-		} catch (error) {
-			setErrorMessage(error.message || t('propertyDetails.couldNotSendRequest'));
-		} finally {
-			setIsSending(false);
-		}
-	};
 	useEffect(() => {
 		// Force enable scrolling
 		const enableScrolling = () => {
@@ -476,12 +442,7 @@ const RentDetails = () => {
 			position: 'relative',
 			width: '100%'
 		}}>
-
-
-
 			<div className="main-wrapper">
-
-
 				<div className="page-wrapper">
 					{property && !loading && (
 						<div className="buy-details-header-item">
@@ -490,7 +451,7 @@ const RentDetails = () => {
 									<div className="row align-items-center text-center position-relative z-1">
 										<div className="col-xl-8">
 											<div className="d-flex align-center gap-2 mb-2">
-														<span className="badge bg-primary">{typeDisplayLabel || t('propertyDetails.propertyFallback')}</span>
+												<span className="badge bg-primary">{typeDisplayLabel || t('propertyDetails.propertyFallback')}</span>
 												<span className="badge bg-secondary">{listingLabel}</span>
 											</div>
 											<h1 className="breadcrumb-title text-start">{property.title}</h1>
@@ -512,16 +473,16 @@ const RentDetails = () => {
 												<i className="fa-solid fa-circle text-body"></i>
 												<div className="fs-14 mb-0 text-white d-flex align-items-center flex-wrap gap-1 custom-address-item">
 													<i className="material-icons-outlined text-white me-1">location_on</i>
-																	{addressLabel || t('propertyDetails.noDescription')}
+													{addressLabel || t('propertyDetails.noDescription')}
 												</div>
 												<i className="fa-solid fa-circle text-body"></i>
-														<p className="fs-14 mb-0 text-white">{t('propertyDetails.lastUpdated')}: {formattedUpdatedAt || t('propertyDetails.noDescription')}</p>
+												<p className="fs-14 mb-0 text-white">{t('propertyDetails.lastUpdated')}: {formattedUpdatedAt || t('propertyDetails.noDescription')}</p>
 											</div>
 										</div>
 										<div className="col-xl-4 d-flex d-xl-block align-items-center flex-wrap gap-3">
 											<h4 className="mb-0 text-primary text-xl-end text-start">
 												{formattedPrice}
-																<span className="fs-6 fw-normal d-block d-xl-inline ms-xl-2"> / {t('propertyPages.month')}</span>
+												<span className="fs-6 fw-normal d-block d-xl-inline ms-xl-2"> / {t('propertyPages.month')}</span>
 											</h4>
 										</div>
 									</div>
@@ -529,20 +490,19 @@ const RentDetails = () => {
 							</div>
 						</div>
 					)}
-
 					<div className="content">
 						<div className="container">
 							{!propertyId && (
 								<div className="alert alert-warning mb-4" role="alert">
-													{t('propertyDetails.openRentalFromMarketplace')}
+									{t('propertyDetails.openRentalFromMarketplace')}
 								</div>
 							)}
 							{propertyId && loading && (
 								<div className="text-center py-5">
 									<div className="spinner-border text-primary" role="status">
-															<span className="visually-hidden">{t('common.loading')}</span>
+										<span className="visually-hidden">{t('common.loading')}</span>
 									</div>
-														<p className="mt-3">{t('propertyDetails.loadingRentalListing')}</p>
+									<p className="mt-3">{t('propertyDetails.loadingRentalListing')}</p>
 								</div>
 							)}
 							{propertyId && !loading && loadError && (
@@ -557,10 +517,10 @@ const RentDetails = () => {
 											<div className="mb-4 d-inline-flex align-center justify-content-between w-100 flex-wrap gap-1">
 												<div className="d-inline-flex align-center gap-2">
 													<span className="badge bg-danger d-flex align-items-center">
-																<i className="material-icons-outlined fs-14 me-1">generating_tokens</i> {t('propertyDetails.trending')}
+														<i className="material-icons-outlined fs-14 me-1">generating_tokens</i> {t('propertyDetails.trending')}
 													</span>
 													<span className="badge bg-orange d-flex align-items-center">
-																<i className="material-icons-outlined fs-14 me-1">loyalty</i> {t('propertyDetails.featured')}
+														<i className="material-icons-outlined fs-14 me-1">loyalty</i> {t('propertyDetails.featured')}
 													</span>
 													{hasPanoramas && (
 														<button
@@ -570,11 +530,11 @@ const RentDetails = () => {
 															style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
 														>
 															<i className="material-icons-outlined fs-14 me-1">panorama</i>
-																{t('propertyDetails.view360Tour')}
+															{t('propertyDetails.view360Tour')}
 														</button>
 													)}
 												</div>
-													<p className="mb-0 text-dark">{t('propertyDetails.rentalListing')}</p>
+												<p className="mb-0 text-dark">{t('propertyDetails.rentalListing')}</p>
 											</div>
 
 											<div className="slider-card service-slider-card mb-4 overflow-hidden bg-white border rounded-4 shadow-sm">
@@ -1227,7 +1187,7 @@ const RentDetails = () => {
 																		{ownerProfile.email}
 																	</a>
 																) : (
-																		t('propertyDetails.noDescription')
+																	t('propertyDetails.noDescription')
 																)}
 															</span>
 														</li>
@@ -1355,24 +1315,40 @@ const RentDetails = () => {
 														<div id="booking-error-msg" className="alert alert-danger py-2 mb-3" role="alert" aria-live="assertive">{errorMessage}</div>
 													)}
 
-													<button
-														type="button"
-														className="btn btn-dark w-100 py-2 fs-14 d-flex align-items-left justify-content-center gap-2 text-center"
-														style={{ color: '#fff' }}
-														aria-busy={isSending}
-														aria-disabled={isSending || isBookingBlocked}
-														aria-describedby={[
-															isBookingBlocked ? 'booking-blocked-msg' : null,
-															errorMessage ? 'booking-error-msg' : null,
-															successMessage ? 'booking-success-msg' : null,
-															!propertyId ? 'booking-open-from-card-msg' : null,
-															!currentUser ? 'booking-signin-msg' : null,
-														].filter(Boolean).join(' ') || undefined}
-														onClick={handleSendBooking}
-														disabled={isSending || isBookingBlocked}
-													>
-														<span className="text-white">{isSending ? t('propertyDetails.sending') : t('propertyDetails.sendRentalRequest')}</span>
-													</button>
+													{paymentStatus.hasOwnerWallet && !isBookingBlocked && (
+														<div className="mt-2">
+															<div className="d-flex align-items-center gap-2 mb-3">
+																<span className="badge bg-success-light text-success d-flex align-items-center gap-1 py-2 px-3 rounded-pill">
+																	<i className="material-icons-outlined fs-18">verified_user</i>
+																	{t('propertyDetails.instaPayAvailable')}
+																</span>
+															</div>
+															<button
+																type="button"
+																className="btn btn-primary w-100 py-3 fs-16 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+																style={{ background: 'linear-gradient(135deg, #059669, #10b981)', border: 'none', fontWeight: '600' }}
+																onClick={handleInstaPay}
+																disabled={isSending || !paymentStatus.hasTenantWallet || !bookingForm.startDate || !bookingForm.endDate}
+															>
+																<i className="material-icons-outlined text-white">bolt</i>
+																<span className="text-white">{isSending ? t('propertyDetails.sending') : t('propertyDetails.instaPayNow')}</span>
+															</button>
+															{!paymentStatus.hasTenantWallet && (
+																<p className="text-muted small mt-2 mb-0">
+																	{t('propertyDetails.linkWalletToPay')} <Link to="/profile-settings" className="text-primary text-decoration-underline">{t('propertyDetails.profileSettings')}</Link>
+																</p>
+															)}
+															{(!bookingForm.startDate || !bookingForm.endDate) && (
+																<p className="text-danger small mt-2 mb-0">{t('propertyDetails.selectDatesToPay')}</p>
+															)}
+														</div>
+													)}
+
+													{!paymentStatus.hasOwnerWallet && !isBookingBlocked && (
+														<div className="alert alert-info py-2 small mb-3">
+															{t('propertyDetails.ownerNoWallet')}
+														</div>
+													)}
 													{!propertyId && (
 														<p id="booking-open-from-card-msg" className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>
 													)}
@@ -1820,8 +1796,8 @@ const RentDetails = () => {
 
 
 
-			</div>
-		</div>
+			</div >
+		</div >
 	);
 };
 

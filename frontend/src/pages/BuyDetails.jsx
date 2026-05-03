@@ -52,6 +52,7 @@ const BuyDetails = () => {
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
 	const [ratingSummary, setRatingSummary] = useState({ averageRating: '0.0', totalReviews: 0 });
+	const [paymentStatus, setPaymentStatus] = useState({ loading: false, hasTenantWallet: false, hasOwnerWallet: false });
 	const [mapPosition, setMapPosition] = useState(null);
 
 	// Virtual Staging states
@@ -64,6 +65,7 @@ const BuyDetails = () => {
 	const [isEnquirySubmitting, setIsEnquirySubmitting] = useState(false);
 	const [blockingSale, setBlockingSale] = useState(null);
 	const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+	const [paymentModalState, setPaymentModalState] = useState({ show: false, status: 'confirm', errorMessage: '' });
 	const [enquiryForm, setEnquiryForm] = useState({
 		offerPrice: '',
 		note: t('propertyDetails.purchaseRequestDefaultNote'),
@@ -76,80 +78,75 @@ const BuyDetails = () => {
 		}));
 	};
 
-	const handleEnquirySubmit = async () => {
-		if (!property?._id) {
-			toast.error(t('propertyDetails.propertyNotReady'));
-			return;
+	useEffect(() => {
+		if (property?.price && enquiryForm.offerPrice === '') {
+			setEnquiryForm((prev) => ({ ...prev, offerPrice: property.price }));
 		}
+	}, [property?.price]);
 
-		const buyerId = currentUser?._id || currentUser?.id;
-		if (!buyerId) {
-			toast.error(t('propertyDetails.signInToSubmitOffer'));
-			return;
-		}
+	const handleInstaPay = () => {
+		const amountToPay = enquiryForm.offerPrice || property?.price;
+		if (!amountToPay) return;
+		setPaymentModalState({ show: true, status: 'confirm', errorMessage: '' });
+	};
 
-		if (!enquiryForm.offerPrice || Number.isNaN(Number(enquiryForm.offerPrice))) {
-			toast.error(t('propertyDetails.enterOfferPrice'));
-			return;
-		}
+	const proceedPayment = async () => {
+		const amountToPay = enquiryForm.offerPrice || property?.price;
+		if (!amountToPay) return;
 
-		setIsEnquirySubmitting(true);
+		setPaymentModalState(prev => ({ ...prev, status: 'processing', errorMessage: '' }));
+
 		try {
-			// Create a sale record to trigger backend email + notification to owner
-			await apiRequest('/api/sales', {
+			const res = await apiRequest('/api/easy-wallet/pay', {
 				method: 'POST',
 				body: JSON.stringify({
-					propertyId: property._id,
-					buyerId,
-					price: Number(enquiryForm.offerPrice),
-					status: 'PENDING',
-				}),
+					propertyId: id,
+					amount: amountToPay,
+					paymentType: 'SALE'
+				})
 			});
 
-			toast.success(t('propertyDetails.purchaseRequestSent'));
-			setEnquiryForm({
-				offerPrice: '',
-				note: t('propertyDetails.purchaseRequestDefaultNote'),
-			});
-			setBlockingSale({ status: 'PENDING' });
-		} catch (submitError) {
-			toast.error(submitError?.message || submitError?.response?.data?.message || t('propertyDetails.failedToSendRequest'));
-		} finally {
-			setIsEnquirySubmitting(false);
+			if (res.success) {
+				toast.success(t('propertyDetails.paymentSuccessful'));
+				setPaymentModalState(prev => ({ ...prev, status: 'success' }));
+				setBlockingSale({ status: 'COMPLETED' });
+				setEnquiryForm({
+					offerPrice: '',
+					note: t('propertyDetails.purchaseRequestDefaultNote'),
+				});
+			} else {
+				setPaymentModalState(prev => ({ ...prev, status: 'error', errorMessage: res.message || t('propertyDetails.paymentFailed') }));
+			}
+		} catch (err) {
+			setPaymentModalState(prev => ({ ...prev, status: 'error', errorMessage: err.message || t('propertyDetails.paymentFailed') }));
 		}
 	};
 
 	useEffect(() => {
-		if (property?.price && !enquiryForm.offerPrice) {
-			setEnquiryForm((prev) => ({ ...prev, offerPrice: property.price }));
-		}
-	}, [property?.price, enquiryForm.offerPrice]);
-
-	useEffect(() => {
-		let cancelled = false;
-		const buyerId = currentUser?._id || currentUser?.id;
-		if (!property?._id || !buyerId) {
-			setBlockingSale(null);
-			return () => {
-				cancelled = true;
-			};
-		}
-		(async () => {
+		if (!id || !currentUser) return;
+		const checkStatus = async () => {
+			setPaymentStatus(prev => ({ ...prev, loading: true }));
 			try {
-				const data = await apiRequest(
-					`/api/sales?propertyId=${encodeURIComponent(property._id)}&buyerId=${encodeURIComponent(buyerId)}&limit=50`
-				);
-				const sales = data?.data?.sales || [];
-				const active = sales.find((s) => s.status !== 'CANCELLED');
-				if (!cancelled) setBlockingSale(active || null);
-			} catch {
-				if (!cancelled) setBlockingSale(null);
+				const res = await apiRequest(`/api/easy-wallet/status/${id}?paymentType=SALE`);
+				if (res.success) {
+					setPaymentStatus({
+						loading: false,
+						hasTenantWallet: res.data.hasTenantWallet,
+						hasOwnerWallet: res.data.hasOwnerWallet,
+						recipientName: res.data.recipientName,
+						amount: res.data.amount
+					});
+					if (res.data.activeRecord) {
+						setBlockingSale(res.data.activeRecord);
+					}
+				}
+			} catch (err) {
+				console.error("Failed to fetch payment status:", err);
+				setPaymentStatus(prev => ({ ...prev, loading: false }));
 			}
-		})();
-		return () => {
-			cancelled = true;
 		};
-	}, [property?._id, currentUser]);
+		checkStatus();
+	}, [id, currentUser]);
 
 	const handleStagingSubmit = async () => {
 		setIsStagingLoading(true);
@@ -560,10 +557,10 @@ const BuyDetails = () => {
 						<div className="container">
 							{loading && (
 								<div className="text-center py-5">
-											<div className="spinner-border text-primary" role="status">
-												<span className="visually-hidden">{t('common.loading')}</span>
+									<div className="spinner-border text-primary" role="status">
+										<span className="visually-hidden">{t('common.loading')}</span>
 									</div>
-											<p className="mt-3">{t('propertyDetails.loadingProperty')}</p>
+									<p className="mt-3">{t('propertyDetails.loadingProperty')}</p>
 								</div>
 							)}
 							{!loading && error && (
@@ -614,7 +611,7 @@ const BuyDetails = () => {
 													<img
 														src={heroSlides[safeHeroIndex] || heroSlides[0]}
 														className="w-100 d-block bg-light"
-																												alt={property?.title || t('propertyDetails.propertyFallback')}
+														alt={property?.title || t('propertyDetails.propertyFallback')}
 														style={{
 															objectFit: 'contain',
 															height: 'clamp(220px, 52vw, 384px)',
@@ -632,7 +629,7 @@ const BuyDetails = () => {
 																	background: 'rgba(0,0,0,0.5)',
 																}}
 																onClick={goHeroPrev}
-																														aria-label={t('propertyDetails.previousPhoto')}
+																aria-label={t('propertyDetails.previousPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_left</i>
 															</button>
@@ -646,7 +643,7 @@ const BuyDetails = () => {
 																	background: 'rgba(0,0,0,0.5)',
 																}}
 																onClick={goHeroNext}
-																														aria-label={t('propertyDetails.nextPhoto')}
+																aria-label={t('propertyDetails.nextPhoto')}
 															>
 																<i className="material-icons-outlined">chevron_right</i>
 															</button>
@@ -669,7 +666,7 @@ const BuyDetails = () => {
 															<div className="fw-semibold fs-5">{formattedPrice}</div>
 															<p className="mb-0 small text-white-50">
 																{property?.city}
-																														{property?.country ? `, ${property.country}` : `, ${t('propertyPages.countryFallback')}`}
+																{property?.country ? `, ${property.country}` : `, ${t('propertyPages.countryFallback')}`}
 															</p>
 														</div>
 														{typeDisplayLabel && (
@@ -695,10 +692,10 @@ const BuyDetails = () => {
 																fontWeight: 600,
 															}}
 															onClick={() => setIsTourModalOpen(true)}
-																													aria-label={t('propertyDetails.open360Aria')}
+															aria-label={t('propertyDetails.open360Aria')}
 														>
 															<i className="material-icons-outlined" style={{ fontSize: '18px' }}>panorama</i>
-																													{t('propertyDetails.short360Tour')}
+															{t('propertyDetails.short360Tour')}
 														</button>
 													)}
 												</div>
@@ -712,12 +709,12 @@ const BuyDetails = () => {
 																<button
 																	type="button"
 																	className={`w-100 p-0 border rounded-3 overflow-hidden bg-light ${index === safeHeroIndex
-																			? 'border-primary border-2 shadow-sm'
-																			: 'border'
+																		? 'border-primary border-2 shadow-sm'
+																		: 'border'
 																		}`}
 																	style={{ maxHeight: 88 }}
 																	onClick={() => setHeroImageIndex(index)}
-																															aria-label={t('propertyDetails.showPhotoAria', { index: index + 1 })}
+																	aria-label={t('propertyDetails.showPhotoAria', { index: index + 1 })}
 																>
 																	<img
 																		src={url}
@@ -740,7 +737,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-1" aria-expanded="true">
-																													{t('propertyDetails.descriptionTitle')}
+															{t('propertyDetails.descriptionTitle')}
 														</button>
 													</div>
 													<div id="accordion-1" className="accordion-collapse collapse show">
@@ -772,7 +769,7 @@ const BuyDetails = () => {
 													<div className="accordion-item border-primary" style={{ borderWidth: '2px', backgroundColor: '#f8f9fa' }}>
 														<div className="accordion-header">
 															<button className="accordion-button text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-ai-buy" aria-expanded="true">
-																														<i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyDetails.aiDetectedFeatures')}
+																<i className="material-icons-outlined me-2">auto_awesome</i> {t('propertyDetails.aiDetectedFeatures')}
 															</button>
 														</div>
 														<div id="accordion-ai-buy" className="accordion-collapse collapse show">
@@ -791,7 +788,7 @@ const BuyDetails = () => {
 																		<div className="col-12">
 																			<p className="mb-2 fw-semibold d-flex align-items-center gap-2">
 																				<i className="material-icons-outlined text-success">sensor_window</i>
-																																					{t('propertyDetails.detectedRooms')}:
+																				{t('propertyDetails.detectedRooms')}:
 																			</p>
 																			<div className="d-flex flex-wrap gap-2">
 																				{Object.entries(property.detectedFeatures.roomVotes)
@@ -804,7 +801,7 @@ const BuyDetails = () => {
 																						</span>
 																					))}
 																			</div>
-																																			<small className="text-muted mt-1 d-block">{t('propertyDetails.primaryRoomHint')}</small>
+																			<small className="text-muted mt-1 d-block">{t('propertyDetails.primaryRoomHint')}</small>
 																		</div>
 																	)}
 																</div>
@@ -816,7 +813,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-2" aria-expanded="true">
-																													{t('propertyDetails.propertyFeaturesTitle')}
+															{t('propertyDetails.propertyFeaturesTitle')}
 														</button>
 													</div>
 													<div id="accordion-2" className="accordion-collapse collapse show">
@@ -856,7 +853,7 @@ const BuyDetails = () => {
 												<div className="accordion-item">
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-3" aria-expanded="true">
-																													{t('propertyDetails.aboutPropertyTitle')}
+															{t('propertyDetails.aboutPropertyTitle')}
 														</button>
 													</div>
 													<div id="accordion-3" className="accordion-collapse collapse show">
@@ -904,7 +901,7 @@ const BuyDetails = () => {
 														<div className="accordion-header">
 															<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-360" aria-expanded="true">
 																360° Virtual Tour
-																														{t('propertyDetails.virtualTourTitle')}
+																{t('propertyDetails.virtualTourTitle')}
 															</button>
 														</div>
 														<div id="accordion-360" className="accordion-collapse collapse show">
@@ -919,7 +916,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-6" aria-expanded="true">
 															Gallery
-																													{t('propertyDetails.galleryTitle')}
+															{t('propertyDetails.galleryTitle')}
 														</button>
 													</div>
 													<div id="accordion-6" className="accordion-collapse collapse show">
@@ -933,7 +930,7 @@ const BuyDetails = () => {
 																			</a>
 																		</div>
 																	))
-																) : (																															<p className="text-body mb-0">{t('propertyDetails.noPhotos')}</p>
+																) : (<p className="text-body mb-0">{t('propertyDetails.noPhotos')}</p>
 																)}
 															</div>
 														</div>
@@ -971,7 +968,7 @@ const BuyDetails = () => {
 													<div className="accordion-header">
 														<button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-9" aria-expanded="true">
 															Reviews
-																													{t('propertyDetails.reviewsTitle')}
+															{t('propertyDetails.reviewsTitle')}
 														</button>
 													</div>
 													<div id="accordion-9" className="accordion-collapse collapse show">
@@ -1208,330 +1205,149 @@ const BuyDetails = () => {
 
 										<div className="col-xl-4 theiaStickySidebar buy-details-item">
 
-											<div className="card">
-												<div className="card-header">
-													<h5 className="mb-0">{t('propertyDetails.enquiryTitle')}</h5>
+											<div className="card shadow-sm border-0" style={{ borderRadius: '16px' }}>
+												<div className="card-header bg-white border-0 pt-4 pb-0 px-4">
+													<h5 className="mb-0 fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>{t('propertyDetails.enquiryTitle') || 'Make an Offer'}</h5>
 												</div>
 
-												<div className="card-body">
-
-													<ul className="nav nav-pills listing-nav flex-nowrap">
-														<li className="nav-item me-2 w-100" role="presentation">
-															<Link className="nav-link active fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-1" aria-selected="true">
-																<i className="material-icons-outlined fs-14 me-1 d-flex align-center">info</i>{t('propertyDetails.requestInfo')}
-															</Link>
-														</li>
-														<li className="nav-item w-100" role="presentation">
-															<Link className="nav-link fs-14 w-100" data-bs-toggle="tab" to="/buy-details" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
-																<i className="material-icons-outlined fs-14 me-1">videocam</i>{t('propertyDetails.scheduleVisit')}
-															</Link>
-														</li>
-													</ul>
-
-
-													<div className="tab-content">
-														<div className="tab-pane fade active show" id="listing-1" role="tabpanel">
-															<div className="card bg-light border-0 rounded shadow-none custom-btn">
-																<div className="card-body">
-																	<div className="d-flex align-items-center gap-2">
-																		<div className="avatar avatar-lg">
-																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
-																		</div>
-																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
-																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-															{blockingSale && (
-																<div className="alert alert-warning py-2 small mb-3" role="alert">
-																	{t('propertyDetails.activePurchaseRequestWarning', { status: blockingSale.status })}
-																</div>
-															)}
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.offerPriceLabel')} </label>
-																<input
-																	type="number"
-																	className="form-control"
-																	placeholder={t('propertyDetails.offerPricePlaceholder')}
-																	value={enquiryForm.offerPrice}
-																	onChange={handleEnquiryFieldChange('offerPrice')}
-																	disabled={Boolean(blockingSale)}
-																/>
-															</div>
-															<div className="mb-4">
-																<label className="form-label fw-semibold"> {t('propertyDetails.noteToOwnerOptional')} </label>
-																<textarea
-																	className="form-control"
-																	rows="3"
-																	value={enquiryForm.note}
-																	onChange={handleEnquiryFieldChange('note')}
-																	disabled={Boolean(blockingSale)}
-																></textarea>
-															</div>
-															<div>
-																<button
-																	type="button"
-																	className="btn btn-dark w-100 py-2 fs-14"
-																	onClick={handleEnquirySubmit}
-																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
-																>
-																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submitPurchaseRequest')}
-																</button>
-															</div>
+												<div className="card-body p-4">
+													<div className="d-flex align-items-center gap-3 mb-4 p-3 rounded-4" style={{ backgroundColor: '#f9fafb' }}>
+														<div className="avatar avatar-md">
+															<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
 														</div>
-														<div className="tab-pane fade" id="listing-2" role="tabpanel">
-															<div className="card bg-light border-0 rounded shadow-none custom-btn">
-																<div className="card-body">
-																	<div className="d-flex align-items-center gap-2">
-																		<div className="avatar avatar-lg">
-																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
-																		</div>
-																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
-																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
-																		</div>
-																	</div>
-																</div>
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
-																<input
-																	type="text"
-																	className="form-control"
-																	placeholder={t('propertyDetails.yourNamePlaceholder')}
-																	value={enquiryForm.name}
-																	onChange={handleEnquiryFieldChange('name')}
-																/>
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
-																<input
-																	type="email"
-																	className="form-control"
-																	placeholder={t('propertyDetails.yourEmailPlaceholder')}
-																	value={enquiryForm.email}
-																	onChange={handleEnquiryFieldChange('email')}
-																/>
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
-																<input
-																	type="text"
-																	className="form-control"
-																	placeholder={t('propertyDetails.yourPhonePlaceholder')}
-																	value={enquiryForm.phone}
-																	onChange={handleEnquiryFieldChange('phone')}
-																/>
-															</div>
-															<div className="mb-4">
-																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
-																<textarea
-																	className="form-control"
-																	rows="3"
-																	value={enquiryForm.description}
-																	onChange={handleEnquiryFieldChange('description')}
-																></textarea>
-															</div>
-															<div>
-																<button
-																	type="button"
-																	className="btn btn-dark w-100 py-2 fs-14"
-																	onClick={handleEnquirySubmit}
-																	disabled={isEnquirySubmitting || Boolean(blockingSale)}
-																>
-																	{isEnquirySubmitting ? t('propertyDetails.submitting') : t('propertyDetails.submit')}
-																</button>
-															</div>
-														</div>
-														<div className="tab-pane fade" id="listing-2" role="tabpanel">
-															<div className="card bg-light border-0 rounded shadow-none custom-btn">
-																<div className="card-body">
-																	<div className="d-flex align-items-center gap-2">
-																		<div className="avatar avatar-lg">
-																			<img src="/assets/img/users/user-06.jpg" alt="" className="rounded-circle" />
-																		</div>
-																		<div>
-																			<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
-																			<p className="mb-0 fs-14 text-body"> {t('propertyDetails.companyAgent')} </p>
-																		</div>
-																	</div>
-																</div>
-															</div>
-
-															<div className="select-date-item">
-																<h6 className="fs-16 fw-semibold mb-2"> {t('propertyDetails.selectDay')} </h6>
-																<div className="d-flex align-items-center justify-content-between gap-1 flex-wrap">
-																	<div className="d-flex flex-column gap-1 border">
-																		<p className="mb-0"> Mon </p>
-																		<h5 className="mb-0"> 21 </h5>
-																		<p className="mb-0"> Feb </p>
-																	</div>
-																	<div className="d-flex flex-column gap-1 border">
-																		<p className="mb-0"> Tue </p>
-																		<h5 className="mb-0"> 22 </h5>
-																		<p className="mb-0"> Feb </p>
-																	</div>
-																	<div className="d-flex flex-column gap-1 border">
-																		<p className="mb-0"> Wed </p>
-																		<h5 className="mb-0"> 23 </h5>
-																		<p className="mb-0"> Feb </p>
-																	</div>
-																	<div className="d-flex flex-column gap-1 border">
-																		<p className="mb-0"> Thu </p>
-																		<h5 className="mb-0"> 24 </h5>
-																		<p className="mb-0"> Feb </p>
-																	</div>
-																	<div className="d-flex flex-column gap-1 border">
-																		<p className="mb-0"> Fri </p>
-																		<h5 className="mb-0"> 25 </h5>
-																		<p className="mb-0"> Feb </p>
-																	</div>
-																</div>
-															</div>
-
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.selectTime')} </label>
-																<div className="input-group w-auto input-group-flat">
-																	<input type="text" className="form-control bg-light timepicker" placeholder="-- : --" />
-																	<span className="input-group-text">
-																		<i className="material-icons-outlined text-dark">schedule</i>
-																	</span>
-																</div>
-															</div>
-
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.nameLabel')} </label>
-																<input type="text" className="form-control" placeholder={t('propertyDetails.yourNamePlaceholder')} />
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.email')} </label>
-																<input type="text" className="form-control" placeholder={t('propertyDetails.yourEmailPlaceholder')} />
-															</div>
-															<div className="mb-3">
-																<label className="form-label fw-semibold"> {t('propertyDetails.phone')} </label>
-																<input type="text" className="form-control" placeholder={t('propertyDetails.yourPhonePlaceholder')} />
-															</div>
-															<div className="mb-4">
-																<label className="form-label fw-semibold"> {t('propertyDetails.descriptionTitle')} </label>
-																<textarea className="form-control" rows="3"></textarea>
-															</div>
-															<div>
-																<Link to="/buy-details" className="btn btn-dark w-100 py-2 fs-14">{t('propertyDetails.submit')}</Link>
-															</div>
+														<div>
+															<h6 className="mb-0 fs-15 fw-medium text-dark">{ownerProfile.displayName || t('common.owner')}</h6>
+															<p className="mb-0 small text-muted"> {t('propertyDetails.companyAgent') || 'Property Owner'} </p>
 														</div>
 													</div>
 
+													{blockingSale ? (
+														<div className="alert border-0 rounded-4 py-3 px-3 mb-3" style={{ backgroundColor: '#fffbeb', color: '#b45309' }} role="alert">
+															{t('propertyDetails.activePurchaseRequestWarning', { status: blockingSale.status })}
+														</div>
+													) : (
+														<>
+															<div className="mb-4">
+																<label className="form-label fw-medium small text-muted text-uppercase" style={{ letterSpacing: '0.5px' }}>Price (TND)</label>
+																<input
+																	type="text"
+																	className="form-control form-control-lg rounded-3 shadow-none fw-medium text-dark"
+																	value={`${property?.price || ''} TND`}
+																	readOnly
+																	disabled
+																	style={{ border: '1px solid #e5e7eb', backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+																/>
+															</div>
+
+															<div>
+																{paymentStatus.hasOwnerWallet ? (
+																	<div className="mt-2">
+																		<button
+																			type="button"
+																			className="btn w-100 py-3 fs-16 d-flex align-items-center justify-content-center gap-2 rounded-pill transition-all text-white"
+																			style={{ backgroundColor: '#111827', border: 'none', fontWeight: '500', letterSpacing: '0.3px' }}
+																			onClick={handleInstaPay}
+																			disabled={paymentModalState.status === 'processing' || !paymentStatus.hasTenantWallet}
+																		>
+																			{paymentModalState.status === 'processing' ? (
+																				<span className="spinner-border spinner-border-sm me-2 text-white" role="status" aria-hidden="true"></span>
+																			) : (
+																				<i className="material-icons-outlined text-white" style={{ fontSize: '20px' }}>account_balance_wallet</i>
+																			)}
+																			<span className="text-white">{paymentModalState.status === 'processing' ? t('propertyDetails.processing') : 'Pay Now with EasyWallet'}</span>
+																		</button>
+																		{!paymentStatus.hasTenantWallet && (
+																			<p className="text-muted small mt-3 text-center mb-0">
+																				{t('propertyDetails.linkWalletToPay') || 'Link your wallet to pay'} <Link to="/profile-settings" className="text-dark fw-medium text-decoration-none border-bottom border-dark pb-1">{t('propertyDetails.profileSettings') || 'Settings'}</Link>
+																			</p>
+																		)}
+																	</div>
+																) : (
+																	<div className="alert border-0 rounded-4 py-3 px-3 small mb-3" style={{ backgroundColor: '#f3f4f6', color: '#374151' }}>
+																		<i className="material-icons-outlined me-2 position-relative" style={{ top: '3px', fontSize: '18px' }}>info</i>
+																		{t('propertyDetails.ownerNoWalletSale') || 'Property owner has not connected a wallet yet.'}
+																	</div>
+																)}
+															</div>
+														</>
+													)}
 												</div>
 											</div>
 
-
-											<div className="card">
-												<div className="card-header">
-																									<h5 className="mb-0">{t('propertyDetails.listingOwnerDetails')}</h5>
+											{/* Contact Channels */}
+											<div className="card shadow-sm border-0 mb-4" style={{ borderRadius: '16px' }}>
+												<div className="card-header bg-white border-0 pt-4 px-4 pb-0">
+													<h5 className="mb-0 fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>{t('propertyDetails.listingOwnerDetails')}</h5>
 												</div>
-												<div className="card-body">
-													<div className="d-flex align-items-center gap-2 mb-3">
-														<div
-															className="avatar avatar-lg rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-semibold fs-18"
-															style={{ width: 56, height: 56, minWidth: 56 }}
-															aria-hidden
-														>
-															{ownerProfile.initials}
-														</div>
-														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
-															<p className="mb-0 fs-14 text-body">
-																{t('propertyDetails.thisListingRating', {
-																	rating: ratingSummary.averageRating || '0.0',
-																	total: ratingSummary.totalReviews || 0,
-																})}
-															</p>
-														</div>
+												<div className="card-body p-4">
+													<div className="d-flex flex-column gap-3 mb-4 text-dark">
+														{ownerProfile?.email && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6' }}>
+																	<i className="material-icons-outlined text-muted" style={{ fontSize: '18px' }}>email</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Email</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.email}</p>
+																</div>
+															</div>
+														)}
+														{ownerProfile?.phone && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6' }}>
+																	<i className="material-icons-outlined text-muted" style={{ fontSize: '18px' }}>phone</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Phone</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.phone}</p>
+																</div>
+															</div>
+														)}
+														{ownerProfile?.whatsappDigits && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#ecfdf5' }}>
+																	<i className="material-icons-outlined text-success" style={{ fontSize: '18px' }}>chat</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>WhatsApp</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.whatsappDigits}</p>
+																</div>
+															</div>
+														)}
 													</div>
-													<ul className="mb-3 list-unstyled">
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-																														<span className="text-body">{t('propertyDetails.phone')}</span>
-															<span className="text-end">{ownerProfile.phone || '—'}</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-																														<span className="text-body">{t('propertyDetails.email')}</span>
-															<span className="text-end text-break">
-																{ownerProfile.email ? (
-																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
-																		{ownerProfile.email}
-																	</a>
-																) : (
-																	'—'
-																)}
-															</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-																														<span className="text-body">{t('propertyDetails.memberSince')}</span>
-															<span>{ownerProfile.memberSince || '—'}</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
-															<span className="text-body">{t('propertyDetails.account')}</span>
-															<div className="badge bg-success text-white">{t('propertyDetails.registered')}</div>
-														</li>
-													</ul>
-													<div className="d-flex align-items-center justify-content-between gap-3">
-														{ownerProfile.whatsappDigits ? (
+
+													<div className="d-flex gap-2">
+														{ownerProfile?.whatsappDigits && (
 															<a
 																href={`https://wa.me/${ownerProfile.whatsappDigits}`}
 																target="_blank"
 																rel="noopener noreferrer"
-																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
+																className="btn flex-grow-1 d-flex align-items-center justify-content-center text-white rounded-pill fw-medium transition-all"
+																style={{ backgroundColor: '#10b981', border: 'none' }}
 															>
-																														{t('propertyDetails.whatsapp')}
+																<i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>chat</i> WhatsApp
 															</a>
-														) : (
-																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.whatsapp')}</span>
 														)}
-														{ownerProfile.email ? (
+														{ownerProfile?.email && (
 															<a
-																href={`mailto:${ownerProfile.email}?subject=${ownerEmailSubject}`}
-																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
+																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(ownerEmailSubject || '')}`}
+																className="btn flex-grow-1 d-flex align-items-center justify-content-center text-white rounded-pill fw-medium transition-all"
+																style={{ backgroundColor: '#111827', border: 'none' }}
 															>
-																
-																														{t('propertyDetails.emailOwner')}
+																<i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>email</i> Email
 															</a>
-														) : (
-																											<span className="btn btn-secondary disabled w-100">{t('propertyDetails.emailOwner')}</span>
 														)}
 													</div>
 												</div>
 											</div>
 
-
-											<div className="card">
-												<div className="card-header">
-																									<h5 className="mb-0">{t('propertyDetails.shareProperty')}</h5>
+											{/* Nearby & Map Card */}
+											<div className="card shadow-sm border-0 mb-0 rounded-3 overflow-hidden">
+												<div className="card-header bg-white border-bottom-0 pt-4 px-4">
+													<h5 className="mb-0 fw-bold text-dark">{t('propertyDetails.nearbyTitle')}</h5>
 												</div>
-												<div className="card-body">
-													<div className="buy-social-icons-items d-flex align-center gap-2 flex-wrap">
-														<a href="#" className="item-1"><i className="fa-brands fa-facebook-f"></i></a>
-														<a href="#" className="item-2"><i className="fa-brands fa-instagram"></i></a>
-														<a href="#" className="item-3"><i className="fa-brands fa-behance"></i></a>
-														<a href="#" className="item-4"><i className="fa-brands fa-twitter"></i></a>
-														<a href="#" className="item-5"><i className="fa-brands fa-pinterest-p"></i></a>
-														<a href="#" className="item-6"><i className="fa-brands fa-linkedin"></i></a>
-													</div>
-												</div>
-											</div>
-
-
-											{/* Mortarage Calculator hidden - static template widget */}
-
-
-											<div className="card mb-0 border rounded-4 shadow-sm overflow-hidden">
-												<div className="card-header bg-white border-bottom py-3">
-													<h5 className="mb-0 fs-6 fw-semibold">{t('propertyDetails.nearbyTitle')}</h5>
-												</div>
-												<div className="card-body">
-													<div className="rounded-4 border overflow-hidden mb-3" style={{ height: 176 }}>
+												<div className="card-body px-4 pb-4">
+													<div className="rounded-3 border overflow-hidden mb-3" style={{ height: 180 }}>
 														{mapPosition ? (
 															<MapContainer
 																key={mapKey}
@@ -1548,42 +1364,27 @@ const BuyDetails = () => {
 																/>
 																<Marker position={[mapLat, mapLng]}>
 																	<Popup>
-																		<div className="small">
-																			<div className="fw-semibold">{property?.title}</div>
-																			<div className="text-muted">{displayAddressForMap}</div>
-																		</div>
+																		<div className="small fw-bold">{property?.title}</div>
 																	</Popup>
 																</Marker>
 															</MapContainer>
 														) : (
 															<div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted small">
+																<i className="material-icons-outlined fs-20 me-1 spin">sync</i>
 																{t('propertyDetails.loadingMap')}
 															</div>
 														)}
 													</div>
-													<div className="px-3 py-2 border rounded-4 bg-light mb-3">
-														<p className="mb-0 text-uppercase fw-semibold text-muted" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
-																													{t('propertyDetails.propertyAddress')}
+													<div className="p-3 bg-light rounded-3 border-0 mb-0">
+														<p className="mb-1 text-uppercase fw-bold text-muted" style={{ fontSize: '10px', letterSpacing: '0.05em' }}>
+															{t('propertyDetails.propertyAddress')}
 														</p>
-														<p className="mb-0 mt-1 fw-medium text-dark">{displayAddressForMap || t('propertyDetails.noDescription')}</p>
+														<p className="mb-0 fw-medium text-dark lh-sm small">
+															{displayAddressForMap || t('propertyDetails.noDescription')}
+														</p>
 													</div>
-													<ul className="list-unstyled small text-body mb-0">
-														<li className="d-flex align-items-center gap-2 mb-2">
-															<span className="text-success">✔</span>
-																													{t('propertyDetails.nearAttractions')}
-														</li>
-														<li className="d-flex align-items-center gap-2 mb-2">
-															<span className="text-success">✔</span>
-																													{t('propertyDetails.easyTransport')}
-														</li>
-														<li className="d-flex align-items-center gap-2 mb-0">
-															<span className="text-success">✔</span>
-																													{t('propertyDetails.shopsNearby')}
-														</li>
-													</ul>
 												</div>
 											</div>
-
 										</div>
 									</div>
 
@@ -1878,11 +1679,11 @@ const BuyDetails = () => {
 
 
 						</div>
-					</div>
+					</div >
 
 
 
-				</div>
+				</div >
 
 
 
@@ -1902,13 +1703,13 @@ const BuyDetails = () => {
 									</div>
 									<div className="input-group input-group-flat">
 										<input type="text" className="form-control" placeholder="Type a Keyword...." />
-																					<input type="text" className="form-control" placeholder={t('propertyPages.typeKeywordPlaceholder')} />
+										<input type="text" className="form-control" placeholder={t('propertyPages.typeKeywordPlaceholder')} />
 										<span className="input-group-text">
 											<i className="material-icons-outlined">search</i>
 										</span>
 									</div>
 									<h6>Popular Properties</h6>
-																			<h6>{t('propertyPages.popularProperties')}</h6>
+									<h6>{t('propertyPages.popularProperties')}</h6>
 									<div className="search-list">
 										<p><Link to="/rent-property-grid">Beautiful Condo Room</Link></p>
 										<p><Link to="/rent-property-grid">Royal Apartment</Link></p>
@@ -1924,124 +1725,220 @@ const BuyDetails = () => {
 				</div>
 
 				{/* Magic Staging Modal */}
-				{showStagingModal && (
-					<div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-						<div className="modal-dialog modal-dialog-centered modal-lg">
-							<div className="modal-content border-0 shadow-lg">
-								<div className="modal-header border-0 pb-0">
-									<h5 className="modal-title d-flex align-items-center gap-2 fw-semibold">
-										<span style={{ fontSize: '1.5rem' }}>✨</span> {t('propertyDetails.aiVirtualStaging')}
-									</h5>
-									<button type="button" className="btn-close" onClick={closeStagingModal}></button>
-								</div>
-								<div className="modal-body p-4">
-									<p className="text-muted mb-4">Transform this empty room into a beautifully furnished space using AI.</p>
-									<p className="text-muted mb-4">{t('propertyDetails.stagingDescription')}</p>
+				{
+					showStagingModal && (
+						<div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+							<div className="modal-dialog modal-dialog-centered modal-lg">
+								<div className="modal-content border-0 shadow-lg">
+									<div className="modal-header border-0 pb-0">
+										<h5 className="modal-title d-flex align-items-center gap-2 fw-semibold">
+											<span style={{ fontSize: '1.5rem' }}>✨</span> {t('propertyDetails.aiVirtualStaging')}
+										</h5>
+										<button type="button" className="btn-close" onClick={closeStagingModal}></button>
+									</div>
+									<div className="modal-body p-4">
+										<p className="text-muted mb-4">Transform this empty room into a beautifully furnished space using AI.</p>
+										<p className="text-muted mb-4">{t('propertyDetails.stagingDescription')}</p>
 
-									<div className="row">
-										<div className="col-md-8">
-											<div className="position-relative bg-light rounded d-flex align-items-center justify-content-center overflow-hidden shadow-sm" style={{ minHeight: '350px' }}>
-												{isStagingLoading ? (
-													<div className="text-center p-4">
-														<div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status"></div>
-														<h6 className="mb-1 text-primary fw-bold">Analyzing Room Depth...</h6>
-														<h6 className="mb-1 text-primary fw-bold">{t('propertyDetails.analyzingRoomDepth')}</h6>
-														<p className="text-muted fs-14">{t('propertyDetails.applyingStyle', { style: selectedStyle })}</p>
-													</div>
-												) : stagedResultUrl ? (
-													<img src={stagedResultUrl} alt={t('propertyDetails.stagedRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover" />
-												) : (
-													<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt={t('propertyDetails.originalRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
-												)}
-
-												{stagedResultUrl && !isStagingLoading && (
-													<div className="position-absolute top-0 start-0 m-3">
-														<span className="badge bg-success shadow-sm px-3 py-2 fs-13">VIRTUAL STAGING</span>
-																											<span className="badge bg-success shadow-sm px-3 py-2 fs-13">{t('propertyDetails.virtualStagingBadge')}</span>
-													</div>
-												)}
-											</div>
-										</div>
-										<div className="col-md-4 mt-4 mt-md-0 d-flex flex-column">
-											<h6 className="fw-bold mb-3">Select Style</h6>
-																						<h6 className="fw-bold mb-3">{t('propertyDetails.selectStyle')}</h6>
-											<div className="d-flex flex-column gap-3 mb-4">
-												{['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
-													<div key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
-														<div className="d-flex align-items-center gap-2">
-															<input
-																type="radio"
-																name="stagingStyle"
-																className="form-check-input mt-0"
-																checked={selectedStyle === style}
-																onChange={() => setSelectedStyle(style)}
-															/>
-															<span className="text-capitalize fw-semibold text-dark fs-15">{style}</span>
-														</div>
-													</div>
-												))}
-											</div>
-
-											<div className="mt-auto">
-												<button
-													className="btn btn-primary w-100 btn-lg d-flex align-items-center justify-content-center gap-2 fw-bold text-white shadow-sm"
-													onClick={handleStagingSubmit}
-													disabled={isStagingLoading}
-													style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', border: 'none' }}
-												>
+										<div className="row">
+											<div className="col-md-8">
+												<div className="position-relative bg-light rounded d-flex align-items-center justify-content-center overflow-hidden shadow-sm" style={{ minHeight: '350px' }}>
 													{isStagingLoading ? (
-														<>{t('propertyDetails.generating')}</>
+														<div className="text-center p-4">
+															<div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status"></div>
+															<h6 className="mb-1 text-primary fw-bold">Analyzing Room Depth...</h6>
+															<h6 className="mb-1 text-primary fw-bold">{t('propertyDetails.analyzingRoomDepth')}</h6>
+															<p className="text-muted fs-14">{t('propertyDetails.applyingStyle', { style: selectedStyle })}</p>
+														</div>
 													) : stagedResultUrl ? (
-														<><i className="material-icons-outlined">refresh</i> {t('propertyDetails.regenerate')}</>
+														<img src={stagedResultUrl} alt={t('propertyDetails.stagedRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover" />
 													) : (
-														<><span>✨</span> {t('propertyDetails.applyMagicStaging')}</>
+														<img src={propertyImages[0] || "/assets/img/buy/buy-slide-img-1.jpg"} alt={t('propertyDetails.originalRoomAlt')} className="img-fluid w-100 h-100 object-fit-cover opacity-75" />
 													)}
-												</button>
+
+													{stagedResultUrl && !isStagingLoading && (
+														<div className="position-absolute top-0 start-0 m-3">
+															<span className="badge bg-success shadow-sm px-3 py-2 fs-13">VIRTUAL STAGING</span>
+															<span className="badge bg-success shadow-sm px-3 py-2 fs-13">{t('propertyDetails.virtualStagingBadge')}</span>
+														</div>
+													)}
+												</div>
+											</div>
+											<div className="col-md-4 mt-4 mt-md-0 d-flex flex-column">
+												<h6 className="fw-bold mb-3">Select Style</h6>
+												<h6 className="fw-bold mb-3">{t('propertyDetails.selectStyle')}</h6>
+												<div className="d-flex flex-column gap-3 mb-4">
+													{['modern', 'scandinavian', 'industrial', 'luxury'].map(style => (
+														<div key={style} className={`border rounded p-3 transition-all ${selectedStyle === style ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-white'}`} style={{ cursor: 'pointer' }}>
+															<div className="d-flex align-items-center gap-2">
+																<input
+																	type="radio"
+																	name="stagingStyle"
+																	className="form-check-input mt-0"
+																	checked={selectedStyle === style}
+																	onChange={() => setSelectedStyle(style)}
+																/>
+																<span className="text-capitalize fw-semibold text-dark fs-15">{style}</span>
+															</div>
+														</div>
+													))}
+												</div>
+
+												<div className="mt-auto">
+													<button
+														className="btn btn-primary w-100 btn-lg d-flex align-items-center justify-content-center gap-2 fw-bold text-white shadow-sm"
+														onClick={handleStagingSubmit}
+														disabled={isStagingLoading}
+														style={{ background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', border: 'none' }}
+													>
+														{isStagingLoading ? (
+															<>{t('propertyDetails.generating')}</>
+														) : stagedResultUrl ? (
+															<><i className="material-icons-outlined">refresh</i> {t('propertyDetails.regenerate')}</>
+														) : (
+															<><span>✨</span> {t('propertyDetails.applyMagicStaging')}</>
+														)}
+													</button>
+												</div>
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
 						</div>
-					</div>
-				)}
+					)
+				}
 
-				{isTourModalOpen && hasPanoramas && createPortal(
-					<div
-						className="buy-details-tour-overlay"
-						style={{
-							position: 'fixed',
-							inset: 0,
-							zIndex: 10050,
-							background: '#000',
-							display: 'flex',
-							flexDirection: 'column',
-						}}
-						role="dialog"
-						aria-modal="true"
-						aria-label={t('propertyDetails.virtualTourAria')}
-					>
+				{
+					isTourModalOpen && hasPanoramas && createPortal(
 						<div
-							className="d-flex align-items-center justify-content-between flex-shrink-0 px-3 py-2 border-bottom border-secondary"
-							style={{ background: 'rgba(30,35,45,0.98)', borderColor: 'rgba(255,255,255,0.12)' }}
+							className="buy-details-tour-overlay"
+							style={{
+								position: 'fixed',
+								inset: 0,
+								zIndex: 10050,
+								background: '#000',
+								display: 'flex',
+								flexDirection: 'column',
+							}}
+							role="dialog"
+							aria-modal="true"
+							aria-label={t('propertyDetails.virtualTourAria')}
 						>
-							<span className="text-white fw-semibold d-flex align-items-center gap-2 mb-0">
-								<i className="material-icons-outlined text-white">panorama</i>
-								{t('propertyDetails.virtualTourTitle')}
-							</span>
-							<button type="button" className="btn btn-sm btn-outline-light" onClick={closeTourModal}>
-								{t('common.close')}
-							</button>
-						</div>
-						<div className="flex-grow-1 position-relative" style={{ minHeight: 0, background: '#000' }}>
-							<PanoViewer panoramas={tourPanoramas} variant="immersive" fillHeight />
+							<div
+								className="d-flex align-items-center justify-content-between flex-shrink-0 px-3 py-2 border-bottom border-secondary"
+								style={{ background: 'rgba(30,35,45,0.98)', borderColor: 'rgba(255,255,255,0.12)' }}
+							>
+								<span className="text-white fw-semibold d-flex align-items-center gap-2 mb-0">
+									<i className="material-icons-outlined text-white">panorama</i>
+									{t('propertyDetails.virtualTourTitle')}
+								</span>
+								<button type="button" className="btn btn-sm btn-outline-light" onClick={closeTourModal}>
+									{t('common.close')}
+								</button>
+							</div>
+							<div className="flex-grow-1 position-relative" style={{ minHeight: 0, background: '#000' }}>
+								<PanoViewer panoramas={tourPanoramas} variant="immersive" fillHeight />
+							</div>
+						</div>,
+						document.body
+					)
+				}
+
+				{paymentModalState.show && createPortal(
+					<div
+						className="modal fade show d-block"
+						style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}
+						tabIndex="-1"
+						role="dialog"
+					>
+						<div className="modal-dialog modal-dialog-centered" role="document">
+							<div className="modal-content border-0 shadow-lg" style={{ borderRadius: '24px', overflow: 'hidden' }}>
+								<div className="modal-header border-0 pb-0 justify-content-between align-items-center pt-4 px-4">
+									<h5 className="modal-title fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>
+										{paymentModalState.status === 'success' ? 'Payment Success' : 'Payment Transfer'}
+									</h5>
+									{paymentModalState.status !== 'processing' && (
+										<button
+											type="button"
+											className="btn-close shadow-none"
+											onClick={() => setPaymentModalState(prev => ({ ...prev, show: false }))}
+											aria-label="Close"
+										></button>
+									)}
+								</div>
+								<div className="modal-body text-center mt-0 px-4 pb-4 px-sm-5 pb-sm-5 pt-3">
+									{paymentModalState.status === 'confirm' && (
+										<>
+											<p className="text-muted mb-4" style={{ fontSize: '15px' }}>
+												Review the amount before paying securely with your wallet.
+											</p>
+											<div className="py-4 mb-4" style={{ borderBottom: '1px solid #f3f4f6', borderTop: '1px solid #f3f4f6' }}>
+												<p className="mb-0 text-muted small text-uppercase fw-semibold tracking-wider">Amount</p>
+												<h2 className="display-5 fw-bold mb-0 text-dark" style={{ letterSpacing: '-1px' }}>
+													{Number(enquiryForm.offerPrice || property?.price).toLocaleString()} <span className="fs-5 fw-normal text-muted">TND</span>
+												</h2>
+											</div>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium transition-all"
+												style={{ backgroundColor: '#111827', color: '#fff', fontSize: '16px' }}
+												onClick={proceedPayment}
+											>
+												Confirm Payment
+											</button>
+										</>
+									)}
+
+									{paymentModalState.status === 'processing' && (
+										<div className="py-5">
+											<div className="spinner-border text-dark" style={{ width: '2.5rem', height: '2.5rem', borderWidth: '2px' }} role="status">
+												<span className="visually-hidden">Loading...</span>
+											</div>
+											<p className="mt-4 fw-medium text-dark fs-5">Processing...</p>
+											<p className="small text-muted mb-0">Please wait</p>
+										</div>
+									)}
+
+									{paymentModalState.status === 'success' && (
+										<div className="py-4">
+											<div className="mb-4 mx-auto d-flex justify-content-center align-items-center rounded-circle" style={{ width: '64px', height: '64px', backgroundColor: '#f0fdf4' }}>
+												<i className="material-icons-outlined text-success" style={{ fontSize: '32px' }}>check</i>
+											</div>
+											<p className="text-muted mb-4 fs-6">Transfer of <strong className="text-dark">{Number(enquiryForm.offerPrice || property?.price).toLocaleString()} TND</strong> completed securely.</p>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium"
+												style={{ backgroundColor: '#f3f4f6', color: '#111827' }}
+												onClick={() => setPaymentModalState(prev => ({ ...prev, show: false }))}
+											>
+												Close
+											</button>
+										</div>
+									)}
+
+									{paymentModalState.status === 'error' && (
+										<div className="py-4">
+											<div className="mb-4 mx-auto d-flex justify-content-center align-items-center rounded-circle" style={{ width: '64px', height: '64px', backgroundColor: '#fef2f2' }}>
+												<i className="material-icons-outlined text-danger" style={{ fontSize: '32px' }}>close</i>
+											</div>
+											<p className="text-dark fw-semibold fs-5 mb-1">Payment Failed</p>
+											<p className="text-muted mb-4">{paymentModalState.errorMessage}</p>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium"
+												style={{ backgroundColor: '#111827', color: '#fff' }}
+												onClick={() => setPaymentModalState(prev => ({ ...prev, status: 'confirm', errorMessage: '' }))}
+											>
+												Try Again
+											</button>
+										</div>
+									)}
+								</div>
+							</div>
 						</div>
 					</div>,
 					document.body
 				)}
-
-			</div>
-		</div>
+			</div >
+		</div >
 	);
 };
 

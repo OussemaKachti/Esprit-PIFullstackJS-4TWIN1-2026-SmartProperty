@@ -55,6 +55,7 @@ function buildAuthUserPayload(user) {
     twoFactorEnabled: user.twoFactorEnabled,
     hasCompletedOnboarding: user.hasCompletedOnboarding,
     identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
+    walletNumber: user.walletNumber || null,
   };
 }
 
@@ -719,6 +720,7 @@ exports.getProfile = async (req, res) => {
         identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
         identityVerificationNote: user.identityVerificationNote || '',
         identityDocuments: user.identityDocuments || [],
+        walletNumber: user.walletNumber || null,
       }
     });
   } catch (error) {
@@ -733,7 +735,7 @@ exports.getProfile = async (req, res) => {
 // Update current user profile (supports avatar upload)
 exports.updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phone } = req.body;
+    const { firstName, lastName, phone, walletNumber } = req.body;
     const user = await User.findById(req.user._id).select('-password -twoFactorSecret -twoFactorBackupCodes');
 
     if (!user) {
@@ -746,6 +748,7 @@ exports.updateProfile = async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = phone;
+    if (walletNumber !== undefined) user.walletNumber = walletNumber;
     if (req.file) user.avatarUrl = buildUploadedPath(req.file);
     await user.save();
 
@@ -764,6 +767,7 @@ exports.updateProfile = async (req, res) => {
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        walletNumber: user.walletNumber || null,
       }
     });
   } catch (error) {
