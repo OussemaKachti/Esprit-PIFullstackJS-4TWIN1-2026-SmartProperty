@@ -226,9 +226,6 @@ const Header = () => {
                 <li className={navActive.rent ? 'active' : ''}>
                   <LocalizedLink to="/rent-property-grid">{t('navigation.rentProperty')}</LocalizedLink>
                 </li>
-                <li className={navActive.rentalMatch ? 'active' : ''}>
-                  <LocalizedLink to="/rental-match">{t('navigation.rentalMatch')}</LocalizedLink>
-                </li>
                 <li className={navActive.agency ? 'active' : ''}>
                   <LocalizedLink to="/agency-grid">{t('navigation.agency')}</LocalizedLink>
                 </li>

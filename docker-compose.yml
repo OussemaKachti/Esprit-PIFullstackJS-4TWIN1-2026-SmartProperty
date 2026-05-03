@@ -13,11 +13,12 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     image: mern-pipeline-frontend
     ports:
       - "3000:80"
+      - "5173:5173"
     depends_on:
       - backend
 

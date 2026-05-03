@@ -1,14 +1,32 @@
-FROM node:20 as build
+FROM node:20 as frontend-build
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm install --legacy-peer-deps
 
-COPY . .
+COPY frontend/ .
 RUN npm run build
 
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
+FROM node:20 as backoffice-deps
 
-EXPOSE 80
+WORKDIR /backoffice
+
+COPY backofficee/package*.json ./
+RUN npm install --legacy-peer-deps
+
+COPY backofficee/ .
+
+FROM nginx:alpine
+
+RUN apk add --no-cache nodejs npm
+
+COPY --from=frontend-build /app/build /usr/share/nginx/html
+COPY --from=backoffice-deps /backoffice /backoffice
+COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 80 5173
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
