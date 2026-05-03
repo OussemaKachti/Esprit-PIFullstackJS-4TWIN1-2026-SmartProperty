@@ -57,6 +57,7 @@ const BuyDetails = () => {
 
 	// Virtual Staging states
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
+	const lastGeocodedAddress = useRef('');
 	// Virtual Staging states
 	const [showStagingModal, setShowStagingModal] = useState(false);
 	const [isStagingLoading, setIsStagingLoading] = useState(false);
@@ -345,8 +346,21 @@ const BuyDetails = () => {
 	useEffect(() => {
 		if (!property) {
 			setMapPosition(null);
+			lastGeocodedAddress.current = '';
 			return;
 		}
+
+		// 1. Prioritize pre-existing coordinates if available and valid
+		const coords = property.location?.coordinates;
+		if (Array.isArray(coords) && coords.length === 2) {
+			const [lon, lat] = coords.map(parseFloat);
+			if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
+				setMapPosition([lat, lon]);
+				return;
+			}
+		}
+
+		// 2. Fallback to geocoding if coordinates are missing
 		const addressParts = [
 			property.address,
 			property.city,
@@ -354,35 +368,34 @@ const BuyDetails = () => {
 			property.country || t('propertyPages.countryFallback'),
 		].filter(Boolean);
 
-		if (addressParts.length === 0) {
-			const coords = property.location?.coordinates;
-			if (coords && Array.isArray(coords) && coords.length === 2) {
-				const [lon, lat] = coords;
-				if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
-					setMapPosition([lat, lon]);
-					return;
-				}
+		const query = addressParts.join(', ');
+
+		// Avoid re-fetching if the address hasn't changed since the last fetch
+		if (addressParts.length === 0 || query === lastGeocodedAddress.current) {
+			if (addressParts.length === 0 && !mapPosition) {
+				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
-			setMapPosition([...DEFAULT_MAP_CENTER]);
 			return;
 		}
 
-		const query = addressParts.join(', ');
 		const geocodeTimer = setTimeout(async () => {
 			try {
+				lastGeocodedAddress.current = query;
 				let res = await fetch(
 					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
-					{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+					{ headers: { 'User-Agent': 'SmartProperty/1.1 (smart-property-app)' } }
 				);
 				let data = await res.json();
+
 				if (!data || data.length === 0) {
 					const simple = [property.address, property.city].filter(Boolean).join(', ');
 					res = await fetch(
 						`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simple)}&limit=1&addressdetails=1&countrycodes=tn`,
-						{ headers: { 'User-Agent': 'SmartProperty/1.0 (buy-details)' } }
+						{ headers: { 'User-Agent': 'SmartProperty/1.1 (smart-property-app)' } }
 					);
 					data = await res.json();
 				}
+
 				if (data && data.length > 0) {
 					const lat = parseFloat(data[0].lat);
 					const lon = parseFloat(data[0].lon);
@@ -392,10 +405,12 @@ const BuyDetails = () => {
 					}
 				}
 				setMapPosition([...DEFAULT_MAP_CENTER]);
-			} catch {
+			} catch (err) {
+				console.error("Geocoding failed:", err);
 				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
-		}, 500);
+		}, 1000); // Increased debounce for rate limit safety
+
 		return () => clearTimeout(geocodeTimer);
 	}, [property, t]);
 

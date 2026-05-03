@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import toast, { Toaster } from 'react-hot-toast';
 import { apiRequest } from '../api/client';
 import { getUserData } from '../utils/auth';
 import { getImageUrl, getPropertyById, getFeedbackSummaryByPropertyIds } from '../services/propertyService';
@@ -39,14 +40,6 @@ const FALLBACK_HERO_SLIDES = [
 
 const DEFAULT_MAP_CENTER = [36.8065, 10.1815];
 
-const toDateInputValue = (value) => {
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return '';
-	date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-	return date.toISOString().slice(0, 10);
-};
-
-const TODAY_DATE_INPUT = toDateInputValue(new Date());
 
 /** Same rules as backend: block if pending, or non-cancelled lease whose end date is today or later. */
 function pickBlockingLease(leases) {
@@ -72,6 +65,7 @@ const RentDetails = () => {
 	const [errorMessage, setErrorMessage] = useState('');
 	const [blockingLease, setBlockingLease] = useState(null);
 	const [paymentStatus, setPaymentStatus] = useState({ loading: false, hasTenantWallet: false, hasOwnerWallet: false });
+	const [paymentModalState, setPaymentModalState] = useState({ show: false, status: 'confirm', errorMessage: '' });
 	const [bookingForm, setBookingForm] = useState({
 		startDate: '',
 		endDate: '',
@@ -84,8 +78,6 @@ const RentDetails = () => {
 		return routeId || params.get('propertyId') || params.get('id') || '';
 	}, [routeId, location.search]);
 
-	const startDateMin = TODAY_DATE_INPUT;
-	const endDateMin = bookingForm.startDate || TODAY_DATE_INPUT;
 	const isBookingBlocked = Boolean(blockingLease && blockingLease.status !== 'CANCELLED');
 
 	const [property, setProperty] = useState(null);
@@ -95,6 +87,7 @@ const RentDetails = () => {
 	const [mapPosition, setMapPosition] = useState(null);
 	const [heroImageIndex, setHeroImageIndex] = useState(0);
 	const [isTourModalOpen, setIsTourModalOpen] = useState(false);
+	const lastGeocodedAddress = useRef('');
 
 	const listingLabel = useMemo(() => {
 		if (!property?.listingType) return t('propertyDetails.forRent');
@@ -214,8 +207,21 @@ const RentDetails = () => {
 	useEffect(() => {
 		if (!property) {
 			setMapPosition(null);
+			lastGeocodedAddress.current = '';
 			return;
 		}
+
+		// 1. Prioritize pre-existing coordinates if available and valid
+		const coords = property.location?.coordinates;
+		if (Array.isArray(coords) && coords.length === 2) {
+			const [lon, lat] = coords.map(parseFloat);
+			if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
+				setMapPosition([lat, lon]);
+				return;
+			}
+		}
+
+		// 2. Fallback to geocoding if coordinates are missing
 		const addressParts = [
 			property.address,
 			property.city,
@@ -223,35 +229,34 @@ const RentDetails = () => {
 			property.country || t('propertyPages.countryFallback'),
 		].filter(Boolean);
 
-		if (addressParts.length === 0) {
-			const coords = property.location?.coordinates;
-			if (coords && Array.isArray(coords) && coords.length === 2) {
-				const [lon, lat] = coords;
-				if (Number.isFinite(lon) && Number.isFinite(lat) && lon !== 0 && lat !== 0) {
-					setMapPosition([lat, lon]);
-					return;
-				}
+		const query = addressParts.join(', ');
+
+		// Avoid re-fetching if the address hasn't changed since the last fetch
+		if (addressParts.length === 0 || query === lastGeocodedAddress.current) {
+			if (addressParts.length === 0 && !mapPosition) {
+				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
-			setMapPosition([...DEFAULT_MAP_CENTER]);
 			return;
 		}
 
-		const query = addressParts.join(', ');
 		const geocodeTimer = setTimeout(async () => {
 			try {
+				lastGeocodedAddress.current = query;
 				let res = await fetch(
 					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=tn`,
-					{ headers: { 'User-Agent': 'SmartProperty/1.0 (rent-details)' } }
+					{ headers: { 'User-Agent': 'SmartProperty/1.1 (smart-property-app)' } }
 				);
 				let data = await res.json();
+
 				if (!data || data.length === 0) {
 					const simple = [property.address, property.city].filter(Boolean).join(', ');
 					res = await fetch(
 						`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simple)}&limit=1&addressdetails=1&countrycodes=tn`,
-						{ headers: { 'User-Agent': 'SmartProperty/1.0 (rent-details)' } }
+						{ headers: { 'User-Agent': 'SmartProperty/1.1 (smart-property-app)' } }
 					);
 					data = await res.json();
 				}
+
 				if (data && data.length > 0) {
 					const lat = parseFloat(data[0].lat);
 					const lon = parseFloat(data[0].lon);
@@ -261,16 +266,15 @@ const RentDetails = () => {
 					}
 				}
 				setMapPosition([...DEFAULT_MAP_CENTER]);
-			} catch {
+			} catch (err) {
+				console.error("Geocoding failed:", err);
 				setMapPosition([...DEFAULT_MAP_CENTER]);
 			}
-		}, 500);
+		}, 1000); // Increased debounce for rate limit safety
+
 		return () => clearTimeout(geocodeTimer);
 	}, [property, t]);
 
-	useEffect(() => {
-		setBookingForm((prev) => ({ ...prev, note: t('propertyDetails.bookingRequestDefaultNote') }));
-	}, [t]);
 
 	useEffect(() => {
 		if (!propertyId) {
@@ -304,11 +308,6 @@ const RentDetails = () => {
 		};
 	}, [propertyId, t]);
 
-	useEffect(() => {
-		if (property?.price && !bookingForm.rentAmount) {
-			setBookingForm((prev) => ({ ...prev, rentAmount: String(property.price) }));
-		}
-	}, [property?.price, bookingForm.rentAmount]);
 
 	useEffect(() => {
 		if (!propertyId || !currentUser) return;
@@ -336,33 +335,44 @@ const RentDetails = () => {
 		checkStatus();
 	}, [propertyId, currentUser]);
 
-	const handleInstaPay = async () => {
-		if (!window.confirm(t('propertyDetails.confirmInstaPay', { amount: paymentStatus.amount || property?.price }))) return;
+	const handleInstaPay = () => {
+		setPaymentModalState({ show: true, status: 'confirm', errorMessage: '' });
+	};
 
-		setIsSending(true);
-		setErrorMessage('');
-		setSuccessMessage('');
+	const proceedPayment = async () => {
+		const amountToPay = paymentStatus.amount || property?.price;
+		if (!amountToPay) return;
+
+		setPaymentModalState(prev => ({ ...prev, status: 'processing', errorMessage: '' }));
+
+		// Calculate automatic 1-month duration
+		const now = new Date();
+		const startDate = now.toISOString().slice(0, 10);
+		const end = new Date(now);
+		end.setMonth(end.getMonth() + 1);
+		const endDate = end.toISOString().slice(0, 10);
 
 		try {
 			const res = await apiRequest('/api/easy-wallet/pay', {
 				method: 'POST',
 				body: JSON.stringify({
 					propertyId: propertyId,
-					amount: paymentStatus.amount || property?.price,
+					amount: amountToPay,
 					paymentType: 'LEASE',
-					startDate: bookingForm.startDate,
-					endDate: bookingForm.endDate
+					startDate,
+					endDate
 				})
 			});
 
 			if (res.success) {
-				setSuccessMessage(t('propertyDetails.paymentSuccessful'));
-				setBlockingLease({ status: 'CONFIRMED', startDate: bookingForm.startDate, endDate: bookingForm.endDate });
+				toast.success(t('propertyDetails.paymentSuccessful'));
+				setPaymentModalState(prev => ({ ...prev, status: 'success' }));
+				setBlockingLease({ status: 'CONFIRMED', startDate, endDate });
+			} else {
+				setPaymentModalState(prev => ({ ...prev, status: 'error', errorMessage: res.message || t('propertyDetails.paymentFailed') }));
 			}
 		} catch (err) {
-			setErrorMessage(err.message || t('propertyDetails.paymentFailed'));
-		} finally {
-			setIsSending(false);
+			setPaymentModalState(prev => ({ ...prev, status: 'error', errorMessage: err.message || t('propertyDetails.paymentFailed') }));
 		}
 	};
 
@@ -382,16 +392,6 @@ const RentDetails = () => {
 		};
 	}, [isTourModalOpen, closeTourModal]);
 
-	const handleBookingChange = (field) => (event) => {
-		const value = event.target.value;
-		setBookingForm((prev) => {
-			const next = { ...prev, [field]: value };
-			if (field === 'startDate' && next.endDate && next.endDate < value) {
-				next.endDate = '';
-			}
-			return next;
-		});
-	};
 
 	useEffect(() => {
 		// Force enable scrolling
@@ -1154,210 +1154,147 @@ const RentDetails = () => {
 
 										<div className="col-xl-4 theiaStickySidebar buy-details-item">
 
-											<div className="card">
-												<div className="card-header">
-													<h5 className="mb-0">{t('propertyDetails.listingOwnerDetails')}</h5>
+											{/* Contact Channels */}
+											<div className="card shadow-sm border-0 mb-4" style={{ borderRadius: '16px' }}>
+												<div className="card-header bg-white border-0 pt-4 px-4 pb-0">
+													<h5 className="mb-0 fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>{t('propertyDetails.listingOwnerDetails')}</h5>
 												</div>
-												<div className="card-body">
-													<div className="d-flex align-items-center gap-2 mb-3">
-														<div
-															className="avatar avatar-lg rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-semibold fs-18"
-															style={{ width: 56, height: 56, minWidth: 56 }}
-															aria-hidden
-														>
-															{ownerProfile.initials}
-														</div>
-														<div>
-															<h6 className="mb-1 fs-16 fw-semibold">{ownerProfile.displayName}</h6>
-															<p className="mb-0 fs-14 text-body">
-																{t('propertyDetails.thisListingRating', { rating: ratingSummary.averageRating || '0.0', total: ratingSummary.totalReviews || 0 })}
-															</p>
-														</div>
+												<div className="card-body p-4">
+													<div className="d-flex flex-column gap-3 mb-4 text-dark">
+														{ownerProfile?.email && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6' }}>
+																	<i className="material-icons-outlined text-muted" style={{ fontSize: '18px' }}>email</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Email</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.email}</p>
+																</div>
+															</div>
+														)}
+														{ownerProfile?.phone && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6' }}>
+																	<i className="material-icons-outlined text-muted" style={{ fontSize: '18px' }}>phone</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Phone</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.phone}</p>
+																</div>
+															</div>
+														)}
+														{ownerProfile?.whatsappDigits && (
+															<div className="d-flex align-items-center gap-3">
+																<div className="d-flex justify-content-center align-items-center rounded-circle" style={{ width: '36px', height: '36px', backgroundColor: '#ecfdf5' }}>
+																	<i className="material-icons-outlined text-success" style={{ fontSize: '18px' }}>chat</i>
+																</div>
+																<div>
+																	<p className="mb-0 small text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>WhatsApp</p>
+																	<p className="mb-0 fw-medium">{ownerProfile.whatsappDigits}</p>
+																</div>
+															</div>
+														)}
 													</div>
-													<ul className="mb-3 list-unstyled">
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">{t('propertyDetails.phone')}</span>
-															<span className="text-end">{ownerProfile.phone || t('propertyDetails.noDescription')}</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">{t('propertyDetails.email')}</span>
-															<span className="text-end text-break">
-																{ownerProfile.email ? (
-																	<a href={`mailto:${ownerProfile.email}`} className="text-primary">
-																		{ownerProfile.email}
-																	</a>
-																) : (
-																	t('propertyDetails.noDescription')
-																)}
-															</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-3">
-															<span className="text-body">{t('propertyDetails.memberSince')}</span>
-															<span>{ownerProfile.memberSince || t('propertyDetails.noDescription')}</span>
-														</li>
-														<li className="d-flex align-center justify-content-between flex-wrap gap-1 mb-0">
-															<span className="text-body">{t('propertyDetails.account')}</span>
-															<div className="badge bg-success text-white">{t('propertyDetails.registered')}</div>
-														</li>
-													</ul>
-													<div className="d-flex align-items-center justify-content-between gap-3">
-														{ownerProfile.whatsappDigits ? (
+
+													<div className="d-flex gap-2">
+														{ownerProfile?.whatsappDigits && (
 															<a
 																href={`https://wa.me/${ownerProfile.whatsappDigits}`}
 																target="_blank"
 																rel="noopener noreferrer"
-																className="btn btn-primary d-flex align-center fs-14 fw-medium w-100 justify-content-center"
+																className="btn flex-grow-1 d-flex align-items-center justify-content-center text-white rounded-pill fw-medium transition-all"
+																style={{ backgroundColor: '#10b981', border: 'none' }}
 															>
-																{t('propertyDetails.whatsapp')}
+																<i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>chat</i> WhatsApp
 															</a>
-														) : (
-															<span className="btn btn-secondary disabled w-100">{t('propertyDetails.whatsapp')}</span>
 														)}
-														{ownerProfile.email ? (
+														{ownerProfile?.email && (
 															<a
-																href={`mailto:${ownerProfile.email}?subject=${ownerEmailSubject}`}
-																className="btn btn-dark d-flex align-center fs-14 fw-medium w-100 text-center justify-content-center"
+																href={`mailto:${ownerProfile.email}?subject=${encodeURIComponent(ownerEmailSubject || '')}`}
+																className="btn flex-grow-1 d-flex align-items-center justify-content-center text-white rounded-pill fw-medium transition-all"
+																style={{ backgroundColor: '#111827', border: 'none' }}
 															>
-																{t('propertyDetails.emailOwner')}
+																<i className="material-icons-outlined me-1" style={{ fontSize: '18px' }}>email</i> Email
 															</a>
-														) : (
-															<span className="btn btn-secondary disabled w-100">{t('propertyDetails.emailOwner')}</span>
 														)}
 													</div>
 												</div>
 											</div>
 
-
-											<div className="card">
-												<div className="card-header d-flex align-items-center justify-content-between">
-													<h5 className="mb-0">{t('propertyDetails.smartBookingRequest')}</h5>
-													<span className="badge bg-primary">Live</span>
+											{/* Rent/Booking Card */}
+											<div className="card shadow-sm border-0 mb-4" style={{ borderRadius: '16px' }}>
+												<div className="card-header bg-white border-0 pt-4 pb-0 px-4">
+													<h5 className="mb-0 fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>{t('propertyDetails.smartBookingRequest') || 'Rent this Property'}</h5>
 												</div>
-												<div className="card-body">
-													<div className="alert alert-info py-2 mb-3">
-														<div className="fw-semibold">{t('propertyDetails.notifyOwnerInstantly')}</div>
-													</div>
-
-													{isBookingBlocked && (
-														<div id="booking-blocked-msg" className="alert alert-warning py-2 mb-3 small" role="alert" aria-live="assertive">
+												<div className="card-body p-4">
+													{isBookingBlocked ? (
+														<div className="alert border-0 rounded-4 py-3 px-3 mb-3" style={{ backgroundColor: '#fffbeb', color: '#b45309' }} role="alert">
 															{blockingLease.status === 'PENDING' ? (
-																<>
-																	You already have a <strong>pending</strong> rental request for this listing.
-																</>
+																<>You already have a <strong>pending</strong> rental request.</>
 															) : (
-																<>
-																	You have an active or upcoming stay until{' '}
-																	<strong>
-																		{blockingLease.endDate
-																			? new Date(blockingLease.endDate).toLocaleDateString()
-																			: t('propertyDetails.noDescription')}
-																	</strong>
-																	.
-																</>
-															)}{' '}
-															Send another request only after your rental <strong>end date</strong> has passed.
+																<>You have an active or upcoming stay until <strong>{blockingLease.endDate ? new Date(blockingLease.endDate).toLocaleDateString() : '—'}</strong>.</>
+															)}
 														</div>
-													)}
-
-													<div className="mb-3">
-														<label className="form-label fw-semibold">{t('propertyDetails.startDate')}</label>
-														<input
-															type="date"
-															className="form-control"
-															min={startDateMin}
-															value={bookingForm.startDate}
-															onChange={handleBookingChange('startDate')}
-															disabled={isBookingBlocked}
-														/>
-													</div>
-
-													<div className="mb-3">
-														<label className="form-label fw-semibold">{t('propertyDetails.endDate')}</label>
-														<input
-															type="date"
-															className="form-control"
-															min={endDateMin}
-															value={bookingForm.endDate}
-															onChange={handleBookingChange('endDate')}
-															disabled={isBookingBlocked}
-														/>
-													</div>
-
-													<div className="mb-3">
-														<label className="form-label fw-semibold">{t('propertyDetails.yourBudgetTnd')}</label>
-														<input
-															type="number"
-															min="0"
-															step="1"
-															className="form-control"
-															placeholder={t('propertyDetails.budgetPlaceholder')}
-															value={bookingForm.rentAmount}
-															onChange={handleBookingChange('rentAmount')}
-															disabled={isBookingBlocked}
-														/>
-													</div>
-
-													<div className="mb-3">
-														<label className="form-label fw-semibold">{t('propertyDetails.messageToOwner')}</label>
-														<textarea
-															className="form-control"
-															rows="3"
-															value={bookingForm.note}
-															onChange={handleBookingChange('note')}
-															disabled={isBookingBlocked}
-														/>
-													</div>
-
-													{successMessage && (
-														<div id="booking-success-msg" className="alert alert-success py-2 mb-3" role="status" aria-live="polite">{successMessage}</div>
-													)}
-													{errorMessage && (
-														<div id="booking-error-msg" className="alert alert-danger py-2 mb-3" role="alert" aria-live="assertive">{errorMessage}</div>
-													)}
-
-													{paymentStatus.hasOwnerWallet && !isBookingBlocked && (
-														<div className="mt-2">
-															<div className="d-flex align-items-center gap-2 mb-3">
-																<span className="badge bg-success-light text-success d-flex align-items-center gap-1 py-2 px-3 rounded-pill">
-																	<i className="material-icons-outlined fs-18">verified_user</i>
-																	{t('propertyDetails.instaPayAvailable')}
-																</span>
+													) : (
+														<>
+															<div className="mb-4">
+																<label className="form-label fw-medium small text-muted text-uppercase" style={{ letterSpacing: '0.5px' }}>Duration</label>
+																<input
+																	type="text"
+																	className="form-control form-control-lg rounded-3 shadow-none fw-medium text-dark"
+																	value="1 Month (Auto-renewing)"
+																	readOnly
+																	disabled
+																	style={{ border: '1px solid #e5e7eb', backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+																/>
 															</div>
-															<button
-																type="button"
-																className="btn btn-primary w-100 py-3 fs-16 d-flex align-items-center justify-content-center gap-2 shadow-sm"
-																style={{ background: 'linear-gradient(135deg, #059669, #10b981)', border: 'none', fontWeight: '600' }}
-																onClick={handleInstaPay}
-																disabled={isSending || !paymentStatus.hasTenantWallet || !bookingForm.startDate || !bookingForm.endDate}
-															>
-																<i className="material-icons-outlined text-white">bolt</i>
-																<span className="text-white">{isSending ? t('propertyDetails.sending') : t('propertyDetails.instaPayNow')}</span>
-															</button>
-															{!paymentStatus.hasTenantWallet && (
-																<p className="text-muted small mt-2 mb-0">
-																	{t('propertyDetails.linkWalletToPay')} <Link to="/profile-settings" className="text-primary text-decoration-underline">{t('propertyDetails.profileSettings')}</Link>
-																</p>
-															)}
-															{(!bookingForm.startDate || !bookingForm.endDate) && (
-																<p className="text-danger small mt-2 mb-0">{t('propertyDetails.selectDatesToPay')}</p>
-															)}
-														</div>
-													)}
 
-													{!paymentStatus.hasOwnerWallet && !isBookingBlocked && (
-														<div className="alert alert-info py-2 small mb-3">
-															{t('propertyDetails.ownerNoWallet')}
-														</div>
-													)}
-													{!propertyId && (
-														<p id="booking-open-from-card-msg" className="text-danger small mt-2 mb-0">{t('propertyDetails.openFromPropertyCard')}</p>
-													)}
-													{!currentUser && (
-														<p id="booking-signin-msg" className="text-muted small mt-2 mb-0">{t('propertyDetails.signInAutoAttach')}</p>
+															<div className="mb-4">
+																<label className="form-label fw-medium small text-muted text-uppercase" style={{ letterSpacing: '0.5px' }}>Price (TND)</label>
+																<input
+																	type="text"
+																	className="form-control form-control-lg rounded-3 shadow-none fw-medium text-dark"
+																	value={`${property?.price || ''} TND`}
+																	readOnly
+																	disabled
+																	style={{ border: '1px solid #e5e7eb', backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+																/>
+															</div>
+
+															{paymentStatus.hasOwnerWallet && (
+																<div className="mt-2">
+																	<button
+																		type="button"
+																		className="btn w-100 py-3 fs-16 d-flex align-items-center justify-content-center gap-2 rounded-pill transition-all text-white"
+																		style={{ backgroundColor: '#111827', border: 'none', fontWeight: '500', letterSpacing: '0.3px' }}
+																		onClick={handleInstaPay}
+																		disabled={paymentModalState.status === 'processing' || !paymentStatus.hasTenantWallet}
+																	>
+																		{paymentModalState.status === 'processing' ? (
+																			<span className="spinner-border spinner-border-sm me-2 text-white" role="status" aria-hidden="true"></span>
+																		) : (
+																			<i className="material-icons-outlined text-white" style={{ fontSize: '20px' }}>account_balance_wallet</i>
+																		)}
+																		<span className="text-white">{paymentModalState.status === 'processing' ? t('propertyDetails.processing') : 'Pay Now with EasyWallet'}</span>
+																	</button>
+																	{!paymentStatus.hasTenantWallet && (
+																		<p className="text-muted small mt-3 text-center mb-0">
+																			{t('propertyDetails.linkWalletToPay') || 'Link your wallet to pay'} <Link to="/profile-settings" className="text-dark fw-medium text-decoration-none border-bottom border-dark pb-1">{t('propertyDetails.profileSettings') || 'Settings'}</Link>
+																		</p>
+																	)}
+																</div>
+															)}
+
+															{!paymentStatus.hasOwnerWallet && (
+																<div className="alert border-0 rounded-4 py-3 px-3 small mb-3" style={{ backgroundColor: '#f3f4f6', color: '#374151' }}>
+																	<i className="material-icons-outlined me-2 position-relative" style={{ top: '3px', fontSize: '18px' }}>info</i>
+																	{t('propertyDetails.ownerNoWallet') || 'Property owner has not connected a wallet yet.'}
+																</div>
+															)}
+														</>
 													)}
 												</div>
 											</div>
-
 
 											<div className="card">
 												<div className="card-header">
@@ -1439,291 +1376,6 @@ const RentDetails = () => {
 								</>
 							)}
 
-							{/* <div className="row row-gap-4 custom-properties-items">
-
-
-								<div className="col-xl-3 col-lg-6 col-md-6 d-flex">
-									<div className="property-card mb-0 flex-fill">
-										<div className="property-listing-item p-0 mb-0 shadow-none">
-											<div className="buy-grid-img mb-0 rounded-0">
-												<Link to="/rent-details">
-													<img className="img-fluid" src="/assets/img/buy/buy-grid-img-10.jpg" alt="" />
-												</Link>
-												<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 px-3 py-2 z-1">
-													<div className="d-flex align-items-center gap-2">
-														<div className="badge badge-sm bg-danger d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">generating_tokens</i>
-														</div>
-														<div className="badge badge-sm bg-orange d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">loyalty</i>
-														</div>
-													</div>
-													<a href="javascript:void(0)" className="favourite">
-														<i className="material-icons-outlined">favorite_border</i>
-													</a>
-												</div>
-												<div className="d-flex align-items-center justify-content-start position-absolute bottom-0 end-0 start-0 p-3 z-1">
-													<div className="user-avatar avatar avatar-md border rounded-circle">
-														<img src="/assets/img/users/user-02.jpg" alt="User" className="rounded-circle" />
-													</div>
-												</div>
-											</div>
-											<div className="buy-grid-content">
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<span className="badge bg-secondary"> Condo</span>
-													<span className="ms-1 fs-14">Listed on : 25 May 2025</span>
-												</div>
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<div>
-														<h6 className="title mb-1">
-															<Link to="/rent-details">Beautiful Condo Room</Link>
-														</h6>
-														<div className="d-flex align-items-center fs-14 mb-0 flex-wrap gap-1"><i className="material-icons-outlined me-1 ms-0">location_on</i>25, Crest Apartment, USA </div>
-													</div>
-												</div>
-												<div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-													<h6 className="text-primary mb-0 ms-1">$400 <span className="fw-normal fs-14"> / Month</span> </h6>
-													<div className="d-flex align-items-center justify-content-center">
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<span className="ms-1 fs-14">5.0</span>
-													</div>
-												</div>
-												<ul className="d-flex buy-grid-details justify-content-between align-items-center flex-wrap gap-1 border-top border-light-100 pt-3 mt-3">
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bed</i>
-														2 Bedroom
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bathtub</i>
-														2 Bath
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">straighten</i>
-														350 Sq Ft
-													</li>
-												</ul>
-											</div>
-										</div>
-									</div>
-								</div>
-
-
-								<div className="col-xl-3 col-lg-6 col-md-6 d-flex">
-									<div className="property-card mb-0 flex-fill">
-										<div className="property-listing-item p-0 mb-0 shadow-none">
-											<div className="buy-grid-img mb-0 rounded-0">
-												<Link to="/rent-details">
-													<img className="img-fluid" src="/assets/img/buy/buy-grid-img-11.jpg" alt="" />
-												</Link>
-												<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 px-3 py-2 z-1">
-													<div className="d-flex align-items-center gap-2">
-														<div className="badge badge-sm bg-danger d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">generating_tokens</i>
-														</div>
-														<div className="badge badge-sm bg-orange d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">loyalty</i>
-														</div>
-													</div>
-													<a href="javascript:void(0)" className="favourite">
-														<i className="material-icons-outlined">favorite_border</i>
-													</a>
-												</div>
-												<div className="d-flex align-items-center justify-content-start position-absolute bottom-0 end-0 start-0 p-3 z-1">
-													<div className="user-avatar avatar avatar-md border rounded-circle">
-														<img src="/assets/img/users/user-04.jpg" alt="User" className="rounded-circle" />
-													</div>
-												</div>
-											</div>
-											<div className="buy-grid-content">
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<span className="badge bg-primary"> Suite</span>
-													<span className="ms-1 fs-14">Listed on : 18 Apr 2025</span>
-												</div>
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<div>
-														<h6 className="title mb-1">
-															<Link to="/rent-details">Serenity Condo Suite</Link>
-														</h6>
-														<p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>17, Grov Tower, New York, USA</p>
-													</div>
-												</div>
-												<div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-													<h6 className="text-primary mb-0 ms-1">$500 <span className="fw-normal fs-14"> / Month</span> </h6>
-													<div className="d-flex align-items-center justify-content-center">
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<span className="ms-1 fs-14">5.0</span>
-													</div>
-												</div>
-												<ul className="d-flex buy-grid-details justify-content-between align-items-center flex-wrap gap-1 border-top border-light-100 pt-3 mt-3">
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bed</i>
-														2 Bedroom
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bathtub</i>
-														1 Bath
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">straighten</i>
-														400 Sq Ft
-													</li>
-												</ul>
-											</div>
-										</div>
-									</div>
-								</div>
-
-
-								<div className="col-xl-3 col-lg-6 col-md-6 d-flex">
-									<div className="property-card mb-0 flex-fill">
-										<div className="property-listing-item p-0 mb-0 shadow-none">
-											<div className="buy-grid-img mb-0 rounded-0">
-												<Link to="/rent-details">
-													<img className="img-fluid" src="/assets/img/buy/buy-grid-img-12.jpg" alt="" />
-												</Link>
-												<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 px-3 py-2 z-1">
-													<div className="d-flex align-items-center gap-2">
-														<div className="badge badge-sm bg-danger d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">generating_tokens</i>
-														</div>
-														<div className="badge badge-sm bg-orange d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">loyalty</i>
-														</div>
-													</div>
-													<a href="javascript:void(0)" className="favourite">
-														<i className="material-icons-outlined">favorite_border</i>
-													</a>
-												</div>
-												<div className="d-flex align-items-center justify-content-start position-absolute bottom-0 end-0 start-0 p-3 z-1">
-													<div className="user-avatar avatar avatar-md border rounded-circle">
-														<img src="/assets/img/users/user-05.jpg" alt="User" className="rounded-circle" />
-													</div>
-												</div>
-											</div>
-											<div className="buy-grid-content">
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<span className="badge bg-secondary"> Luxue</span>
-													<span className="ms-1 fs-14">Listed on : 12 Apr 2025</span>
-												</div>
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<div>
-														<h6 className="title mb-1">
-															<Link to="/rent-details">Downtown Luxe Room</Link>
-														</h6>
-														<p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>88, Springs Lane, Austin, USA</p>
-													</div>
-												</div>
-												<div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-													<h6 className="text-primary mb-0 ms-1">$450 <span className="fw-normal fs-14"> / Month</span> </h6>
-													<div className="d-flex align-items-center justify-content-center">
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<span className="ms-1 fs-14">5.0</span>
-													</div>
-												</div>
-												<ul className="d-flex buy-grid-details justify-content-between align-items-center flex-wrap gap-1 border-top border-light-100 pt-3 mt-3">
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bed</i>
-														2 Bedroom
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bathtub</i>
-														1 Bath
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">straighten</i>
-														460 Sq Ft
-													</li>
-												</ul>
-											</div>
-										</div>
-									</div>
-								</div>
-
-
-								<div className="col-xl-3 col-lg-6 col-md-6 d-flex">
-									<div className="property-card mb-0 flex-fill">
-										<div className="property-listing-item p-0 mb-0 shadow-none">
-											<div className="buy-grid-img mb-0 rounded-0">
-												<Link to="/rent-details">
-													<img className="img-fluid" src="/assets/img/buy/buy-grid-img-13.jpg" alt="" />
-												</Link>
-												<div className="d-flex align-items-center justify-content-between position-absolute top-0 start-0 end-0 px-3 py-2 z-1">
-													<div className="d-flex align-items-center gap-2">
-														<div className="badge badge-sm bg-danger d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">generating_tokens</i>
-														</div>
-														<div className="badge badge-sm bg-orange d-flex align-items-center custom-badge">
-															<i className="material-icons-outlined">loyalty</i>
-														</div>
-													</div>
-													<a href="javascript:void(0)" className="favourite">
-														<i className="material-icons-outlined">favorite_border</i>
-													</a>
-												</div>
-												<div className="d-flex align-items-center justify-content-start position-absolute bottom-0 end-0 start-0 p-3 z-1">
-													<div className="user-avatar avatar avatar-md border rounded-circle">
-														<img src="/assets/img/users/user-07.jpg" alt="User" className="rounded-circle" />
-													</div>
-												</div>
-											</div>
-											<div className="buy-grid-content">
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<span className="badge bg-secondary"> Condo</span>
-													<span className="ms-1 fs-14">Listed on : 25 May 2025</span>
-												</div>
-												<div className="d-flex align-items-center justify-content-between mb-3">
-													<div>
-														<h6 className="title mb-1">
-															<Link to="/rent-details">Modern Haven Suite</Link>
-														</h6>
-														<p className="d-flex align-items-center fs-14 mb-0"><i className="material-icons-outlined me-1 ms-0">location_on</i>42, Hill Residence, Austin, USA</p>
-													</div>
-												</div>
-												<div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-													<h6 className="text-primary mb-0 ms-1">$600 <span className="fw-normal fs-14"> / Month</span> </h6>
-													<div className="d-flex align-items-center justify-content-center">
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<i className="material-icons-outlined text-warning">star</i>
-														<span className="ms-1 fs-14">5.0</span>
-													</div>
-												</div>
-												<ul className="d-flex buy-grid-details justify-content-between align-items-center flex-wrap gap-1 border-top border-light-100 pt-3 mt-3">
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bed</i>
-														4 Bedroom
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">bathtub</i>
-														2 Bath
-													</li>
-													<li className="d-flex align-items-center gap-1">
-														<i className="material-icons-outlined bg-light text-dark">straighten</i>
-														520 Sq Ft
-													</li>
-												</ul>
-											</div>
-										</div>
-									</div>
-								</div>
-
-							</div> */}
-
-
 						</div>
 					</div>
 
@@ -1793,15 +1445,101 @@ const RentDetails = () => {
 					</div>
 				</div>
 
+				{paymentModalState.show && createPortal(
+					<div
+						className="modal fade show d-block"
+						style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}
+						tabIndex="-1"
+						role="dialog"
+					>
+						<div className="modal-dialog modal-dialog-centered" role="document">
+							<div className="modal-content border-0 shadow-lg" style={{ borderRadius: '24px', overflow: 'hidden' }}>
+								<div className="modal-header border-0 pb-0 justify-content-between align-items-center pt-4 px-4">
+									<h5 className="modal-title fw-semibold text-dark fs-5" style={{ letterSpacing: '-0.3px' }}>
+										{paymentModalState.status === 'success' ? 'Payment Success' : 'Payment Transfer'}
+									</h5>
+									{paymentModalState.status !== 'processing' && (
+										<button
+											type="button"
+											className="btn-close shadow-none"
+											onClick={() => setPaymentModalState(prev => ({ ...prev, show: false }))}
+											aria-label="Close"
+										></button>
+									)}
+								</div>
+								<div className="modal-body text-center mt-0 px-4 pb-4 px-sm-5 pb-sm-5 pt-3">
+									{paymentModalState.status === 'confirm' && (
+										<>
+											<p className="text-muted mb-4" style={{ fontSize: '15px' }}>
+												Review the amount before paying securely with your wallet.
+											</p>
+											<div className="py-4 mb-4" style={{ borderBottom: '1px solid #f3f4f6', borderTop: '1px solid #f3f4f6' }}>
+												<p className="mb-0 text-muted small text-uppercase fw-semibold tracking-wider">Amount</p>
+												<h2 className="display-5 fw-bold mb-0 text-dark" style={{ letterSpacing: '-1px' }}>
+													{Number(paymentStatus.amount || property?.price).toLocaleString()} <span className="fs-5 fw-normal text-muted">TND</span>
+												</h2>
+											</div>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium transition-all"
+												style={{ backgroundColor: '#111827', color: '#fff', fontSize: '16px' }}
+												onClick={proceedPayment}
+											>
+												Confirm Payment
+											</button>
+										</>
+									)}
 
+									{paymentModalState.status === 'processing' && (
+										<div className="py-5">
+											<div className="spinner-border text-dark" style={{ width: '2.5rem', height: '2.5rem', borderWidth: '2px' }} role="status">
+												<span className="visually-hidden">Loading...</span>
+											</div>
+											<p className="mt-4 fw-medium text-dark fs-5">Processing...</p>
+											<p className="small text-muted mb-0">Please wait</p>
+										</div>
+									)}
 
+									{paymentModalState.status === 'success' && (
+										<div className="py-4">
+											<div className="mb-4 mx-auto d-flex justify-content-center align-items-center rounded-circle" style={{ width: '64px', height: '64px', backgroundColor: '#f0fdf4' }}>
+												<i className="material-icons-outlined text-success" style={{ fontSize: '32px' }}>check</i>
+											</div>
+											<p className="text-muted mb-4 fs-6">Transfer of <strong className="text-dark">{Number(paymentStatus.amount || property?.price).toLocaleString()} TND</strong> completed securely.</p>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium"
+												style={{ backgroundColor: '#f3f4f6', color: '#111827' }}
+												onClick={() => setPaymentModalState(prev => ({ ...prev, show: false }))}
+											>
+												Close
+											</button>
+										</div>
+									)}
 
-			</div >
-		</div >
+									{paymentModalState.status === 'error' && (
+										<div className="py-4">
+											<div className="mb-4 mx-auto d-flex justify-content-center align-items-center rounded-circle" style={{ width: '64px', height: '64px', backgroundColor: '#fef2f2' }}>
+												<i className="material-icons-outlined text-danger" style={{ fontSize: '32px' }}>close</i>
+											</div>
+											<p className="text-dark fw-semibold fs-5 mb-1">Payment Failed</p>
+											<p className="text-muted mb-4">{paymentModalState.errorMessage}</p>
+											<button
+												className="btn w-100 py-3 rounded-pill fw-medium"
+												style={{ backgroundColor: '#111827', color: '#fff' }}
+												onClick={() => setPaymentModalState(prev => ({ ...prev, status: 'confirm', errorMessage: '' }))}
+											>
+												Try Again
+											</button>
+										</div>
+									)}
+								</div>
+							</div>
+						</div>
+					</div>,
+					document.body
+				)}
+			</div>
+		</div>
 	);
 };
 
 export default RentDetails;
-
-
-

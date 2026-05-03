@@ -29,7 +29,7 @@ exports.initiatePayment = async (req, res, next) => {
                 ownerId = property.createdBy;
 
                 // Create or find a pending lease for this tenant/property
-                record = await Lease.fshoindOne({
+                record = await Lease.findOne({
                     propertyId,
                     tenantId: req.user._id,
                     status: 'PENDING'
@@ -169,10 +169,18 @@ exports.initiatePayment = async (req, res, next) => {
                 paidDate: new Date(),
                 status: 'PAID'
             });
+            // Update property status to RENTED
+            if (record.propertyId) {
+                await Property.findByIdAndUpdate(record.propertyId, { status: 'RENTED' });
+            }
         } else if (paymentType === 'SALE') {
             if (record.status === 'PENDING') {
                 record.status = 'COMPLETED';
                 await record.save();
+            }
+            // Update property status to SOLD
+            if (record.propertyId) {
+                await Property.findByIdAndUpdate(record.propertyId, { status: 'SOLD' });
             }
         }
 
@@ -202,13 +210,27 @@ exports.getPaymentStatus = async (req, res, next) => {
         let activeRecord = null;
 
         if (paymentType === 'LEASE') {
-            activeRecord = await Lease.findById(id).populate('propertyId');
+            // Try to find by propertyId first (frontend sends propertyId)
+            activeRecord = await Lease.findOne({ propertyId: id, status: { $ne: 'CANCELLED' } }).populate('propertyId');
+
+            // Fallback to findById if not found (in case it WAS a lease ID)
+            if (!activeRecord && mongoose.Types.ObjectId.isValid(id)) {
+                activeRecord = await Lease.findById(id).populate('propertyId');
+            }
+
             if (activeRecord && activeRecord.propertyId) {
                 ownerId = activeRecord.propertyId.createdBy;
                 amount = activeRecord.rentAmount;
             }
         } else if (paymentType === 'SALE') {
-            activeRecord = await Sale.findById(id).populate('propertyId');
+            // Try to find by propertyId first
+            activeRecord = await Sale.findOne({ propertyId: id, status: { $ne: 'CANCELLED' } }).populate('propertyId');
+
+            // Fallback to findById
+            if (!activeRecord && mongoose.Types.ObjectId.isValid(id)) {
+                activeRecord = await Sale.findById(id).populate('propertyId');
+            }
+
             if (activeRecord && activeRecord.propertyId) {
                 ownerId = activeRecord.propertyId.createdBy;
                 amount = activeRecord.salePrice;
