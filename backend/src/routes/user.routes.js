@@ -6,6 +6,7 @@ const { optionalRegistrationUpload, optionalAvatarUpload } = require('../middlew
 const { UserRole } = require('../models/User');
 
 router.post('/register', optionalRegistrationUpload, userController.register);
+router.post('/register/check-availability', userController.checkRegistrationAvailability);
 
 // Public: list agencies (OWNER / AGENCY role users)
 router.get('/agencies', userController.getAgencies);

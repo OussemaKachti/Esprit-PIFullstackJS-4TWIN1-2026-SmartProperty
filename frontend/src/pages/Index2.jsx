@@ -390,7 +390,7 @@ const Index2 = () => {
 						</Link>
 					</li>
 					<li className="nav-item" role="presentation">
-						<Link className="nav-link" data-bs-toggle="tab" to="/index-2" role="tab" aria-controls="listing-2" aria-selected="false" tabindex="-1">
+						<Link className="nav-link" data-bs-toggle="tab" to="/index-2" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
 							For Sale
 						</Link>
 					</li>
@@ -1807,7 +1807,7 @@ const Index2 = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">

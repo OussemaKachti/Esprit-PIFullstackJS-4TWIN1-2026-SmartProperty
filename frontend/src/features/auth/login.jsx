@@ -91,7 +91,7 @@ export default function Login() {
 
       // Redirect based on user role (buyer/tenant stay on marketplace; owner/agency/admin go to backoffice)
       const userRole = data.user?.role;
-      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole)) {
+      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole, data.user?.identityVerificationStatus)) {
         const backofficeUrl = getRedirectUrl(userRole);
         redirectToBackofficeWithToken(backofficeUrl, data.token, userRole);
       } else {
@@ -159,7 +159,7 @@ export default function Login() {
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("Login successful");
       const userRole = data.user?.role;
-      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole)) {
+      if (userRole && shouldAutoRedirectToBackofficeOnLogin(userRole, data.user?.identityVerificationStatus)) {
         const backofficeUrl = getRedirectUrl(userRole);
         redirectToBackofficeWithToken(backofficeUrl, data.token, userRole);
       } else {

@@ -9,16 +9,19 @@ router.get('/:id', auth.protect, rentPaymentController.getRentPaymentById);
 router.post(
   '/',
   auth.protect,
+  auth.requireApprovedForActions,
   rentPaymentController.createRentPayment
 );
 router.put(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   rentPaymentController.updateRentPayment
 );
 router.delete(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   rentPaymentController.deleteRentPayment
 );
 

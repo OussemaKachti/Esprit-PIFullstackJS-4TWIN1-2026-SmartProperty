@@ -9,21 +9,25 @@ router.get('/:id', auth.protect, saleController.getSaleById);
 router.post(
   '/',
   auth.protect,
+  auth.requireApprovedForActions,
   saleController.createSale
 );
 router.put(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   saleController.updateSale
 );
 router.patch(
   '/:id/confirm',
   auth.protect,
+  auth.requireApprovedForActions,
   saleController.confirmSale
 );
 router.delete(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   saleController.deleteSale
 );
 
