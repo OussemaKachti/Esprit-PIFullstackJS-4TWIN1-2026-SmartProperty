@@ -34,13 +34,15 @@ pipeline {
             }
         }
 
-        // stage('SonarQube Analysis') {
-        //     steps {
-        //         withSonarQubeEnv('sonarqube') {
-        //             sh "${tool 'sonarqube'}/bin/sonar-scanner"
-        //         }
-        //     }
-        // }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    dir('backend') {
+                        sh "${tool 'sonarqube'}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
 
         stage('Docker Compose Build') {
             steps {
