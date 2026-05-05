@@ -20,6 +20,7 @@ router.get('/:id', propertyController.getPropertyById);
 router.post(
   '/',
   auth.protect,
+  auth.requireApprovedForActions,
   auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   uploadImages,
   validateProperty,
@@ -28,6 +29,7 @@ router.post(
 router.put(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   uploadImages,
   validatePropertyUpdate,
@@ -36,17 +38,18 @@ router.put(
 router.patch(
   '/:id',
   auth.protect,
+  auth.requireApprovedForActions,
   auth.authorize('ADMIN', 'AGENCY', 'OWNER'),
   propertyController.updateProperty
 );
-router.delete('/:id', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deleteProperty);
+router.delete('/:id', auth.protect, auth.requireApprovedForActions, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deleteProperty);
 
 // Image management (protected)
-router.delete('/:id/images/:imageId', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deletePropertyImage);
+router.delete('/:id/images/:imageId', auth.protect, auth.requireApprovedForActions, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.deletePropertyImage);
 
 // AI Virtual Staging & Analysis
-router.post('/:id/analyze-images', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.analyzePropertyImages);
-router.post('/:id/virtual-staging', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.generateVirtualStaging);
-router.put('/:id/panoramas', auth.protect, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.updatePropertyPanoramas);
+router.post('/:id/analyze-images', auth.protect, auth.requireApprovedForActions, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.analyzePropertyImages);
+router.post('/:id/virtual-staging', auth.protect, auth.requireApprovedForActions, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.generateVirtualStaging);
+router.put('/:id/panoramas', auth.protect, auth.requireApprovedForActions, auth.authorize('ADMIN', 'AGENCY', 'OWNER'), propertyController.updatePropertyPanoramas);
 
 module.exports = router;

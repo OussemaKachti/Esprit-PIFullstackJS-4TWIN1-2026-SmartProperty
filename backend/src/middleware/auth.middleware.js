@@ -4,6 +4,16 @@
 
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { IdentityVerificationStatus } = require('../models/User');
+
+const ROLES_REQUIRING_APPROVAL = new Set(['OWNER', 'BUYER', 'TENANT', 'AGENCY']);
+
+const isApprovedUser = (user) => {
+  if (!user) return false;
+  if (user.role === 'ADMIN') return true;
+  if (!ROLES_REQUIRING_APPROVAL.has(user.role)) return true;
+  return (user.identityVerificationStatus || IdentityVerificationStatus.APPROVED) === IdentityVerificationStatus.APPROVED;
+};
 
 exports.protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -17,6 +27,7 @@ exports.protect = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ message: 'User no longer exists' });
     }
+    user.canTransact = isApprovedUser(user);
     req.user = user; // full user document for controllers (e.g. createdBy)
     next();
   } catch (err) {
@@ -36,4 +47,21 @@ exports.authorize = (...roles) => {
     }
     next();
   };
+};
+
+exports.requireApprovedForActions = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  if (isApprovedUser(req.user)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    code: 'ACCOUNT_NOT_APPROVED_READ_ONLY',
+    message:
+      'Your account is not approved yet. You can browse in read-only mode, but actions are disabled until admin approval.',
+  });
 };

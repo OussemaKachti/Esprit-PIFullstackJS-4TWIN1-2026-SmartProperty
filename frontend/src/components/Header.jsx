@@ -99,7 +99,7 @@ const Header = () => {
   }, [location.pathname]);
 
   const canAccessBackoffice =
-    !!currentUser?.role && shouldAccessBackoffice(currentUser.role);
+    !!currentUser?.role && shouldAccessBackoffice(currentUser.role, currentUser.identityVerificationStatus);
 
   const handleOpenBackoffice = () => {
     const token = localStorage.getItem('token');

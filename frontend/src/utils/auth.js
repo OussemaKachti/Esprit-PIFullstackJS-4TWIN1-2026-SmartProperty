@@ -9,6 +9,7 @@ const BACKOFFICE_LINK_ROLES = ['AGENCY', 'OWNER', 'ADMIN', 'BUYER', 'TENANT'];
 const BACKOFFICE_AUTO_LOGIN_REDIRECT_ROLES = ['AGENCY', 'OWNER', 'ADMIN'];
 
 const FRONTEND_ROLES = ['TENANT', 'BUYER'];
+const APPROVED_STATUS = 'APPROVED';
 
 const normalizeRole = (role) => String(role || '').toUpperCase();
 
@@ -20,7 +21,9 @@ const getBackofficePathByRole = (role) => {
 
 /** Only agency & property owners can start the “list your property” flow from the homepage */
 export const canListPropertyFromHomepage = (role) => {
-  const r = normalizeRole(role);
+  const r = normalizeRole(typeof role === 'object' ? role?.role : role);
+  const status = normalizeRole(typeof role === 'object' ? role?.identityVerificationStatus : APPROVED_STATUS);
+  if (status !== APPROVED_STATUS && r !== 'ADMIN') return false;
   return r === 'AGENCY' || r === 'OWNER';
 };
 
@@ -29,8 +32,11 @@ export const canListPropertyFromHomepage = (role) => {
  * @param {string} role - User role
  * @returns {boolean}
  */
-export const shouldAccessBackoffice = (role) => {
-  return BACKOFFICE_LINK_ROLES.includes(normalizeRole(role));
+export const shouldAccessBackoffice = (role, identityVerificationStatus = APPROVED_STATUS) => {
+  const normalizedRole = normalizeRole(role);
+  const normalizedStatus = normalizeRole(identityVerificationStatus || APPROVED_STATUS);
+  if (normalizedRole !== 'ADMIN' && normalizedStatus !== APPROVED_STATUS) return false;
+  return BACKOFFICE_LINK_ROLES.includes(normalizedRole);
 };
 
 /**
@@ -38,8 +44,11 @@ export const shouldAccessBackoffice = (role) => {
  * @param {string} role - User role
  * @returns {boolean}
  */
-export const shouldAutoRedirectToBackofficeOnLogin = (role) => {
-  return BACKOFFICE_AUTO_LOGIN_REDIRECT_ROLES.includes(normalizeRole(role));
+export const shouldAutoRedirectToBackofficeOnLogin = (role, identityVerificationStatus = APPROVED_STATUS) => {
+  const normalizedRole = normalizeRole(role);
+  const normalizedStatus = normalizeRole(identityVerificationStatus || APPROVED_STATUS);
+  if (normalizedRole !== 'ADMIN' && normalizedStatus !== APPROVED_STATUS) return false;
+  return BACKOFFICE_AUTO_LOGIN_REDIRECT_ROLES.includes(normalizedRole);
 };
 
 /**

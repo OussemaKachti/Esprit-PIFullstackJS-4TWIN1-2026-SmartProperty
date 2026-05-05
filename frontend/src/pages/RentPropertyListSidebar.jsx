@@ -838,7 +838,7 @@ const RentPropertyListSidebar = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,10 @@ const BuyDetails = () => {
 	const { id } = useParams();
 	const { t } = useTranslation();
 	const [currentUser] = useState(() => getUserData());
+	const isReadOnlyAccount =
+		!!currentUser &&
+		currentUser.role !== 'ADMIN' &&
+		(currentUser.identityVerificationStatus || 'APPROVED') !== 'APPROVED';
 	const [property, setProperty] = useState(null);
 	const [loading, setLoading] = useState(Boolean(id));
 	const [error, setError] = useState(null);
@@ -1262,7 +1266,7 @@ const BuyDetails = () => {
 																			className="btn w-100 py-3 fs-16 d-flex align-items-center justify-content-center gap-2 rounded-pill transition-all text-white"
 																			style={{ backgroundColor: '#111827', border: 'none', fontWeight: '500', letterSpacing: '0.3px' }}
 																			onClick={handleInstaPay}
-																			disabled={paymentModalState.status === 'processing' || !paymentStatus.hasTenantWallet}
+																			disabled={paymentModalState.status === 'processing' || !paymentStatus.hasTenantWallet || isReadOnlyAccount}
 																		>
 																			{paymentModalState.status === 'processing' ? (
 																				<span className="spinner-border spinner-border-sm me-2 text-white" role="status" aria-hidden="true"></span>
@@ -1274,6 +1278,11 @@ const BuyDetails = () => {
 																		{!paymentStatus.hasTenantWallet && (
 																			<p className="text-muted small mt-3 text-center mb-0">
 																				{t('propertyDetails.linkWalletToPay') || 'Link your wallet to pay'} <Link to="/profile-settings" className="text-dark fw-medium text-decoration-none border-bottom border-dark pb-1">{t('propertyDetails.profileSettings') || 'Settings'}</Link>
+																			</p>
+																		)}
+																		{isReadOnlyAccount && (
+																			<p className="text-muted small mt-3 text-center mb-0">
+																				Account not approved yet: buying is disabled until admin approval.
 																			</p>
 																		)}
 																	</div>

@@ -31,6 +31,62 @@ const logSideEffectError = (context, error) => {
   console.error(`[lease:${context}]`, error?.message || error);
 };
 
+const CALENDAR_VISIBLE_STATUSES = [LeaseStatus.PENDING, LeaseStatus.CONFIRMED, LeaseStatus.COMPLETED];
+
+const normalizeDate = (value, fallback) => {
+  const date = value ? new Date(value) : new Date(fallback);
+  if (Number.isNaN(date.getTime())) return new Date(fallback);
+  return date;
+};
+
+const getLeaseCalendarColor = (status) => {
+  switch (status) {
+    case LeaseStatus.CONFIRMED:
+      return 'Success';
+    case LeaseStatus.COMPLETED:
+      return 'Primary';
+    case LeaseStatus.PENDING:
+    default:
+      return 'Warning';
+  }
+};
+
+const toCalendarEvent = (lease, viewerRole) => {
+  const tenantName = getDisplayName(lease.tenantId);
+  const property = lease.propertyId || {};
+  const propertyLabel = buildPropertyLabel(property);
+  const isTenantView = ['TENANT', 'BUYER'].includes(String(viewerRole || '').toUpperCase());
+
+  return {
+    id: String(lease._id),
+    title: isTenantView
+      ? `${propertyLabel}`
+      : `${tenantName} - ${propertyLabel}`,
+    start: lease.startDate,
+    end: lease.endDate,
+    allDay: true,
+    status: lease.status,
+    colorKey: getLeaseCalendarColor(lease.status),
+    tenant: {
+      id: lease.tenantId?._id || null,
+      name: tenantName,
+      email: lease.tenantId?.email || '',
+      phone: lease.tenantId?.phone || '',
+    },
+    property: {
+      id: property._id || null,
+      title: property.title || '',
+      reference: property.reference || '',
+      city: property.city || '',
+      listingType: property.listingType || '',
+    },
+    rentAmount: lease.rentAmount,
+    charges: lease.charges,
+    createdAt: lease.createdAt,
+    updatedAt: lease.updatedAt,
+  };
+};
+
 /** Tenant cannot open a new request if a non-cancelled pending request exists, or rental period (end date) has not passed yet. */
 const findBlockingLeaseForTenant = async (propertyId, tenantId) => {
   const candidates = await Lease.find({
@@ -318,6 +374,65 @@ exports.getAllLeases = async (req, res, next) => {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
         total: count,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get lease calendar events based on current user role
+// @route   GET /api/leases/calendar
+// @access  Private
+exports.getLeaseCalendar = async (req, res, next) => {
+  try {
+    const role = String(req.user?.role || '').toUpperCase();
+    const rangeStart = normalizeDate(req.query.start, new Date());
+    const rangeEnd = normalizeDate(req.query.end, new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+
+    const filter = {
+      status: { $in: CALENDAR_VISIBLE_STATUSES },
+      startDate: { $lte: rangeEnd },
+      endDate: { $gte: rangeStart },
+    };
+
+    if (['TENANT', 'BUYER'].includes(role)) {
+      filter.tenantId = req.user._id;
+    } else if (['AGENCY', 'OWNER'].includes(role)) {
+      const ownedPropertyIds = await Property.find({ createdBy: req.user._id }).distinct('_id');
+      if (!ownedPropertyIds.length) {
+        return res.status(200).json(apiResponse(true, 'Calendar retrieved successfully', {
+          roleView: role,
+          range: { start: rangeStart, end: rangeEnd },
+          events: [],
+          metrics: { totalLeases: 0, confirmedLeases: 0, pendingLeases: 0, completedLeases: 0, tenants: 0, properties: 0 },
+        }));
+      }
+      filter.propertyId = { $in: ownedPropertyIds };
+    } // ADMIN gets global scope
+
+    const leases = await Lease.find(filter)
+      .sort({ startDate: 1 })
+      .populate('propertyId', 'reference title city listingType createdBy')
+      .populate('tenantId', 'firstName lastName login email phone')
+      .lean();
+
+    const events = leases.map((lease) => toCalendarEvent(lease, role));
+    const metrics = {
+      totalLeases: events.length,
+      confirmedLeases: events.filter((e) => e.status === LeaseStatus.CONFIRMED).length,
+      pendingLeases: events.filter((e) => e.status === LeaseStatus.PENDING).length,
+      completedLeases: events.filter((e) => e.status === LeaseStatus.COMPLETED).length,
+      tenants: new Set(events.map((e) => e.tenant.id).filter(Boolean)).size,
+      properties: new Set(events.map((e) => e.property.id).filter(Boolean)).size,
+    };
+
+    return res.status(200).json(
+      apiResponse(true, 'Calendar retrieved successfully', {
+        roleView: role,
+        range: { start: rangeStart, end: rangeEnd },
+        events,
+        metrics,
       })
     );
   } catch (error) {

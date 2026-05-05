@@ -184,17 +184,17 @@ const AgentDetails = () => {
 									</Link>
 								</li>
 								<li className="nav-item" role="presentation">
-									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-2" aria-selected="false" tabindex="-1">
+									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-2" aria-selected="false" tabIndex="-1">
 										<i className="material-icons-outlined me-2">apartment</i>Apartment
 									</Link>
 								</li>
 								<li className="nav-item" role="presentation">
-									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-3" aria-selected="false" tabindex="-1">
+									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-3" aria-selected="false" tabIndex="-1">
 										<i className="material-icons-outlined me-2">corporate_fare</i>Condos
 									</Link>
 								</li>
 								<li className="nav-item" role="presentation">
-									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-4" aria-selected="false" tabindex="-1">
+									<Link className="nav-link" data-bs-toggle="tab" to="/agent-details" role="tab" aria-controls="listing-4" aria-selected="false" tabIndex="-1">
 										<i className="material-icons-outlined me-2">home</i>Home
 									</Link>
 								</li>
@@ -1106,7 +1106,7 @@ const AgentDetails = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">

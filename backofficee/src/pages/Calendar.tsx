@@ -1,264 +1,296 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import { EventInput, DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import { DatesSetArg, EventClickArg, EventContentArg, EventInput } from "@fullcalendar/core";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
 
-interface CalendarEvent extends EventInput {
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  CONFIRMED: "Confirmed",
+  COMPLETED: "Completed",
+};
+
+interface LeaseCalendarEvent extends EventInput {
   extendedProps: {
     calendar: string;
+    status: string;
+    tenantName: string;
+    tenantEmail: string;
+    tenantPhone: string;
+    propertyTitle: string;
+    propertyReference: string;
+    propertyCity: string;
+    rentAmount: number;
+    charges: number;
+    rangeStart: string;
+    rangeEnd: string;
+    rangeLabel: string;
   };
 }
 
+type CalendarPayload = {
+  roleView: string;
+  events: Array<{
+    id: string;
+    title: string;
+    start: string;
+    end: string;
+    status: string;
+    colorKey: string;
+    rentAmount: number;
+    charges: number;
+    tenant: { name: string; email?: string; phone?: string };
+    property: { title?: string; reference?: string; city?: string };
+  }>;
+  metrics: {
+    totalLeases: number;
+    confirmedLeases: number;
+    pendingLeases: number;
+    completedLeases: number;
+    tenants: number;
+    properties: number;
+  };
+};
+
+const formatAmount = (value?: number) =>
+  typeof value === "number" ? `${value.toLocaleString()} TND` : "-";
+
+const formatDateShort = (value: string) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+};
+
+const formatEventDate = (value: unknown) => {
+  if (!value) return "-";
+
+  let date: Date;
+  if (value instanceof Date) {
+    date = value;
+  } else if (Array.isArray(value)) {
+    const [year, month = 1, day = 1, hour = 0, minute = 0, second = 0] = value as number[];
+    date = new Date(year, month - 1, day, hour, minute, second);
+  } else if (typeof value === "string" || typeof value === "number") {
+    date = new Date(value);
+  } else {
+    return "-";
+  }
+
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString();
+};
+
 const Calendar: React.FC = () => {
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null
-  );
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventStartDate, setEventStartDate] = useState("");
-  const [eventEndDate, setEventEndDate] = useState("");
-  const [eventLevel, setEventLevel] = useState("");
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<LeaseCalendarEvent | null>(null);
+  const [events, setEvents] = useState<LeaseCalendarEvent[]>([]);
+  const [roleView, setRoleView] = useState<string>("");
+  const [metrics, setMetrics] = useState<CalendarPayload["metrics"] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
 
-  const calendarsEvents = {
-    Danger: "danger",
-    Success: "success",
-    Primary: "primary",
-    Warning: "warning",
+  const metricCards = useMemo(() => {
+    if (!metrics) return [];
+    return [
+      { label: "Total periods", value: metrics.totalLeases },
+      { label: "Confirmed", value: metrics.confirmedLeases },
+      { label: "Pending", value: metrics.pendingLeases },
+      { label: "Completed", value: metrics.completedLeases },
+      ...(roleView === "TENANT" || roleView === "BUYER"
+        ? []
+        : [
+            { label: "Tenants", value: metrics.tenants },
+            { label: "Properties", value: metrics.properties },
+          ]),
+    ];
+  }, [metrics, roleView]);
+
+  const fetchCalendarEvents = async (start: string, end: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Please sign in to access the calendar.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/leases/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const payload = (await response.json()) as { success?: boolean; message?: string; data?: CalendarPayload };
+
+      if (!response.ok || !payload?.success || !payload?.data) {
+        throw new Error(payload?.message || "Failed to load lease calendar");
+      }
+
+      setRoleView(payload.data.roleView || "");
+      setMetrics(payload.data.metrics || null);
+      setEvents(
+        payload.data.events.map((item) => ({
+          id: item.id,
+          title: item.title,
+          // Show compact event card on start day only (no stretched multi-day bars)
+          start: item.start,
+          end: undefined,
+          allDay: true,
+          extendedProps: {
+            calendar: item.colorKey || "Warning",
+            status: item.status,
+            tenantName: item.tenant?.name || "",
+            tenantEmail: item.tenant?.email || "",
+            tenantPhone: item.tenant?.phone || "",
+            propertyTitle: item.property?.title || "",
+            propertyReference: item.property?.reference || "",
+            propertyCity: item.property?.city || "",
+            rentAmount: item.rentAmount,
+            charges: item.charges,
+            rangeStart: item.start,
+            rangeEnd: item.end,
+            rangeLabel: `${formatDateShort(item.start)} - ${formatDateShort(item.end)}`,
+          },
+        }))
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load calendar";
+      setError(message);
+      setEvents([]);
+      setMetrics(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // Initialize with some events
-    setEvents([
-      {
-        id: "1",
-        title: "Event Conf.",
-        start: new Date().toISOString().split("T")[0],
-        extendedProps: { calendar: "Danger" },
-      },
-      {
-        id: "2",
-        title: "Meeting",
-        start: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Success" },
-      },
-      {
-        id: "3",
-        title: "Workshop",
-        start: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-        end: new Date(Date.now() + 259200000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Primary" },
-      },
-    ]);
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
+    fetchCalendarEvents(start, end);
   }, []);
 
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
-    resetModalFields();
-    setEventStartDate(selectInfo.startStr);
-    setEventEndDate(selectInfo.endStr || selectInfo.startStr);
-    openModal();
+  const handleDateWindowChange = (arg: DatesSetArg) => {
+    fetchCalendarEvents(arg.start.toISOString(), arg.end.toISOString());
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
     const event = clickInfo.event;
-    setSelectedEvent(event as unknown as CalendarEvent);
-    setEventTitle(event.title);
-    setEventStartDate(event.start?.toISOString().split("T")[0] || "");
-    setEventEndDate(event.end?.toISOString().split("T")[0] || "");
-    setEventLevel(event.extendedProps.calendar);
+    setSelectedEvent(event as unknown as LeaseCalendarEvent);
     openModal();
   };
 
-  const handleAddOrUpdateEvent = () => {
-    if (selectedEvent) {
-      // Update existing event
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === selectedEvent.id
-            ? {
-                ...event,
-                title: eventTitle,
-                start: eventStartDate,
-                end: eventEndDate,
-                extendedProps: { calendar: eventLevel },
-              }
-            : event
-        )
-      );
-    } else {
-      // Add new event
-      const newEvent: CalendarEvent = {
-        id: Date.now().toString(),
-        title: eventTitle,
-        start: eventStartDate,
-        end: eventEndDate,
-        allDay: true,
-        extendedProps: { calendar: eventLevel },
-      };
-      setEvents((prevEvents) => [...prevEvents, newEvent]);
-    }
+  const closeDetailsModal = () => {
     closeModal();
-    resetModalFields();
-  };
-
-  const resetModalFields = () => {
-    setEventTitle("");
-    setEventStartDate("");
-    setEventEndDate("");
-    setEventLevel("");
     setSelectedEvent(null);
   };
 
   return (
     <>
-      <PageMeta
-        title="React.js Calendar Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Calendar Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
-      />
-      <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <PageMeta title="Lease Calendar | Smart Property" description="Role-based lease occupancy calendar" />
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
+        {metricCards.map((metric) => (
+          <div
+            key={metric.label}
+            className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"
+          >
+            <p className="text-xs text-gray-500 dark:text-gray-400">{metric.label}</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">{metric.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Rental occupancy calendar</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {roleView === "TENANT" || roleView === "BUYER"
+                ? "Your active rental periods by property."
+                : "Portfolio periods across tenants and properties."}
+            </p>
+          </div>
+          <div className="flex gap-2 text-xs">
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Pending</span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">Confirmed</span>
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800">Completed</span>
+          </div>
+        </div>
+        {error ? (
+          <div className="p-6 text-sm text-rose-600 dark:text-rose-400">{error}</div>
+        ) : null}
         <div className="custom-calendar">
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin]}
             initialView="dayGridMonth"
             headerToolbar={{
-              left: "prev,next addEventButton",
+              left: "prev,next",
               center: "title",
               right: "dayGridMonth,timeGridWeek,timeGridDay",
             }}
             events={events}
-            selectable={true}
-            select={handleDateSelect}
+            datesSet={handleDateWindowChange}
             eventClick={handleEventClick}
             eventContent={renderEventContent}
-            customButtons={{
-              addEventButton: {
-                text: "Add Event +",
-                click: openModal,
-              },
-            }}
+            eventClassNames={() => ["lease-calendar-event"]}
+            displayEventTime={false}
+            eventOrder="start,-duration,title"
+            editable={false}
+            selectable={false}
+            dayMaxEvents={true}
+            height="auto"
           />
         </div>
+        {loading ? <div className="px-5 pb-5 text-sm text-gray-500 dark:text-gray-400">Loading calendar...</div> : null}
         <Modal
           isOpen={isOpen}
-          onClose={closeModal}
-          className="max-w-[700px] p-6 lg:p-10"
+          onClose={closeDetailsModal}
+          className="max-w-[620px] p-6 lg:p-8"
         >
-          <div className="flex flex-col px-2 overflow-y-auto custom-scrollbar">
-            <div>
-              <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-                {selectedEvent ? "Edit Event" : "Add Event"}
-              </h5>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Plan your next big moment: schedule or edit an event to stay on
-                track
-              </p>
-            </div>
-            <div className="mt-8">
-              <div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Event Title
-                  </label>
-                  <input
-                    id="event-title"
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
+          <div className="flex flex-col gap-4">
+            <h5 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+              Lease period details
+            </h5>
+            {selectedEvent ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <DetailItem label="Status" value={STATUS_LABELS[selectedEvent.extendedProps.status] || selectedEvent.extendedProps.status} />
+                <DetailItem
+                  label="Property"
+                  value={selectedEvent.extendedProps.propertyTitle || String(selectedEvent.title || "-")}
+                />
+                <DetailItem label="Reference" value={selectedEvent.extendedProps.propertyReference || "-"} />
+                <DetailItem label="City" value={selectedEvent.extendedProps.propertyCity || "-"} />
+                <DetailItem label="Tenant" value={selectedEvent.extendedProps.tenantName || "-"} />
+                <DetailItem label="Tenant email" value={selectedEvent.extendedProps.tenantEmail || "-"} />
+                <DetailItem label="Tenant phone" value={selectedEvent.extendedProps.tenantPhone || "-"} />
+                <DetailItem label="Rent amount" value={formatAmount(selectedEvent.extendedProps.rentAmount)} />
+                <DetailItem label="Charges" value={formatAmount(selectedEvent.extendedProps.charges)} />
+                <DetailItem
+                  label="Start date"
+                  value={formatEventDate(selectedEvent.extendedProps.rangeStart || selectedEvent.start)}
+                />
+                <DetailItem
+                  label="End date"
+                  value={formatEventDate(selectedEvent.extendedProps.rangeEnd || selectedEvent.end)}
+                />
               </div>
-              <div className="mt-6">
-                <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Event Color
-                </label>
-                <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-                  {Object.entries(calendarsEvents).map(([key, value]) => (
-                    <div key={key} className="n-chk">
-                      <div
-                        className={`form-check form-check-${value} form-check-inline`}
-                      >
-                        <label
-                          className="flex items-center text-sm text-gray-700 form-check-label dark:text-gray-400"
-                          htmlFor={`modal${key}`}
-                        >
-                          <span className="relative">
-                            <input
-                              className="sr-only form-check-input"
-                              type="radio"
-                              name="event-level"
-                              value={key}
-                              id={`modal${key}`}
-                              checked={eventLevel === key}
-                              onChange={() => setEventLevel(key)}
-                            />
-                            <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 rounded-full box dark:border-gray-700">
-                              <span
-                                className={`h-2 w-2 rounded-full bg-white ${
-                                  eventLevel === key ? "block" : "hidden"
-                                }`}
-                              ></span>
-                            </span>
-                          </span>
-                          {key}
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Enter Start Date
-                </label>
-                <div className="relative">
-                  <input
-                    id="event-start-date"
-                    type="date"
-                    value={eventStartDate}
-                    onChange={(e) => setEventStartDate(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Enter End Date
-                </label>
-                <div className="relative">
-                  <input
-                    id="event-end-date"
-                    type="date"
-                    value={eventEndDate}
-                    onChange={(e) => setEventEndDate(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
+            ) : null}
+            <div className="flex items-center justify-end">
               <button
-                onClick={closeModal}
+                onClick={closeDetailsModal}
                 type="button"
-                className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               >
                 Close
-              </button>
-              <button
-                onClick={handleAddOrUpdateEvent}
-                type="button"
-                className="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
-              >
-                {selectedEvent ? "Update Changes" : "Add Event"}
               </button>
             </div>
           </div>
@@ -268,15 +300,48 @@ const Calendar: React.FC = () => {
   );
 };
 
-const renderEventContent = (eventInfo: any) => {
+const DetailItem = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+    <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+    <p className="text-sm font-medium text-gray-900 dark:text-white">{value}</p>
+  </div>
+);
+
+const parseEventTitle = (rawTitle: string) => {
+  const title = String(rawTitle || "").trim();
+  const chunks = title.split(" - ").map((chunk) => chunk.trim()).filter(Boolean);
+
+  if (chunks.length >= 2) {
+    const secondary = chunks.shift() || "";
+    return {
+      primary: chunks.join(" - "),
+      secondary,
+    };
+  }
+
+  return {
+    primary: title || "Lease period",
+    secondary: "",
+  };
+};
+
+const renderEventContent = (eventInfo: EventContentArg) => {
+  const status = String(eventInfo.event.extendedProps.status || "").toUpperCase();
   const colorClass = `fc-bg-${eventInfo.event.extendedProps.calendar.toLowerCase()}`;
+  const { primary, secondary } = parseEventTitle(eventInfo.event.title);
+  const statusLabel = STATUS_LABELS[status] || status || "Active";
+
   return (
-    <div
-      className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}
-    >
+    <div className={`event-fc-color flex fc-event-main ${colorClass}`}>
       <div className="fc-daygrid-event-dot"></div>
-      <div className="fc-event-time">{eventInfo.timeText}</div>
-      <div className="fc-event-title">{eventInfo.event.title}</div>
+      <div className="fc-event-copy">
+        <div className="fc-event-title">{primary}</div>
+        <div className="fc-event-range">{String(eventInfo.event.extendedProps.rangeLabel || "")}</div>
+        {secondary ? (
+          <div className="fc-event-subtitle">{secondary}</div>
+        ) : null}
+      </div>
+      <span className="fc-event-status">{statusLabel}</span>
     </div>
   );
 };

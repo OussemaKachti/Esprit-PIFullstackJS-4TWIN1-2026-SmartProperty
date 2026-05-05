@@ -13,6 +13,7 @@ const pusherRoutes = require('./pusher.routes');
 const notificationRoutes = require('./notification.routes');
 const biRoutes = require('./bi.routes');
 const easyWalletRoutes = require('./easyWallet.routes');
+const leaseRoutes = require('./lease.routes');
 
 
 // Mount routes
@@ -27,6 +28,7 @@ router.use('/pusher', pusherRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/bi', biRoutes);
 router.use('/easy-wallet', easyWalletRoutes);
+router.use('/leases', leaseRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

@@ -710,15 +710,31 @@ span.flatpickr-weekday,
 }
 
 .event-fc-color {
-  @apply rounded-lg py-2.5 pl-4 pr-3;
+  @apply rounded-xl py-2 pl-3 pr-2 border shadow-sm transition-all;
 }
 
 .event-fc-color .fc-event-title {
-  @apply p-0 text-sm font-normal text-gray-700;
+  @apply p-0 text-xs font-semibold text-gray-800 leading-tight;
+}
+
+.event-fc-color .fc-event-copy {
+  @apply flex-1 min-w-0;
+}
+
+.event-fc-color .fc-event-subtitle {
+  @apply text-[11px] leading-tight text-gray-500 truncate mt-0.5;
+}
+
+.event-fc-color .fc-event-range {
+  @apply text-[11px] leading-tight text-gray-600 mt-0.5;
+}
+
+.event-fc-color .fc-event-status {
+  @apply ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/90 text-gray-700 border border-gray-200 self-start;
 }
 
 .fc-daygrid-event-dot {
-  @apply w-1 h-5 ml-0 mr-3 border-none rounded-sm;
+  @apply w-1 h-8 ml-0 mr-2 border-none rounded-sm self-stretch;
 }
 
 .fc-event {
@@ -730,19 +746,23 @@ span.flatpickr-weekday,
 }
 
 .event-fc-color.fc-bg-success {
-  @apply border-success-50 bg-success-50;
+  @apply border-success-100 bg-success-50/80;
 }
 
 .event-fc-color.fc-bg-danger {
-  @apply border-error-50 bg-error-50;
+  @apply border-error-100 bg-error-50/80;
 }
 
 .event-fc-color.fc-bg-primary {
-  @apply border-brand-50 bg-brand-50;
+  @apply border-brand-100 bg-brand-50/80;
 }
 
 .event-fc-color.fc-bg-warning {
-  @apply border-orange-50 bg-orange-50;
+  @apply border-orange-100 bg-orange-50/90;
+}
+
+.custom-calendar .lease-calendar-event:hover .event-fc-color {
+  @apply shadow-md -translate-y-[1px];
 }
 
 .event-fc-color.fc-bg-success .fc-daygrid-event-dot {

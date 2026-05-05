@@ -155,7 +155,7 @@ const ProfileSettings = () => {
 
   const openBackoffice = () => {
     const token = localStorage.getItem('token');
-    if (!token || !shouldAccessBackoffice(form.role)) return;
+    if (!token || !shouldAccessBackoffice(form.role, form.identityVerificationStatus)) return;
     redirectToBackofficeWithToken(getRedirectUrl(form.role), token, form.role);
   };
 
@@ -283,7 +283,7 @@ const ProfileSettings = () => {
                       <button type="submit" className="btn btn-primary" disabled={saving}>
                         {saving ? 'Saving...' : 'Save Changes'}
                       </button>
-                      {shouldAccessBackoffice(form.role) && (
+                      {shouldAccessBackoffice(form.role, form.identityVerificationStatus) && (
                         <button type="button" className="btn btn-dark" onClick={openBackoffice}>
                           Open Backoffice
                         </button>

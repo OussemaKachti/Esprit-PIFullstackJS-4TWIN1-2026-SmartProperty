@@ -43,6 +43,12 @@ function getIdentityVerificationBlock(user) {
 }
 
 function buildAuthUserPayload(user) {
+  const verificationStatus = user.identityVerificationStatus || IdentityVerificationStatus.APPROVED;
+  const canTransact =
+    user.role === 'ADMIN' ||
+    !ROLES_REQUIRING_IDENTITY.has(user.role) ||
+    verificationStatus === IdentityVerificationStatus.APPROVED;
+
   return {
     id: user._id,
     login: user.login,
@@ -54,7 +60,9 @@ function buildAuthUserPayload(user) {
     role: user.role,
     twoFactorEnabled: user.twoFactorEnabled,
     hasCompletedOnboarding: user.hasCompletedOnboarding,
-    identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
+    identityVerificationStatus: verificationStatus,
+    accessMode: canTransact ? 'FULL' : 'READ_ONLY',
+    canTransact,
     walletNumber: user.walletNumber || null,
   };
 }
@@ -85,11 +93,6 @@ exports.login = async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials.' });
-    }
-
-    const verificationBlock = getIdentityVerificationBlock(user);
-    if (verificationBlock) {
-      return res.status(verificationBlock.status).json(verificationBlock.body);
     }
 
     // Vérifier si le 2FA est activé
@@ -172,10 +175,29 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'A valid role is required (OWNER, BUYER, TENANT, or AGENCY).' });
     }
 
-    // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { login }] });
-    if (existingUser) {
-      return res.status(409).json({ message: 'User with this email or login already exists.' });
+    const normalizedLogin = String(login).trim();
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // Check conflicts separately to return field-specific errors
+    const [existingByLogin, existingByEmail] = await Promise.all([
+      User.findOne({ login: normalizedLogin }).select('_id login'),
+      User.findOne({ email: normalizedEmail }).select('_id email'),
+    ]);
+
+    if (existingByLogin || existingByEmail) {
+      const fields = {};
+      if (existingByLogin) fields.login = 'This username is already taken.';
+      if (existingByEmail) fields.email = 'This email is already registered.';
+
+      return res.status(409).json({
+        message:
+          existingByLogin && existingByEmail
+            ? 'This username and email are already used.'
+            : existingByLogin
+              ? fields.login
+              : fields.email,
+        fields,
+      });
     }
 
     const isMultipart = req.is('multipart/form-data');
@@ -242,8 +264,8 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
-      login,
-      email,
+      login: normalizedLogin,
+      email: normalizedEmail,
       password: hashedPassword,
       firstName,
       lastName,
@@ -266,7 +288,64 @@ exports.register = async (req, res) => {
       identityVerificationStatus,
     });
   } catch (error) {
+    // Handle race condition on unique indexes
+    if (error && error.code === 11000) {
+      const dupField = Object.keys(error.keyPattern || {})[0];
+      const fields = {};
+      if (dupField === 'login') fields.login = 'This username is already taken.';
+      if (dupField === 'email') fields.email = 'This email is already registered.';
+
+      return res.status(409).json({
+        message: fields.login || fields.email || 'User already exists.',
+        fields,
+      });
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Validate registration uniqueness before step 2
+exports.checkRegistrationAvailability = async (req, res) => {
+  try {
+    const login = String(req.body?.login || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+
+    if (!login && !email) {
+      return res.status(400).json({
+        message: 'Please provide login and/or email.',
+      });
+    }
+
+    const checks = [];
+    if (login) checks.push(User.findOne({ login }).select('_id'));
+    if (email) checks.push(User.findOne({ email }).select('_id'));
+
+    const results = await Promise.all(checks);
+    let index = 0;
+    const existingByLogin = login ? results[index++] : null;
+    const existingByEmail = email ? results[index++] : null;
+
+    if (existingByLogin || existingByEmail) {
+      const fields = {};
+      if (existingByLogin) fields.login = 'This username is already taken.';
+      if (existingByEmail) fields.email = 'This email is already registered.';
+
+      return res.status(409).json({
+        message:
+          existingByLogin && existingByEmail
+            ? 'This username and email are already used.'
+            : existingByLogin
+              ? fields.login
+              : fields.email,
+        fields,
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Login and email are available.',
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -625,11 +704,6 @@ exports.validate2FAToken = async (req, res) => {
       });
     }
 
-    const verificationBlock = getIdentityVerificationBlock(user);
-    if (verificationBlock) {
-      return res.status(verificationBlock.status).json(verificationBlock.body);
-    }
-
     // Générer JWT
     const jwtToken = jwt.sign(
       { userId: user._id, role: user.role },
@@ -718,6 +792,16 @@ exports.getProfile = async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         identityVerificationStatus: user.identityVerificationStatus || IdentityVerificationStatus.APPROVED,
+        accessMode:
+          user.role === 'ADMIN' ||
+          !ROLES_REQUIRING_IDENTITY.has(user.role) ||
+          (user.identityVerificationStatus || IdentityVerificationStatus.APPROVED) === IdentityVerificationStatus.APPROVED
+            ? 'FULL'
+            : 'READ_ONLY',
+        canTransact:
+          user.role === 'ADMIN' ||
+          !ROLES_REQUIRING_IDENTITY.has(user.role) ||
+          (user.identityVerificationStatus || IdentityVerificationStatus.APPROVED) === IdentityVerificationStatus.APPROVED,
         identityVerificationNote: user.identityVerificationNote || '',
         identityDocuments: user.identityDocuments || [],
         walletNumber: user.walletNumber || null,

@@ -141,7 +141,7 @@ const RentalPayment = () => {
 										</ul>
 
 										<div className="tab-content">
-											<div className="tab-pane" id="tab1" role="tabpanel" tabindex="0">
+											<div className="tab-pane" id="tab1" role="tabpanel" tabIndex="0">
 												<div>
 													<h6>Add New Paypal</h6>
 													
@@ -169,7 +169,7 @@ const RentalPayment = () => {
 													
 												</div>
 											</div>
-											<div className="tab-pane" id="tab2" role="tabpanel" tabindex="0">
+											<div className="tab-pane" id="tab2" role="tabpanel" tabIndex="0">
 												<div>
 													<h6>Add New Stripe</h6>
 													
@@ -197,7 +197,7 @@ const RentalPayment = () => {
 													
 												</div>
 											</div>
-											<div className="tab-pane active" id="tab3" role="tabpanel" tabindex="0">
+											<div className="tab-pane active" id="tab3" role="tabpanel" tabIndex="0">
 												<div>
 													<h6>Add New Card</h6>
 													
@@ -247,7 +247,7 @@ const RentalPayment = () => {
 													
 												</div>
 											</div>
-											<div className="tab-pane" id="tab4" role="tabpanel" tabindex="0">
+											<div className="tab-pane" id="tab4" role="tabpanel" tabIndex="0">
 												<div>
 													<h6>Add New Wallet</h6>
 													
@@ -323,7 +323,7 @@ const RentalPayment = () => {
 		
 
 		
-		<div className="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+		<div className="modal fade" id="search-modal" tabIndex="-1" aria-hidden="true">
 			<div className="modal-dialog  modal-dialog-centered modal-lg">
 				<div className="modal-content">
 					<div className="modal-body search-wrap">

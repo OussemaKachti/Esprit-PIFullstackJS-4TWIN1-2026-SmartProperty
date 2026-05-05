@@ -5,6 +5,7 @@ import { getApiUrl } from "../../api/client";
 import toast from "../../utils/toast";
 
 const REGISTER_URL = getApiUrl("/api/users/register");
+const REGISTER_CHECK_URL = getApiUrl("/api/users/register/check-availability");
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -98,8 +99,44 @@ export default function Signup() {
     return !docErr;
   };
 
-  const handleContinueStep1 = () => {
+  const checkStep1Availability = async () => {
+    const response = await fetch(REGISTER_CHECK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        login: login.trim(),
+        email: email.trim().toLowerCase(),
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return true;
+
+    const msg = data.message || "Unable to validate account availability.";
+    const serverFields = data.fields || {};
+    setFieldErrors((prev) => ({
+      ...prev,
+      login: serverFields.login || "",
+      email: serverFields.email || "",
+    }));
+    if (!serverFields.login && !serverFields.email) {
+      setFieldErrors((prev) => ({ ...prev, login: msg }));
+    }
+    return false;
+  };
+
+  const handleContinueStep1 = async () => {
     if (!validateStep1()) return;
+    setIsLoading(true);
+    const isAvailable = await checkStep1Availability().catch(() => {
+      setFieldErrors((prev) => ({
+        ...prev,
+        email: "Network error. Please try again.",
+      }));
+      return false;
+    });
+    setIsLoading(false);
+    if (!isAvailable) return;
     setFieldErrors((prev) => ({ ...prev, documents: "" }));
     setStep(2);
   };
@@ -143,10 +180,19 @@ export default function Signup() {
       }
 
       const msg = data.message || "Registration failed.";
-      if (msg.toLowerCase().includes("document") || msg.toLowerCase().includes("upload")) {
+      const serverFields = data.fields || {};
+      if (serverFields.login || serverFields.email) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          login: serverFields.login || "",
+          email: serverFields.email || "",
+        }));
+        setStep(1);
+      } else if (msg.toLowerCase().includes("document") || msg.toLowerCase().includes("upload")) {
         setFieldErrors((prev) => ({ ...prev, documents: msg }));
       } else {
         setFieldErrors((prev) => ({ ...prev, login: msg }));
+        setStep(1);
       }
     } catch {
       setIsLoading(false);
@@ -356,7 +402,6 @@ export default function Signup() {
                     </div>
                     <div className="signup-avatar-copywrap">
                       <div className="signup-avatar-title">Profile picture</div>
-                      <p className="signup-avatar-hint">Helps others recognize you. PNG or JPG.</p>
                       <div className="signup-avatar-actions">
                         <label className="signup-avatar-button signup-avatar-button--premium">
                           <span className="signup-avatar-button-icon" aria-hidden="true">
