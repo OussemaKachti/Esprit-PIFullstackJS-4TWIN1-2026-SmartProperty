@@ -19,3 +19,4 @@ spec:
         image: ilyeschrif21/mern-frontend:latest
         ports:
         - containerPort: 80
+        - containerPort: 5173

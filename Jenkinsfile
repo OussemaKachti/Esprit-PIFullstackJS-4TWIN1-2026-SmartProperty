@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_USER = 'ilyeschrif21'
+        DOCKERHUB_USER = 'oussemakachti'
         IMAGE_BACKEND  = "${DOCKERHUB_USER}/mern-backend"
         IMAGE_FRONTEND = "${DOCKERHUB_USER}/mern-frontend"
     }
@@ -15,7 +15,7 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/Ilyeschrif22/jenkins-sonarqube-pipeline-starter.git'
+                    url: 'https://github.com/OussemaKachti/Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty.git'
             }
         }
 
@@ -73,6 +73,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f k8s/'
+                sh "kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${BUILD_NUMBER}"
+                sh "kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${BUILD_NUMBER}"
                 sh 'kubectl rollout restart deployment/backend'
                 sh 'kubectl rollout restart deployment/frontend'
             }
