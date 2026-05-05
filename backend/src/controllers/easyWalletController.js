@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { Lease, Sale, Property, User, RentPayment } = require('../models');
+const { Lease, Sale, Property, User, RentPayment, Transaction, TransactionType, TransactionStatus } = require('../models');
+const { addTimelineEntry } = require('../services/transaction.service');
 const { apiResponse } = require('../utils/apiResponse');
 
 /**
@@ -179,6 +180,24 @@ exports.initiatePayment = async (req, res, next) => {
                 record.status = 'COMPLETED';
                 await record.save();
             }
+            if (!record.transactionId) {
+                const saleTransaction = new Transaction({
+                    propertyId: record.propertyId,
+                    ownerId: owner?._id || ownerId || null,
+                    partyId: req.user._id,
+                    type: TransactionType.SALE,
+                    amount: Number(record.salePrice || amount),
+                    currency: 'TND',
+                    status: TransactionStatus.COMPLETED,
+                    note: 'EasyWallet payment completed',
+                    timeline: [],
+                });
+                addTimelineEntry(saleTransaction, TransactionStatus.PENDING, req.user._id, 'Sale request created via EasyWallet');
+                addTimelineEntry(saleTransaction, TransactionStatus.COMPLETED, req.user._id, 'EasyWallet payment completed');
+                await saleTransaction.save();
+                record.transactionId = saleTransaction._id;
+                await record.save();
+            }
             // Update property status to SOLD
             if (record.propertyId) {
                 await Property.findByIdAndUpdate(record.propertyId, { status: 'SOLD' });
@@ -224,18 +243,40 @@ exports.getPaymentStatus = async (req, res, next) => {
                 amount = activeRecord.rentAmount;
             }
         } else if (paymentType === 'SALE') {
-            // Try to find by propertyId first
-            activeRecord = await Sale.findOne({ propertyId: id, status: { $ne: 'CANCELLED' } }).populate('propertyId');
+            const blockingStatuses = ['PENDING', 'CONFIRMED'];
 
-            // Fallback to findById
-            if (!activeRecord && mongoose.Types.ObjectId.isValid(id)) {
-                activeRecord = await Sale.findById(id).populate('propertyId');
+            // Prefer an active sale record for the current user (buyer).
+            activeRecord = await Sale.findOne({
+                propertyId: id,
+                buyerId: req.user._id,
+                status: { $in: blockingStatuses }
+            }).populate('propertyId');
+
+            // If none for current user, optionally check if there's any other active sale (do not treat it as user's activeRecord)
+            if (!activeRecord) {
+                const otherSale = await Sale.findOne({
+                    propertyId: id,
+                    status: { $in: blockingStatuses }
+                }).populate('propertyId buyerId');
+                if (otherSale) {
+                    // return info about other user's active sale via a separate field later; do not set as activeRecord
+                    // store it temporarily in a variable for owner/amount resolution
+                    activeRecord = null;
+                    // Use owner/amount from the otherSale.propertyId if available
+                    if (otherSale.propertyId) {
+                        ownerId = otherSale.propertyId.createdBy;
+                        amount = otherSale.salePrice;
+                    }
+                }
+            } else {
+                if (activeRecord && activeRecord.propertyId) {
+                    ownerId = activeRecord.propertyId.createdBy;
+                    amount = activeRecord.salePrice;
+                }
             }
 
-            if (activeRecord && activeRecord.propertyId) {
-                ownerId = activeRecord.propertyId.createdBy;
-                amount = activeRecord.salePrice;
-            } else {
+            // Fallback to property lookup if we haven't resolved owner/amount yet
+            if (!ownerId) {
                 const property = await Property.findById(id);
                 if (property) {
                     ownerId = property.createdBy;
