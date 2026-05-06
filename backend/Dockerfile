@@ -1,12 +1,16 @@
-FROM node:20
+FROM node:20-alpine
 
 WORKDIR /app
 
+# Copy only package files first (cache layer)
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps \
+    && npm cache clean --force
 
+# Copy source after deps (cache preserved if no package change)
 COPY . .
 
-EXPOSE 5000
+RUN npm prune --production
 
-CMD ["npm", "start"]
+EXPOSE 5000
+CMD ["node", "server.js"]

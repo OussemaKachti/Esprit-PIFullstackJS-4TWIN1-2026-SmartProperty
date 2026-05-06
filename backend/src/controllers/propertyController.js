@@ -229,7 +229,12 @@ exports.getAllProperties = async (req, res, next) => {
     // Build filter object
     const filter = {};
     if (type) filter.type = type;
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      // By default hide sold or pending properties from public listings
+      filter.status = { $nin: ['SOLD', 'PENDING', 'ARCHIVED'] };
+    }
     // Filter by listing type: FOR_SALE or FOR_RENT
     if (listingType) filter.listingType = listingType;
     if (city) filter.city = new RegExp(city, 'i');

@@ -1,7 +1,12 @@
 node_modules
+frontend/node_modules
+backofficee/node_modules
 build
+frontend/build
 .env
+.env.*
 .git
 .gitignore
-npm-debug.log
+npm-debug.log*
+*.log
 .scannerwork

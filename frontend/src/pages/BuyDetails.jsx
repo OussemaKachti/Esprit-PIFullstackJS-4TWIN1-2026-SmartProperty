@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
@@ -13,6 +13,7 @@ import { getUserData } from '../utils/auth';
 import { normalizePanoramas } from '../utils/panoramaUtils';
 import PanoViewer from '../components/PanoViewer';
 import ReviewSection from '../components/ReviewSection';
+import { localizeRoute } from '../routes/routeConfig';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -46,7 +47,8 @@ const DESCRIPTION_PREVIEW_MAX = 320;
 
 const BuyDetails = () => {
 	const { id } = useParams();
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
+	const navigate = useNavigate();
 	const [currentUser] = useState(() => getUserData());
 	const isReadOnlyAccount =
 		!!currentUser &&
@@ -114,11 +116,16 @@ const BuyDetails = () => {
 			if (res.success) {
 				toast.success(t('propertyDetails.paymentSuccessful'));
 				setPaymentModalState(prev => ({ ...prev, status: 'success' }));
-				setBlockingSale({ status: 'COMPLETED' });
+				setBlockingSale(null);
+				setProperty((prev) => (prev ? { ...prev, status: 'SOLD' } : prev));
 				setEnquiryForm({
 					offerPrice: '',
 					note: t('propertyDetails.purchaseRequestDefaultNote'),
 				});
+				const listPath = localizeRoute('/buy-property-grid', (i18n.resolvedLanguage || i18n.language || 'en').slice(0, 2));
+				setTimeout(() => {
+					navigate(listPath, { replace: true });
+				}, 900);
 			} else {
 				setPaymentModalState(prev => ({ ...prev, status: 'error', errorMessage: res.message || t('propertyDetails.paymentFailed') }));
 			}

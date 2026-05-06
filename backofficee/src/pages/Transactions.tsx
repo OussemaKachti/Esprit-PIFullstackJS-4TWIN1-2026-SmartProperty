@@ -169,6 +169,7 @@ export default function Transactions() {
   const [itemsPerPage] = useState(10);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     const userRaw = localStorage.getItem("user");
@@ -226,6 +227,7 @@ export default function Transactions() {
     () => displayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
     [displayList, currentPage, itemsPerPage]
   );
+  const visibleTransactions = isParticipantView ? paginatedParticipantList : paginatedAdminList;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -440,73 +442,124 @@ export default function Transactions() {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-              <div className="grid grid-cols-12 gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-300">
-                <div className="col-span-2">Type / Status</div>
-                <div className="col-span-3">Property</div>
-                <div className="col-span-3">Parties</div>
-                <div className="col-span-2">Amount</div>
-                <div className="col-span-2">Action</div>
-              </div>
-
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {paginatedAdminList.map((txn) => {
+              <div className="p-4 space-y-3">
+                {visibleTransactions.map((txn) => {
                   const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
                   const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
                   const canEdit = canUpdateStatus(txn);
                   const busy = statusBusyId === txn._id;
                   const latestTimeline =
                     txn.timeline && txn.timeline.length > 0 ? txn.timeline[txn.timeline.length - 1] : null;
+                  const isExpanded = expandedTransactionId === txn._id;
 
                   return (
-                    <div key={txn._id} className="grid grid-cols-12 gap-2 px-4 py-4 text-sm hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
-                      <div className="col-span-2 space-y-2">
-                        <Pill label={txn.type} className={`${typeCfg.bg} ${typeCfg.text}`} />
-                        <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
-                      </div>
+                    <article key={txn._id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-950">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTransactionId((prev) => (prev === txn._id ? null : txn._id))}
+                        className="w-full text-left"
+                      >
+                        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Pill label={txn.type === "SALE" ? "Purchase" : "Rental"} className={`${typeCfg.bg} ${typeCfg.text}`} />
+                              <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-1">
+                                {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
+                              </h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                                {txn.propertyId?.city || "No city"}
+                              </p>
+                            </div>
+                          </div>
 
-                      <div className="col-span-3">
-                        <p className="font-semibold text-gray-900 dark:text-white line-clamp-1">
-                          {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
-                          {txn.propertyId?.city || "No city"}
-                        </p>
-                        
-                      </div>
+                          <div className="sm:text-right">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Amount</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatAmount(txn.amount, txn.currency)}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Created {formatDate(txn.createdAt)}</p>
+                          </div>
+                        </div>
+                      </button>
 
-                      <div className="col-span-3 space-y-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Owner / Agency</p>
-                        <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{formatName(txn.ownerId) || "—"}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Buyer / Tenant</p>
-                        <p className="font-medium text-gray-900 dark:text-white line-clamp-1">{formatName(txn.partyId) || "—"}</p>
-                      </div>
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50/70 p-5 dark:border-gray-800 dark:bg-gray-900/50">
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-950">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Property</p>
+                              <p className="mt-1 font-medium text-gray-900 dark:text-white">{txn.propertyId?.title || "—"}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{txn.propertyId?.reference || "—"}</p>
+                              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Parties</p>
+                              <p className="mt-1 text-sm text-gray-900 dark:text-white"><span className="font-medium">Owner / Agency:</span> {formatName(txn.ownerId) || "—"}</p>
+                              <p className="text-sm text-gray-900 dark:text-white"><span className="font-medium">Buyer / Tenant:</span> {formatName(txn.partyId) || "—"}</p>
+                              {latestTimeline && (
+                                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Updated {formatDate(latestTimeline.at)}{latestTimeline.note ? ` — ${latestTimeline.note}` : ""}</p>
+                              )}
+                            </div>
 
-                      <div className="col-span-2">
-                        <p className="font-semibold text-gray-900 dark:text-white">{formatAmount(txn.amount, txn.currency)}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Created {formatDate(txn.createdAt)}</p>
-                        {latestTimeline && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Updated {formatDate(latestTimeline.at)}</p>
-                        )}
-                      </div>
+                            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-950">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Workflow</p>
+                              {isParticipantView ? (
+                                <div className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                  {txn.timeline?.length ? (
+                                    [...txn.timeline].slice(-6).reverse().map((entry, idx) => (
+                                      <div key={`${entry.at}-${idx}`} className="flex flex-wrap items-center gap-2">
+                                        <Pill label={entry.status} className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white" />
+                                        <span>{formatDate(entry.at)}</span>
+                                        {entry.note && <span>— {entry.note}</span>}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p>No timeline yet.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="mt-3">
+                                  <select
+                                    value={txn.status}
+                                    disabled={!canEdit || busy}
+                                    onChange={(e) => updateStatus(txn, e.target.value as StatusTarget)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                                  >
+                                    {WORKFLOW_STEPS.map((step) => (
+                                      <option key={step.value} value={step.value}>
+                                        {step.title}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {!canEdit && (
+                                    <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">View only</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                      <div className="col-span-2">
-                        <select
-                          value={txn.status}
-                          disabled={!canEdit || busy}
-                          onChange={(e) => updateStatus(txn, e.target.value as StatusTarget)}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-xs font-semibold text-gray-800 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                        >
-                          {WORKFLOW_STEPS.map((step) => (
-                            <option key={step.value} value={step.value}>
-                              {step.title}
-                            </option>
-                          ))}
-                        </select>
-                        {!canEdit && (
-                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">View only</p>
-                        )}
-                      </div>
-                    </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <a href={listingUrl(txn)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                              <Button size="sm" variant="outline">
+                                Open marketplace
+                              </Button>
+                            </a>
+                            {txn.status === "PENDING" && canCancel(txn) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(txn, "CANCELLED");
+                                }}
+                              >
+                                Withdraw request
+                              </Button>
+                            )}
+                            {busy && <span className="text-xs text-gray-500 self-center">Updating...</span>}
+                          </div>
+                        </div>
+                      )}
+                    </article>
                   );
                 })}
               </div>
@@ -514,86 +567,101 @@ export default function Transactions() {
           </>
         )}
 
-        {!loading &&
-          isParticipantView &&
-          paginatedParticipantList.map((txn) => {
-            const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
-            const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
-            const label = txn.type === "SALE" ? "Purchase" : "Rental";
-            const counterparty = txn.type === "SALE" ? "Seller / agency" : "Landlord / agency";
-            return (
-              <article
-                key={txn._id}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
-              >
-                <div className="border-b border-gray-100 bg-gradient-to-r from-teal-50/90 to-white px-5 py-4 dark:border-gray-800 dark:from-teal-500/10 dark:to-gray-900">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <Pill label={label} className={`${typeCfg.bg} ${typeCfg.text}`} />
-                        <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
+        {!loading && isParticipantView && (
+          <div className="space-y-3">
+            {visibleTransactions.map((txn) => {
+              const statusCfg = statusColor[txn.status] || { bg: "bg-gray-100", text: "text-gray-800" };
+              const typeCfg = typeColor[txn.type] || { bg: "bg-gray-100", text: "text-gray-800" };
+              const isExpanded = expandedTransactionId === txn._id;
+              return (
+                <article
+                  key={txn._id}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedTransactionId((prev) => (prev === txn._id ? null : txn._id))}
+                    className="w-full text-left"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-gray-100 bg-gradient-to-r from-teal-50/90 to-white px-5 py-4 dark:border-gray-800 dark:from-teal-500/10 dark:to-gray-900">
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <Pill label={txn.type === "SALE" ? "Purchase" : "Rental"} className={`${typeCfg.bg} ${typeCfg.text}`} />
+                          <Pill label={txn.status} className={`${statusCfg.bg} ${statusCfg.text}`} />
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
+                        </h2>
+                        {txn.propertyId?.city && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{txn.propertyId.city}</p>
+                        )}
                       </div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {txn.propertyId?.title || txn.propertyId?.reference || "Property"}
-                      </h2>
-                      {txn.propertyId?.city && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{txn.propertyId.city}</p>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Amount</p>
+                        <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                          {formatAmount(txn.amount, txn.currency)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="space-y-4 p-5">
+                      <div className="rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Seller / Agency</p>
+                        <p className="mt-0.5 font-medium text-gray-900 dark:text-white">
+                          {formatName(txn.ownerId) || "—"}
+                        </p>
+                      </div>
+                      {txn.timeline && txn.timeline.length > 0 && (
+                        <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                          <p className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">Progress</p>
+                          <div className="space-y-2">
+                            {[...txn.timeline]
+                              .slice(-6)
+                              .reverse()
+                              .map((entry, idx) => (
+                                <div
+                                  key={`${entry.at}-${idx}`}
+                                  className="flex flex-wrap items-start gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                >
+                                  <Pill
+                                    label={entry.status}
+                                    className="bg-white text-gray-800 dark:bg-gray-900 dark:text-white"
+                                  />
+                                  <span className="text-gray-500">{formatDate(entry.at)}</span>
+                                  {entry.note && <span className="text-gray-500">— {entry.note}</span>}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Amount</p>
-                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {formatAmount(txn.amount, txn.currency)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4 p-5">
-                  <div className="rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{counterparty}</p>
-                    <p className="mt-0.5 font-medium text-gray-900 dark:text-white">
-                      {formatName(txn.ownerId) || "—"}
-                    </p>
-                  </div>
-                  {txn.timeline && txn.timeline.length > 0 && (
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-800 dark:bg-gray-800/40">
-                      <p className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">Progress</p>
-                      <div className="space-y-2">
-                        {[...txn.timeline]
-                          .slice(-6)
-                          .reverse()
-                          .map((entry, idx) => (
-                            <div
-                              key={`${entry.at}-${idx}`}
-                              className="flex flex-wrap items-start gap-2 text-xs text-gray-600 dark:text-gray-300"
-                            >
-                              <Pill
-                                label={entry.status}
-                                className="bg-white text-gray-800 dark:bg-gray-900 dark:text-white"
-                              />
-                              <span className="text-gray-500">{formatDate(entry.at)}</span>
-                              {entry.note && <span className="text-gray-500">— {entry.note}</span>}
-                            </div>
-                          ))}
+                      <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                        <a href={listingUrl(txn)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline">
+                            Open marketplace
+                          </Button>
+                        </a>
+                        {txn.status === "PENDING" && canCancel(txn) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatus(txn, "CANCELLED");
+                            }}
+                          >
+                            Withdraw request
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-                    <a href={listingUrl(txn)} target="_blank" rel="noreferrer">
-                      <Button size="sm" variant="outline">
-                        Open marketplace
-                      </Button>
-                    </a>
-                    {txn.status === "PENDING" && canCancel(txn) && (
-                      <Button size="sm" variant="outline" onClick={() => updateStatus(txn, "CANCELLED")}>
-                        Withdraw request
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
+        )}
 
       </div>
 
