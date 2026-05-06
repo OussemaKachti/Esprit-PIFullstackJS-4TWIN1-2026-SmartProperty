@@ -34,28 +34,14 @@ pipeline {
             }
         }
 
-        stage('Test & Coverage') {
-            steps {
-                dir('backend') {
-                    sh 'npm run test:coverage'
-                    // Fail fast if Jest didn't produce the lcov report
-                    sh 'test -f coverage/lcov.info || (echo "ERROR: coverage/lcov.info not found!" && exit 1)'
-                }
-            }
-            post {
-                always {
-                    // Archive the report so you can inspect it in Jenkins UI
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'backend/coverage/lcov-report',
-                        reportFiles: 'index.html',
-                        reportName: 'Jest Coverage Report'
-                    ])
-                }
+       stage('Test & Coverage') {
+        steps {
+            dir('backend') {
+                sh 'npm run test:coverage'
+                sh 'test -f coverage/lcov.info || (echo "ERROR: coverage/lcov.info not found!" && exit 1)'
             }
         }
+    }
 
         stage('SonarQube Analysis') {
             steps {
