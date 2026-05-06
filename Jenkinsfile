@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS-18'
+        nodejs 'NodeJS-18'  
     }
 
     environment {
@@ -54,7 +54,7 @@ pipeline {
 
         stage('Docker Compose Build') {
             steps {
-                sh 'docker-compose build'
+                sh 'DOCKER_BUILDKIT=1 docker-compose build'
             }
         }
 
