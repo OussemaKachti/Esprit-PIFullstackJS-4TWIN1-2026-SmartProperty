@@ -233,8 +233,9 @@ exports.getPaymentStatus = async (req, res, next) => {
             // Try to find by propertyId first (frontend sends propertyId)
             activeRecord = await Lease.findOne({ propertyId: id, status: { $ne: 'CANCELLED' } }).populate('propertyId');
 
-            // Fallback to findById if not found (in case it WAS a lease ID)
-            if (!activeRecord && mongoose.Types.ObjectId.isValid(id)) {
+            // FIX 1 (L256): Replace negated condition `!activeRecord` with explicit null check
+            // to avoid unexpected negated condition lint warning.
+            if (activeRecord === null && mongoose.Types.ObjectId.isValid(id)) {
                 activeRecord = await Lease.findById(id).populate('propertyId');
             }
 
@@ -252,26 +253,24 @@ exports.getPaymentStatus = async (req, res, next) => {
                 status: { $in: blockingStatuses }
             }).populate('propertyId');
 
-            // If none for current user, optionally check if there's any other active sale (do not treat it as user's activeRecord)
-            if (!activeRecord) {
+            // FIX 2 (L272): Flatten `else { if (...) }` into `else if` to remove
+            // the lint warning about 'if' being the only statement in an 'else' block.
+            if (activeRecord) {
+                if (activeRecord.propertyId) {
+                    ownerId = activeRecord.propertyId.createdBy;
+                    amount = activeRecord.salePrice;
+                }
+            } else {
                 const otherSale = await Sale.findOne({
                     propertyId: id,
                     status: { $in: blockingStatuses }
                 }).populate('propertyId buyerId');
                 if (otherSale) {
-                    // return info about other user's active sale via a separate field later; do not set as activeRecord
-                    // store it temporarily in a variable for owner/amount resolution
                     activeRecord = null;
-                    // Use owner/amount from the otherSale.propertyId if available
                     if (otherSale.propertyId) {
                         ownerId = otherSale.propertyId.createdBy;
                         amount = otherSale.salePrice;
                     }
-                }
-            } else {
-                if (activeRecord && activeRecord.propertyId) {
-                    ownerId = activeRecord.propertyId.createdBy;
-                    amount = activeRecord.salePrice;
                 }
             }
 
