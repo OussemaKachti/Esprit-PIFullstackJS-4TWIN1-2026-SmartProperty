@@ -12,6 +12,7 @@ pipeline {
     }
 
     stages {
+
         stage('Clone Repository') {
             steps {
                 git branch: 'main',
@@ -23,12 +24,18 @@ pipeline {
             parallel {
                 stage('Backend deps') {
                     steps {
-                        dir('backend') { sh 'npm install' }
+                        dir('backend') {
+                            sh 'rm -rf node_modules package-lock.json || true'
+                            sh 'npm ci'
+                        }
                     }
                 }
                 stage('Frontend deps') {
                     steps {
-                        dir('frontend') { sh 'npm install' }
+                        dir('frontend') {
+                            sh 'rm -rf node_modules package-lock.json || true'
+                            sh 'npm ci'
+                        }
                     }
                 }
             }
@@ -37,7 +44,7 @@ pipeline {
         stage('Run Backend Tests with Coverage') {
             steps {
                 dir('backend') {
-                    sh 'npm test -- --coverage'
+                    sh 'npm test -- --coverage --watchAll=false'
                 }
             }
         }
@@ -46,7 +53,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     dir('backend') {
-                        sh "${tool 'sonarqube'}/bin/sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
+                        sh "sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
                     }
                 }
             }
@@ -94,6 +101,6 @@ pipeline {
     post {
         always  { echo 'Pipeline finished.' }
         success { echo 'All stages passed. Deployment complete.' }
-        failure { echo 'Pipeline failed — check the stage logs above.' }
+        failure { echo 'Pipeline failed — check logs above.' }
     }
 }
