@@ -54,7 +54,6 @@
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
-  
   "jest": {
     "testEnvironment": "node",
     "collectCoverageFrom": [
@@ -65,7 +64,11 @@
       "src/utils/apiResponse.js"
     ],
     "coverageDirectory": "coverage",
-    "coverageReporters": ["lcov", "text", "clover"],
+    "coverageReporters": [
+      "lcov",
+      "text",
+      "clover"
+    ],
     "testMatch": [
       "**/__tests__/**/*.test.js",
       "**/*.test.js",
