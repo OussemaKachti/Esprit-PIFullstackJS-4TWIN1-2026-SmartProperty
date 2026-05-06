@@ -23,21 +23,21 @@ pipeline {
             parallel {
                 stage('Backend deps') {
                     steps {
-                        dir('backend') { sh 'npm install' }
+                        dir('backend') { sh 'npm ci' }
                     }
                 }
                 stage('Frontend deps') {
                     steps {
-                        dir('frontend') { sh 'npm install' }
+                        dir('frontend') { sh 'npm ci --legacy-peer-deps' }
                     }
                 }
             }
         }
 
-        stage('Test Backend (coverage for Sonar)') {
+        stage('Test & Coverage') {
             steps {
                 dir('backend') {
-                    sh 'npm run test:coverage -- --watchAll=false'
+                    sh 'npm run test:coverage'
                 }
             }
         }

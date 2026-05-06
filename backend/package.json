@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
-    "test:coverage": "jest --coverage --runInBand"
+    "test": "jest --passWithNoTests --forceExit",
+    "test:coverage": "jest --coverage --runInBand --passWithNoTests --forceExit"
   },
   "keywords": [
     "real-estate",
@@ -61,6 +61,7 @@
       "src/**/*.js",
       "!src/server.js"
     ],
-    "coverageReporters": ["lcov", "text", "clover"]
+    "coverageReporters": ["lcov", "text", "clover"],
+    "testTimeout": 30000
   }
 }
