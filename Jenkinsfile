@@ -70,7 +70,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     dir('backend') {
-                        sh 'sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info'
+                        sh "${tool 'sonarqube'}/bin/sonar-scanner"
                     }
                 }
             }
