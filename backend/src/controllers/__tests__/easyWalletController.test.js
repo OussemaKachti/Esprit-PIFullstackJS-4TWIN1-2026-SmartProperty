@@ -1,4 +1,3 @@
-
 jest.mock('mongoose', () => ({
     Types: {
         ObjectId: {
@@ -38,7 +37,6 @@ jest.mock('../../utils/apiResponse', () => ({
 
 const {
     Lease,
-    Sale,
     Property,
     User,
     RentPayment,
@@ -53,10 +51,13 @@ const buildRes = () => {
     return res;
 };
 
-// silence logs/errors (important for clean tests)
+let originalFetch;
+
 beforeAll(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    originalFetch = global.fetch;
 });
 
 beforeEach(() => {
@@ -65,7 +66,10 @@ beforeEach(() => {
 
 afterEach(() => {
     jest.restoreAllMocks();
+    global.fetch = originalFetch;
 });
+
+/* ---------------- INITIATE PAYMENT ---------------- */
 
 describe('easyWalletController.initiatePayment', () => {
 
@@ -110,10 +114,7 @@ describe('easyWalletController.initiatePayment', () => {
                 amount: 500,
                 paymentType: 'LEASE',
             },
-            user: {
-                _id: 'u1',
-                walletNumber: 'TN1',
-            },
+            user: { _id: 'u1', walletNumber: 'TN1' },
         };
 
         const res = buildRes();
@@ -125,7 +126,6 @@ describe('easyWalletController.initiatePayment', () => {
     });
 
     test('LEASE success flow', async () => {
-
         Property.findById.mockResolvedValue({
             _id: 'p1',
             createdBy: 'o1',
@@ -159,10 +159,7 @@ describe('easyWalletController.initiatePayment', () => {
                 amount: 500,
                 paymentType: 'LEASE',
             },
-            user: {
-                _id: 'u1',
-                walletNumber: 'TN1',
-            },
+            user: { _id: 'u1', walletNumber: 'TN1' },
         };
 
         const res = buildRes();
