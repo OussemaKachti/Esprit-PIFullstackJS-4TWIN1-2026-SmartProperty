@@ -58,7 +58,56 @@ pipeline {
                         // Explicitly confirm the report path before scanner runs
                         sh 'ls -la coverage/lcov.info'
                         sh 'ls -la coverage/test-report.xml || echo "coverage/test-report.xml missing"'
-                        sh "${tool 'sonarqube'}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Per-Controller Analysis') {
+            parallel {
+                stage('Sonar Feedback') {
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            dir('backend') {
+                                sh "${tool 'sonarqube'}/bin/sonar-scanner -Dproject.settings=sonar/sonar-feedback.properties"
+                            }
+                        }
+                    }
+                }
+                stage('Sonar EasyWallet') {
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            dir('backend') {
+                                sh "${tool 'sonarqube'}/bin/sonar-scanner -Dproject.settings=sonar/sonar-easywallet.properties"
+                            }
+                        }
+                    }
+                }
+                stage('Sonar Lease') {
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            dir('backend') {
+                                sh "${tool 'sonarqube'}/bin/sonar-scanner -Dproject.settings=sonar/sonar-lease.properties"
+                            }
+                        }
+                    }
+                }
+                stage('Sonar Property') {
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            dir('backend') {
+                                sh "${tool 'sonarqube'}/bin/sonar-scanner -Dproject.settings=sonar/sonar-property.properties"
+                            }
+                        }
+                    }
+                }
+                stage('Sonar Auth Middleware') {
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            dir('backend') {
+                                sh "${tool 'sonarqube'}/bin/sonar-scanner -Dproject.settings=sonar/sonar-auth-middleware.properties"
+                            }
+                        }
                     }
                 }
             }
