@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS-18'
+        nodejs 'NodeJS-18'  
     }
 
     environment {
@@ -23,21 +23,34 @@ pipeline {
             parallel {
                 stage('Backend deps') {
                     steps {
-                        dir('backend') { sh 'npm install' }
+                        dir('backend') {
+                            sh 'npm install --legacy-peer-deps'
+                        }
                     }
                 }
                 stage('Frontend deps') {
                     steps {
-                        dir('frontend') { sh 'npm install' }
+                        dir('frontend') {
+                            sh 'npm install --legacy-peer-deps'
+                        }
                     }
                 }
             }
         }
 
-        stage('Test Backend (coverage for Sonar)') {
+        // ✅ Must run BEFORE SonarQube so lcov.info exists
+        stage('Test & Coverage') {
             steps {
                 dir('backend') {
-                    sh 'npm run test:coverage -- --watchAll=false'
+                    sh '''
+                        npx jest \
+                          --coverage \
+                          --coverageReporters=lcov \
+                          --coverageReporters=text \
+                          --watchAll=false \
+                          --forceExit \
+                          --passWithNoTests
+                    '''
                 }
             }
         }
@@ -54,7 +67,7 @@ pipeline {
 
         stage('Docker Compose Build') {
             steps {
-                sh 'docker-compose build'
+                sh 'DOCKER_BUILDKIT=1 docker-compose build'
             }
         }
 
