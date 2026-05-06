@@ -57,6 +57,7 @@ pipeline {
                     dir('backend') {
                         // Explicitly confirm the report path before scanner runs
                         sh 'ls -la coverage/lcov.info'
+                        sh 'ls -la coverage/test-report.xml || echo "coverage/test-report.xml missing"'
                         sh "${tool 'sonarqube'}/bin/sonar-scanner"
                     }
                 }

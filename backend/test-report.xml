@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testExecutions version="1">
   <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\propertyController.test.js">
-    <testCase name="propertyController (coverage bootstrap) getPropertyById returns 404 for invalid id" duration="4"/>
+    <testCase name="propertyController (coverage bootstrap) getPropertyById returns 404 for invalid id" duration="3"/>
     <testCase name="propertyController (coverage bootstrap) getAllProperties returns 400 when listingType is invalid" duration="1"/>
-    <testCase name="propertyController (coverage bootstrap) createProperty builds images + detection payload and creates property" duration="127"/>
+    <testCase name="propertyController (coverage bootstrap) createProperty builds images + detection payload and creates property" duration="36"/>
     <testCase name="propertyController (coverage bootstrap) createProperty retries when reference is duplicated" duration="1"/>
-    <testCase name="propertyController (coverage bootstrap) createProperty skips detection for panorama-only uploads" duration="2"/>
-    <testCase name="propertyController (coverage bootstrap) createProperty handles detection API errors and still creates property" duration="1"/>
-  </file>
-  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\services\__tests__\reviewProfanity.service.test.js">
-    <testCase name="reviewProfanity.service returns unchanged text when clean" duration="1"/>
-    <testCase name="reviewProfanity.service masks known profanity and flags" duration="1"/>
-  </file>
-  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\leaseController.test.js">
-    <testCase name="leaseController.getLeaseCalendar returns tenant-scoped events with tenant-friendly title" duration="2"/>
-    <testCase name="leaseController.getLeaseCalendar returns empty calendar for agency when no owned properties" duration="1"/>
-  </file>
-  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\models\__tests__\Property.test.js">
-    <testCase name="Property model generateReference starts at 00001 when no previous reference exists" duration="1"/>
-    <testCase name="Property model generateReference increments based on latest saved reference" duration="1"/>
+    <testCase name="propertyController (coverage bootstrap) createProperty skips detection for panorama-only uploads" duration="1"/>
+    <testCase name="propertyController (coverage bootstrap) createProperty handles detection API errors and still creates property" duration="2"/>
   </file>
   <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\auth.middleware.test.js">
     <testCase name="auth.middleware protect sets req.user and canTransact for approved user" duration="1"/>
     <testCase name="auth.middleware requireApprovedForActions blocks non-approved non-admin users" duration="1"/>
     <testCase name="auth.middleware requireApprovedForActions allows admin even if status missing" duration="0"/>
   </file>
+  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\models\__tests__\Property.test.js">
+    <testCase name="Property model generateReference starts at 00001 when no previous reference exists" duration="1"/>
+    <testCase name="Property model generateReference increments based on latest saved reference" duration="0"/>
+  </file>
   <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\easyWalletController.test.js">
-    <testCase name="easyWalletController.initiatePayment returns 400 when both id and propertyId are missing" duration="2"/>
-    <testCase name="easyWalletController.initiatePayment returns 400 when paymentType is invalid" duration="1"/>
-    <testCase name="easyWalletController.initiatePayment returns 400 when tenant has no wallet" duration="1"/>
+    <testCase name="easyWalletController.initiatePayment returns 400 when both id and propertyId are missing" duration="1"/>
+    <testCase name="easyWalletController.initiatePayment returns 400 when paymentType is invalid" duration="0"/>
+    <testCase name="easyWalletController.initiatePayment returns 400 when tenant has no wallet" duration="0"/>
     <testCase name="easyWalletController.initiatePayment returns 400 when sender and recipient wallets are the same" duration="0"/>
-    <testCase name="easyWalletController.initiatePayment LEASE: returns 200, confirms lease, creates RentPayment, sets property RENTED" duration="11"/>
+    <testCase name="easyWalletController.initiatePayment LEASE: returns 200, confirms lease, creates RentPayment, sets property RENTED" duration="7"/>
     <testCase name="easyWalletController.initiatePayment SALE: returns 200, completes sale, sets property SOLD" duration="1"/>
     <testCase name="easyWalletController.initiatePayment returns EasyWallet error when API payment fails" duration="1"/>
-    <testCase name="easyWalletController.getPaymentStatus returns 200 with wallet status info for LEASE type" duration="0"/>
-    <testCase name="easyWalletController.createWalletAndLink returns 404 when user is not found" duration="0"/>
-    <testCase name="easyWalletController.createWalletAndLink returns 400 when user already has a wallet" duration="0"/>
-    <testCase name="easyWalletController.createWalletAndLink returns 201 with new wallet number on success" duration="1"/>
-    <testCase name="easyWalletController.createWalletAndLink returns error status when EasyWallet API fails" duration="1"/>
+    <testCase name="easyWalletController.getPaymentStatus returns 200 with wallet status info for LEASE type" duration="1"/>
+    <testCase name="easyWalletController.createWalletAndLink returns 404 when user is not found" duration="1"/>
+    <testCase name="easyWalletController.createWalletAndLink returns 400 when user already has a wallet" duration="1"/>
+    <testCase name="easyWalletController.createWalletAndLink returns 201 with new wallet number on success" duration="0"/>
+    <testCase name="easyWalletController.createWalletAndLink returns error status when EasyWallet API fails" duration="0"/>
     <testCase name="easyWalletController.getBalance returns 400 when user has no wallet linked" duration="1"/>
     <testCase name="easyWalletController.getBalance returns 200 with balance data on success" duration="1"/>
-    <testCase name="easyWalletController.getBalance returns EasyWallet error when balance fetch fails" duration="2"/>
+    <testCase name="easyWalletController.getBalance returns EasyWallet error when balance fetch fails" duration="1"/>
   </file>
   <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\feedbackController.test.js">
-    <testCase name="feedbackController.getAllFeedbacks returns 200 with paginated feedback list" duration="1"/>
+    <testCase name="feedbackController.getAllFeedbacks returns 200 with paginated feedback list" duration="2"/>
     <testCase name="feedbackController.getAllFeedbacks calls next on DB error" duration="1"/>
     <testCase name="feedbackController.getFeedbackSummary returns 200 with aggregated byProperty map" duration="1"/>
     <testCase name="feedbackController.getFeedbackSummary returns 200 with empty map when no feedbacks" duration="0"/>
-    <testCase name="feedbackController.getFeedbackById returns 404 when feedback is not found" duration="0"/>
-    <testCase name="feedbackController.getFeedbackById returns 200 with feedback data when found" duration="0"/>
+    <testCase name="feedbackController.getFeedbackById returns 404 when feedback is not found" duration="1"/>
+    <testCase name="feedbackController.getFeedbackById returns 200 with feedback data when found" duration="1"/>
     <testCase name="feedbackController.createFeedback returns 400 when required fields are missing" duration="1"/>
     <testCase name="feedbackController.createFeedback returns 400 when rating is out of range" duration="1"/>
     <testCase name="feedbackController.createFeedback returns 201 on success with clean comment" duration="1"/>
-    <testCase name="feedbackController.createFeedback returns 201 and schedules profanity warning email when profanity detected" duration="0"/>
-    <testCase name="feedbackController.updateFeedback returns 404 when feedback is not found" duration="0"/>
-    <testCase name="feedbackController.updateFeedback returns 403 when user is not the author and not admin" duration="0"/>
+    <testCase name="feedbackController.createFeedback returns 201 and schedules profanity warning email when profanity detected" duration="1"/>
+    <testCase name="feedbackController.updateFeedback returns 404 when feedback is not found" duration="1"/>
+    <testCase name="feedbackController.updateFeedback returns 403 when user is not the author and not admin" duration="1"/>
     <testCase name="feedbackController.updateFeedback returns 200 on successful update by author" duration="1"/>
     <testCase name="feedbackController.deleteFeedback returns 404 when feedback is not found" duration="1"/>
-    <testCase name="feedbackController.deleteFeedback returns 403 when user is not the author and not admin" duration="1"/>
+    <testCase name="feedbackController.deleteFeedback returns 403 when user is not the author and not admin" duration="0"/>
     <testCase name="feedbackController.deleteFeedback returns 200 on successful deletion by admin" duration="0"/>
+  </file>
+  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\controllers\__tests__\leaseController.test.js">
+    <testCase name="leaseController.getLeaseCalendar returns tenant-scoped events with tenant-friendly title" duration="3"/>
+    <testCase name="leaseController.getLeaseCalendar returns empty calendar for agency when no owned properties" duration="1"/>
+  </file>
+  <file path="C:\Users\Amine\Desktop\PI\Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty\backend\src\services\__tests__\reviewProfanity.service.test.js">
+    <testCase name="reviewProfanity.service returns unchanged text when clean" duration="1"/>
+    <testCase name="reviewProfanity.service masks known profanity and flags" duration="1"/>
   </file>
 </testExecutions>

@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "test:coverage": "cross-env JEST_SONAR_OUTPUT_DIR=coverage JEST_SONAR_OUTPUT_NAME=test-report.xml jest --coverage --runInBand --passWithNoTests --coverageReporters=lcov --coverageReporters=text-summary --coverageReporters=clover --forceExit"
+    "test:coverage": "cross-env JEST_SONAR_OUTPUT_DIR=coverage JEST_SONAR_OUTPUT_NAME=test-report.xml jest --coverage --runInBand --passWithNoTests --coverageReporters=lcov --coverageReporters=text-summary --coverageReporters=clover --forceExit && node scripts/normalize-test-report.js"
   },
   "keywords": [
     "real-estate",
