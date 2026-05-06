@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main',
+                git branch: 'coverage',
                     url: 'https://github.com/OussemaKachti/Esprit-PIFullstackJS-4TWIN1-2026-SmartProperty.git'
             }
         }

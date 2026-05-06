@@ -54,6 +54,7 @@
     "npm": ">=9.0.0"
   },
   "jest": {
+    "testRunner": "jest-jasmine2",
     "testEnvironment": "node",
     "collectCoverageFrom": [
       "src/controllers/feedbackController.js",
