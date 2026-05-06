@@ -34,6 +34,14 @@ pipeline {
             }
         }
 
+        stage('Test Backend (coverage for Sonar)') {
+            steps {
+                dir('backend') {
+                    sh 'npm run test:coverage -- --watchAll=false'
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonarqube') {

@@ -247,7 +247,10 @@ describe('easyWalletController.getPaymentStatus', () => {
             propertyId: { _id: 'p1', createdBy: 'owner1' },
             rentAmount: 600,
         };
-        Lease.findOne.mockResolvedValue(null); // No non-cancelled lease
+        // findOne returns a query-like chain (populate then resolves), not a bare value
+        Lease.findOne.mockReturnValue({
+            populate: jest.fn().mockResolvedValue(null),
+        });
         Lease.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(fakeRecord) });
 
         const fakeOwner = { _id: 'owner1', walletNumber: 'OW-100', firstName: 'Selim', lastName: 'Ben Ali', equals: jest.fn(() => false) };
