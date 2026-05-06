@@ -53,7 +53,7 @@ pipeline {
 
 
         stage('SonarQube Per-Controller Analysis') {
-            parallel {
+            stages {
                 stage('Sonar Feedback') {
                     steps {
                         withSonarQubeEnv('sonarqube') {
