@@ -19,20 +19,23 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
-            parallel {
-                stage('Backend deps') {
-                    steps {
-                        dir('backend') { sh 'npm ci' }
-                    }
-                }
-                stage('Frontend deps') {
-                    steps {
-                        dir('frontend') { sh 'npm ci --legacy-peer-deps' }
-                    }
+       stage('Install Dependencies') {
+    parallel {
+        stage('Backend deps') {
+            steps {
+                dir('backend') { 
+                    sh 'npm ci'
+                    sh 'ls node_modules/jest-circus || echo "jest-circus MISSING!"'
                 }
             }
         }
+        stage('Frontend deps') {
+            steps {
+                dir('frontend') { sh 'npm ci --legacy-peer-deps' }
+            }
+        }
+    }
+}
 
        stage('Test & Coverage') {
     steps {
