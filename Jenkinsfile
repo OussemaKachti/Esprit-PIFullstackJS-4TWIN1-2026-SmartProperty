@@ -51,17 +51,6 @@ pipeline {
     }
 }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    dir('backend') {
-                        // Explicitly confirm the report path before scanner runs
-                        sh 'ls -la coverage/lcov.info'
-                        sh 'ls -la coverage/test-report.xml || echo "coverage/test-report.xml missing"'
-                    }
-                }
-            }
-        }
 
         stage('SonarQube Per-Controller Analysis') {
             parallel {
