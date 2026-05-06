@@ -6,28 +6,47 @@ jest.mock('mongoose', () => ({
     },
 }));
 
-jest.mock('../../models', () => ({
-    Lease: {
-        findOne: jest.fn(),
-        findById: jest.fn(),
-        create: jest.fn(),
-    },
-    Sale: {
-        findOne: jest.fn(),
-        findById: jest.fn(),
-        create: jest.fn(),
-    },
-    Property: {
-        findById: jest.fn(),
-        findByIdAndUpdate: jest.fn(),
-    },
-    User: {
-        findById: jest.fn(),
-        findOne: jest.fn(),
-    },
-    RentPayment: {
-        create: jest.fn(),
-    },
+jest.mock('../../models', () => {
+    const Transaction = jest.fn().mockImplementation(function TransactionCtor(data) {
+        Object.assign(this, data);
+        this.timeline = data.timeline || [];
+        this.save = jest.fn().mockResolvedValue(this);
+    });
+    return {
+        Lease: {
+            findOne: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+        },
+        Sale: {
+            findOne: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+        },
+        Property: {
+            findById: jest.fn(),
+            findByIdAndUpdate: jest.fn(),
+        },
+        User: {
+            findById: jest.fn(),
+            findOne: jest.fn(),
+        },
+        RentPayment: {
+            create: jest.fn(),
+        },
+        Transaction,
+        TransactionType: { SALE: 'SALE', RENT: 'RENT' },
+        TransactionStatus: {
+            PENDING: 'PENDING',
+            CONFIRMED: 'CONFIRMED',
+            CANCELLED: 'CANCELLED',
+            COMPLETED: 'COMPLETED',
+        },
+    };
+});
+
+jest.mock('../../services/transaction.service', () => ({
+    addTimelineEntry: jest.fn(),
 }));
 
 jest.mock('../../utils/apiResponse', () => ({
@@ -204,7 +223,8 @@ describe('easyWalletController.initiatePayment', () => {
         await easyWalletController.initiatePayment(req, res, next);
 
         expect(global.fetch).toHaveBeenCalledTimes(1);
-        expect(fakeSale.save).toHaveBeenCalledTimes(1);
+        // status COMPLETED, then persist transactionId on the sale record
+        expect(fakeSale.save).toHaveBeenCalledTimes(2);
         expect(Property.findByIdAndUpdate).toHaveBeenCalledWith('p1', { status: 'SOLD' });
         expect(res.status).toHaveBeenCalledWith(200);
         expect(next).not.toHaveBeenCalled();
