@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --passWithNoTests --forceExit",
-    "test:coverage": "jest --coverage --runInBand --passWithNoTests --forceExit"
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text --forceExit"
   },
   "keywords": [
     "real-estate",
@@ -44,7 +44,8 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
-    "jest": "^30.3.0",
+    "jest": "^29.7.0",
+    "jest-circus": "^29.7.0",
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.11",
     "supertest": "^7.2.2"
@@ -56,12 +57,22 @@
   
   "jest": {
     "testEnvironment": "node",
-    "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/server.js"
+      "src/controllers/feedbackController.js",
+      "src/controllers/easyWalletController.js",
+      "src/services/reviewProfanity.service.js",
+      "src/middleware/auth.middleware.js",
+      "src/utils/apiResponse.js"
     ],
+    "coverageDirectory": "coverage",
     "coverageReporters": ["lcov", "text", "clover"],
-    "testTimeout": 30000
+    "testMatch": [
+      "**/__tests__/**/*.test.js",
+      "**/*.test.js",
+      "**/*.spec.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ]
   }
 }
