@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text --forceExit"
+    "test:coverage": "jest --coverage --runInBand --passWithNoTests --coverageReporters=lcov --coverageReporters=text-summary --coverageReporters=clover --forceExit"
   },
   "keywords": [
     "real-estate",
@@ -54,19 +54,18 @@
     "npm": ">=9.0.0"
   },
   "jest": {
-    
     "testEnvironment": "node",
     "collectCoverageFrom": [
-      "src/controllers/feedbackController.js",
-      "src/controllers/easyWalletController.js",
-      "src/services/reviewProfanity.service.js",
-      "src/middleware/auth.middleware.js",
-      "src/utils/apiResponse.js"
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!src/**/*.spec.js",
+      "!src/**/__tests__/**",
+      "!src/server.js"
     ],
     "coverageDirectory": "coverage",
     "coverageReporters": [
       "lcov",
-      "text",
+      "text-summary",
       "clover"
     ],
     "testMatch": [
