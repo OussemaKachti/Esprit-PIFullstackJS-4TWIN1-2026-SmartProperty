@@ -35,13 +35,18 @@ pipeline {
         }
 
        stage('Test & Coverage') {
-        steps {
-            dir('backend') {
-                sh 'npm run test:coverage'
-                sh 'test -f coverage/lcov.info || (echo "ERROR: coverage/lcov.info not found!" && exit 1)'
-            }
+    steps {
+        dir('backend') {
+            sh 'npm run test:coverage'
+            sh 'test -f coverage/lcov.info || (echo "ERROR: coverage/lcov.info not found!" && exit 1)'
         }
     }
+    post {
+        always {
+            archiveArtifacts artifacts: 'backend/coverage/lcov-report/**', allowEmptyArchive: true
+        }
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
