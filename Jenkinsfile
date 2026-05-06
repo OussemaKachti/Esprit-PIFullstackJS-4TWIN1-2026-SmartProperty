@@ -25,8 +25,16 @@ pipeline {
                 stage('Backend deps') {
                     steps {
                         dir('backend') {
-                            sh 'rm -rf node_modules || true'
-                            sh 'npm install'
+                            sh '''
+                                npm config set registry https://registry.npmjs.org/
+                                npm config set fetch-timeout 600000
+                                npm config set fetch-retries 5
+                                npm config set fetch-retry-mintimeout 20000
+                                npm config set fetch-retry-maxtimeout 120000
+
+                                rm -rf node_modules || true
+                                npm install --no-audit --no-fund
+                            '''
                         }
                     }
                 }
@@ -34,8 +42,16 @@ pipeline {
                 stage('Frontend deps') {
                     steps {
                         dir('frontend') {
-                            sh 'rm -rf node_modules || true'
-                            sh 'npm install'
+                            sh '''
+                                npm config set registry https://registry.npmjs.org/
+                                npm config set fetch-timeout 600000
+                                npm config set fetch-retries 5
+                                npm config set fetch-retry-mintimeout 20000
+                                npm config set fetch-retry-maxtimeout 120000
+
+                                rm -rf node_modules || true
+                                npm install --no-audit --no-fund
+                            '''
                         }
                     }
                 }
