@@ -34,11 +34,19 @@ pipeline {
             }
         }
 
+        stage('Run Backend Tests with Coverage') {
+            steps {
+                dir('backend') {
+                    sh 'npm test -- --coverage'
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     dir('backend') {
-                        sh "${tool 'sonarqube'}/bin/sonar-scanner"
+                        sh "${tool 'sonarqube'}/bin/sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
                     }
                 }
             }
