@@ -25,16 +25,17 @@ pipeline {
                 stage('Backend deps') {
                     steps {
                         dir('backend') {
-                            sh 'rm -rf node_modules package-lock.json || true'
-                            sh 'npm ci'
+                            sh 'rm -rf node_modules || true'
+                            sh 'npm install'
                         }
                     }
                 }
+
                 stage('Frontend deps') {
                     steps {
                         dir('frontend') {
-                            sh 'rm -rf node_modules package-lock.json || true'
-                            sh 'npm ci'
+                            sh 'rm -rf node_modules || true'
+                            sh 'npm install'
                         }
                     }
                 }
@@ -53,7 +54,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     dir('backend') {
-                        sh "sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
+                        sh 'sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info'
                     }
                 }
             }
@@ -72,15 +73,18 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
+
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
 
                     sh "docker tag mern-pipeline-frontend ${IMAGE_FRONTEND}:${BUILD_NUMBER}"
                     sh "docker tag mern-pipeline-frontend ${IMAGE_FRONTEND}:latest"
-                    sh "docker tag mern-pipeline-backend  ${IMAGE_BACKEND}:${BUILD_NUMBER}"
-                    sh "docker tag mern-pipeline-backend  ${IMAGE_BACKEND}:latest"
+
+                    sh "docker tag mern-pipeline-backend ${IMAGE_BACKEND}:${BUILD_NUMBER}"
+                    sh "docker tag mern-pipeline-backend ${IMAGE_BACKEND}:latest"
 
                     sh "docker push ${IMAGE_FRONTEND}:${BUILD_NUMBER}"
                     sh "docker push ${IMAGE_FRONTEND}:latest"
+
                     sh "docker push ${IMAGE_BACKEND}:${BUILD_NUMBER}"
                     sh "docker push ${IMAGE_BACKEND}:latest"
                 }
@@ -90,8 +94,10 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f k8s/'
+
                 sh "kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${BUILD_NUMBER}"
                 sh "kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${BUILD_NUMBER}"
+
                 sh 'kubectl rollout restart deployment/backend'
                 sh 'kubectl rollout restart deployment/frontend'
             }
@@ -99,8 +105,14 @@ pipeline {
     }
 
     post {
-        always  { echo 'Pipeline finished.' }
-        success { echo 'All stages passed. Deployment complete.' }
-        failure { echo 'Pipeline failed — check logs above.' }
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'All stages passed. Deployment complete.'
+        }
+        failure {
+            echo 'Pipeline failed — check logs above.'
+        }
     }
 }
