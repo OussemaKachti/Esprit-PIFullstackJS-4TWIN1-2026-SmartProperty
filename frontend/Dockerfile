@@ -1,4 +1,4 @@
-FROM node:20 as frontend-build
+FROM node:20-alpine as frontend-build
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN npm install --legacy-peer-deps
 COPY frontend/ .
 RUN npm run build
 
-FROM node:20 as backoffice-deps
+FROM node:20-alpine as backoffice-deps
 
 WORKDIR /backoffice
 
