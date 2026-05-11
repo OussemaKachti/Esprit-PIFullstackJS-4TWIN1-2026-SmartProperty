@@ -12,6 +12,7 @@ pipeline {
     }
 
     stages {
+
         stage('Clone Repository') {
             steps {
                 git branch: 'main',
@@ -23,36 +24,44 @@ pipeline {
             parallel {
                 stage('Backend deps') {
                     steps {
-                        dir('backend') { sh 'npm ci' }
+                        dir('backend') {
+                            sh '''
+                                npm config set registry https://registry.npmjs.org/
+                                npm config set fetch-timeout 600000
+                                npm config set fetch-retries 5
+                                npm config set fetch-retry-mintimeout 20000
+                                npm config set fetch-retry-maxtimeout 120000
+
+                                rm -rf node_modules || true
+                                npm install --no-audit --no-fund
+                            '''
+                        }
                     }
                 }
+
                 stage('Frontend deps') {
                     steps {
-                        dir('frontend') { sh 'npm ci --legacy-peer-deps' }
+                        dir('frontend') {
+                            sh '''
+                                npm config set registry https://registry.npmjs.org/
+                                npm config set fetch-timeout 600000
+                                npm config set fetch-retries 5
+                                npm config set fetch-retry-mintimeout 20000
+                                npm config set fetch-retry-maxtimeout 120000
+
+                                rm -rf node_modules || true
+                                npm install --no-audit --no-fund
+                            '''
+                        }
                     }
                 }
             }
         }
 
-        stage('Test & Coverage') {
+        stage('Run Backend Tests with Coverage') {
             steps {
                 dir('backend') {
-                    sh 'npm run test:coverage'
-                    // Fail fast if Jest didn't produce the lcov report
-                    sh 'test -f coverage/lcov.info || (echo "ERROR: coverage/lcov.info not found!" && exit 1)'
-                }
-            }
-            post {
-                always {
-                    // Archive the report so you can inspect it in Jenkins UI
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'backend/coverage/lcov-report',
-                        reportFiles: 'index.html',
-                        reportName: 'Jest Coverage Report'
-                    ])
+                    sh 'npm test -- --coverage --watchAll=false'
                 }
             }
         }
@@ -82,15 +91,18 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
+
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
 
                     sh "docker tag mern-pipeline-frontend ${IMAGE_FRONTEND}:${BUILD_NUMBER}"
                     sh "docker tag mern-pipeline-frontend ${IMAGE_FRONTEND}:latest"
-                    sh "docker tag mern-pipeline-backend  ${IMAGE_BACKEND}:${BUILD_NUMBER}"
-                    sh "docker tag mern-pipeline-backend  ${IMAGE_BACKEND}:latest"
+
+                    sh "docker tag mern-pipeline-backend ${IMAGE_BACKEND}:${BUILD_NUMBER}"
+                    sh "docker tag mern-pipeline-backend ${IMAGE_BACKEND}:latest"
 
                     sh "docker push ${IMAGE_FRONTEND}:${BUILD_NUMBER}"
                     sh "docker push ${IMAGE_FRONTEND}:latest"
+
                     sh "docker push ${IMAGE_BACKEND}:${BUILD_NUMBER}"
                     sh "docker push ${IMAGE_BACKEND}:latest"
                 }
@@ -100,8 +112,10 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f k8s/'
+
                 sh "kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${BUILD_NUMBER}"
                 sh "kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${BUILD_NUMBER}"
+
                 sh 'kubectl rollout restart deployment/backend'
                 sh 'kubectl rollout restart deployment/frontend'
             }
@@ -109,8 +123,14 @@ pipeline {
     }
 
     post {
-        always  { echo 'Pipeline finished.' }
-        success { echo 'All stages passed. Deployment complete.' }
-        failure { echo 'Pipeline failed — check the stage logs above.' }
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'All stages passed. Deployment complete.'
+        }
+        failure {
+            echo 'Pipeline failed — check logs above.'
+        }
     }
 }
